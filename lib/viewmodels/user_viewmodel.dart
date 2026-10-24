@@ -10,6 +10,7 @@ class UserViewModel extends ChangeNotifier {
   // 3 = Hướng dẫn sơ cứu (Màn hình 4)
   // 4 = Tra cứu kiến thức (Màn hình 5)
   // 5 = ChatBox AI (Màn hình 6)
+  // 6 = Kho tài liệu y tế - Quản lý tài liệu cục bộ trên thiết bị (Màn hình 7)
   int _currentScreenIndex = 0;
   int get currentScreenIndex => _currentScreenIndex;
 
@@ -17,7 +18,7 @@ class UserViewModel extends ChangeNotifier {
   int _selectedNavIndex = 0;
   int get selectedNavIndex => _selectedNavIndex;
 
-  // Trạng thái mục đang chọn trên Sidebar bên trái (Màn hình 2, 3, 4, 5, 6)
+  // Trạng thái mục đang chọn trên Sidebar bên trái (Màn hình 2, 3, 4, 5, 6, 7)
   // 0: Trang chủ, 1: Phân tích ảnh AI, 2: Hướng dẫn sơ cứu, 3: Kiến thức, 4: Tài liệu, 5: ChatBox AI
   int _selectedSidebarIndex = 1;
   int get selectedSidebarIndex => _selectedSidebarIndex;
@@ -45,10 +46,52 @@ class UserViewModel extends ChangeNotifier {
   String _knowledgeSearchQuery = '';
   String get knowledgeSearchQuery => _knowledgeSearchQuery;
 
-  // Bộ điều khiển và trạng thái văn bản đang nhập trên Màn hình 6: ChatBox AI
+  // Bộ điều khiển nhập liệu và cuộn danh sách tin nhắn trên Màn hình 6: ChatBox AI
   final TextEditingController chatInputController = TextEditingController();
+  final ScrollController chatScrollController = ScrollController();
   String _currentChatInput = '';
   String get currentChatInput => _currentChatInput;
+
+  // Trạng thái tìm kiếm, lọc danh mục và phân trang trên Màn hình 7: Kho tài liệu y tế
+  final TextEditingController documentSearchController =
+      TextEditingController();
+  String _documentSearchQuery = '';
+  String get documentSearchQuery => _documentSearchQuery;
+
+  String _selectedDocumentCategoryId = 'all';
+  String get selectedDocumentCategoryId => _selectedDocumentCategoryId;
+
+  int _currentDocumentPage = 1;
+  int get currentDocumentPage => _currentDocumentPage;
+
+  // Danh sách các tệp mẫu có sẵn trên thiết bị để người dùng chọn nhanh khi bấm "+ Thêm tài liệu"
+  final List<Map<String, String>> sampleDeviceFiles = const [
+    {
+      'fileName': 'so_tay_so_cuu_gia_dinh_2026.pdf',
+      'fileExtension': 'PDF',
+      'fileSize': '2.4 MB',
+      'localFilePath': 'C:/Users/NguyenVanA/Documents/Medical/so_tay_so_cuu_gia_dinh_2026.pdf',
+    },
+    {
+      'fileName': 'quy_trinh_xu_ly_bong_nhiet.docx',
+      'fileExtension': 'DOCX',
+      'fileSize': '850 KB',
+      'localFilePath': 'C:/Users/NguyenVanA/Documents/Medical/quy_trinh_xu_ly_bong_nhiet.docx',
+    },
+    {
+      'fileName': 'huong_dan_cam_mau_vet_cat.pdf',
+      'fileExtension': 'PDF',
+      'fileSize': '1.6 MB',
+      'localFilePath':
+          'C:/Users/NguyenVanA/Documents/Medical/huong_dan_cam_mau_vet_cat.pdf',
+    },
+    {
+      'fileName': 'bang_kiem_dung_cu_y_te_ca_nhan.txt',
+      'fileExtension': 'TXT',
+      'fileSize': '120 KB',
+      'localFilePath': 'C:/Users/NguyenVanA/Documents/Medical/bang_kiem_dung_cu_y_te_ca_nhan.txt',
+    },
+  ];
 
   // Danh sách 4 mục menu ngang trên Top Navigation Bar
   final List<String> navItems = const [
@@ -58,7 +101,7 @@ class UserViewModel extends ChangeNotifier {
     'Lịch sử',
   ];
 
-  // Danh sách 6 mục menu dọc trên Sidebar bên trái (Màn hình 2, 3, 4, 5, 6)
+  // Danh sách 6 mục menu dọc trên Sidebar bên trái
   final List<SidebarMenuItemModel> sidebarMenuItems = const [
     SidebarMenuItemModel(
       id: 'home',
@@ -92,31 +135,323 @@ class UserViewModel extends ChangeNotifier {
     ),
   ];
 
-  // Lịch sử tin nhắn hội thoại trên Màn hình 6: "6. ChatBox AI (Người dùng)"
-  // Khởi tạo sẵn 2 tin nhắn chuẩn xác 100% theo ảnh thiết kế
-  final List<ChatMessageModel> _chatMessages = [
-    const ChatMessageModel(
-      id: 'msg_user_initial_1',
-      isUser: true,
-      messageText: 'Làm sao để xử lý khi bị bỏng nhẹ?',
-      timestamp: '10:24',
+  // Lịch sử tin nhắn hội thoại trên Màn hình 6: Khởi tạo RỖNG khi mới vào
+  final List<ChatMessageModel> _chatMessages = [];
+  List<ChatMessageModel> get chatMessages => List.unmodifiable(_chatMessages);
+
+  // Danh sách các câu hỏi gợi ý nhanh khi khung chat đang trống
+  final List<String> quickSuggestedQuestions = const [
+    'Làm sao để xử lý khi bị bỏng nhẹ?',
+    'Cách sơ cứu khi bị trầy xước ngoài da?',
+    'Xử lý vết cắt chảy máu như thế nào?',
+    'Làm gì khi bị bầm tím phần mềm?',
+  ];
+
+  // Danh sách 6 danh mục bên trái và trong Dropdown của Màn hình 7: "Kho tài liệu y tế"
+  final List<MedicalDocumentCategoryModel> documentCategories = const [
+    MedicalDocumentCategoryModel(
+      id: 'all',
+      sidebarLabel: 'Tất cả (24)',
+      dropdownLabel: 'Tất cả danh mục',
+      icon: Icons.folder_copy_outlined,
     ),
-    const ChatMessageModel(
-      id: 'msg_ai_initial_2',
-      isUser: false,
-      messageText: 'Với vết bỏng nhẹ (độ 1), bạn có thể làm theo các bước sau:',
-      numberedSteps: [
-        'Làm mát vùng bỏng bằng nước sạch mát trong 10–20 phút.',
-        'Không chọc vỡ bóng nước (nếu có).',
-        'Bôi thuốc mỡ kháng sinh và băng gạc sạch.',
-        'Theo dõi, nếu có dấu hiệu nhiễm trùng hoặc đau tăng, hãy đi khám bác sĩ.',
-      ],
-      timestamp: '10:24',
-      relatedTopicId: 'burn',
+    MedicalDocumentCategoryModel(
+      id: 'basic_first_aid',
+      sidebarLabel: 'Sơ cứu cơ bản',
+      dropdownLabel: 'Sơ cứu cơ bản',
+      icon: Icons.fact_check_outlined,
+    ),
+    MedicalDocumentCategoryModel(
+      id: 'wound',
+      sidebarLabel: 'Vết thương (6)',
+      dropdownLabel: 'Vết thương',
+      icon: Icons.assignment_outlined,
+    ),
+    MedicalDocumentCategoryModel(
+      id: 'burn',
+      sidebarLabel: 'Bỏng',
+      dropdownLabel: 'Bỏng',
+      icon: Icons.local_hospital_outlined,
+    ),
+    MedicalDocumentCategoryModel(
+      id: 'foreign_body',
+      sidebarLabel: 'Dị vật',
+      dropdownLabel: 'Dị vật',
+      icon: Icons.medication_outlined,
+    ),
+    MedicalDocumentCategoryModel(
+      id: 'other',
+      sidebarLabel: 'Khác',
+      dropdownLabel: 'Khác',
+      icon: Icons.person_outline_rounded,
     ),
   ];
 
-  List<ChatMessageModel> get chatMessages => List.unmodifiable(_chatMessages);
+  // Danh sách tài liệu y tế được lưu trữ cục bộ trên thiết bị (Có thể Thêm, Mở, Tìm kiếm, Phân loại, Sửa, Xóa)
+  final List<MedicalDocumentModel> _medicalDocuments = [
+    // --- TRANG 1 (Khớp 100% với ảnh thiết kế Kho tài liệu y tế) ---
+    const MedicalDocumentModel(
+      id: 'doc_1',
+      title: 'Hướng dẫn sơ cứu cơ bản',
+      categoryId: 'basic_first_aid',
+      categoryLabel: 'Sơ cứu cơ bản',
+      dateAdded: '12/10/2025',
+      pageGroup: 1,
+      fileName: 'huong_dan_so_cuu_co_ban.pdf',
+      fileExtension: 'PDF',
+      fileSize: '1.8 MB',
+      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/huong_dan_so_cuu_co_ban.pdf',
+      summary: 'Tài liệu tổng hợp quy trình đánh giá hiện trường, kiểm tra phản ứng của nạn nhân và các nguyên tắc sơ cứu ban đầu an toàn được lưu trữ cục bộ trên thiết bị.',
+      contentPoints: [
+        '1. Đảm bảo an toàn cho bản thân và nạn nhân trước khi tiếp cận hiện trường.',
+        '2. Kiểm tra sự tỉnh táo, đường thở và nhịp thở của người bị nạn.',
+        '3. Rửa tay sạch hoặc đeo găng tay y tế trước khi tiếp xúc với vết thương hở.',
+        '4. Gọi cấp cứu 115 ngay nếu nạn nhân bất tỉnh, khó thở hoặc chảy máu không cầm.',
+      ],
+      relatedGuideTopicId: 'abrasion',
+    ),
+    const MedicalDocumentModel(
+      id: 'doc_2',
+      title: 'Xử lý vết thương ngoài da',
+      categoryId: 'wound',
+      categoryLabel: 'Vết thương',
+      dateAdded: '10/10/2025',
+      pageGroup: 1,
+      fileName: 'xu_ly_vet_thuong_ngoai_da.pdf',
+      fileExtension: 'PDF',
+      fileSize: '1.4 MB',
+      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/xu_ly_vet_thuong_ngoai_da.pdf',
+      summary: 'Quy trình chuẩn làm sạch, sát khuẩn và băng bó các vết trầy xước, vết cắt hoặc vết rách nông ngoài da giúp ngăn ngừa nhiễm trùng.',
+      contentPoints: [
+        '1. Dùng gạc vô trùng ấn nhẹ trực tiếp lên vết thương để cầm máu ban đầu.',
+        '2. Rửa vết thương dưới vòi nước sạch hoặc nước muối sinh lý NaCl 0.9%.',
+        '3. Thoa dung dịch sát khuẩn nhẹ (Povidone-Iodine) xung quanh vùng tổn thương.',
+        '4. Che phủ bằng băng gạc vô trùng và thay băng hàng ngày hoặc khi bị ướt.',
+      ],
+      relatedGuideTopicId: 'cut_laceration',
+    ),
+    const MedicalDocumentModel(
+      id: 'doc_3',
+      title: 'Sơ cứu bỏng',
+      categoryId: 'burn',
+      categoryLabel: 'Bỏng',
+      dateAdded: '08/10/2025',
+      pageGroup: 1,
+      fileName: 'so_cuu_bong_nhiet.pdf',
+      fileExtension: 'PDF',
+      fileSize: '1.1 MB',
+      localFilePath:
+          'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/so_cuu_bong_nhiet.pdf',
+      summary: 'Hướng dẫn làm mát vùng da bị bỏng nhiệt đúng cách, giảm tổn thương mô sâu và các điều tuyệt đối tránh khi sơ cứu bỏng.',
+      contentPoints: [
+        '1. Đưa vùng da bị bỏng dưới dòng nước mát sạch chảy nhẹ trong 15 – 20 phút.',
+        '2. Tháo bỏ sớm nhẫn, vòng tay, đồng hồ trước khi vùng bỏng bị sưng nề.',
+        '3. Tuyệt đối không chọc vỡ bóng nước, không bôi kem đánh răng, mỡ trăn hay nước mắm.',
+        '4. Che phủ nhẹ nhàng bằng gạc vô trùng không dính và theo dõi dấu hiệu nhiễm trùng.',
+      ],
+      relatedGuideTopicId: 'burn',
+    ),
+    const MedicalDocumentModel(
+      id: 'doc_4',
+      title: 'Nhận biết và xử lý dị vật',
+      categoryId: 'foreign_body',
+      categoryLabel: 'Dị vật',
+      dateAdded: '05/10/2025',
+      pageGroup: 1,
+      fileName: 'nhan_biet_va_xu_ly_di_vat.docx',
+      fileExtension: 'DOCX',
+      fileSize: '920 KB',
+      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/nhan_biet_va_xu_ly_di_vat.docx',
+      summary: 'Cách phân biệt dị vật nông trên bề mặt da và dị vật đâm sâu để xử lý an toàn, tránh làm tổn thương mạch máu và dây thần kinh.',
+      contentPoints: [
+        '1. Quan sát kỹ vị trí, kích thước và độ sâu của dị vật trên da.',
+        '2. Với dằm nhỏ nằm nông: Dùng nhíp đã khử trùng cồn gắp nhẹ theo chiều dị vật đâm vào.',
+        '3. Với dị vật lớn hoặc đâm sâu: Tuyệt đối không tự rút ra, hãy chèn gạc cố định xung quanh.',
+        '4. Đưa người bệnh đến cơ sở y tế gần nhất nếu dị vật sâu hoặc có nguy cơ uốn ván.',
+      ],
+      relatedGuideTopicId: 'foreign_body',
+    ),
+    const MedicalDocumentModel(
+      id: 'doc_5',
+      title: 'Các dấu hiệu cảnh báo nguy hiểm',
+      categoryId: 'other',
+      categoryLabel: 'Khác',
+      dateAdded: '03/10/2025',
+      pageGroup: 1,
+      fileName: 'cac_dau_hieu_canh_bao_nguy_hiem.pdf',
+      fileExtension: 'PDF',
+      fileSize: '1.5 MB',
+      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/cac_dau_hieu_canh_bao_nguy_hiem.pdf',
+      summary: 'Danh mục các triệu chứng cảnh báo đỏ (Red Flags) sau chấn thương hoặc ngộ độc đòi hỏi phải chuyển viện cấp cứu ngay lập tức.',
+      contentPoints: [
+        '1. Vết thương chảy máu thành tia hoặc không cầm máu sau 15 phút ấn trực tiếp.',
+        '2. Vùng tổn thương sưng nóng đỏ đau tăng nhanh, chảy dịch mủ hoặc kèm sốt cao.',
+        '3. Nạn nhân có biểu hiện hoa mắt, chóng mặt, vã mồ hôi lạnh, thở gấp hoặc lơ mơ.',
+        '4. Bỏng diện rộng, bỏng vùng mặt/cổ/bàn tay hoặc nghi ngờ ngộ độc hóa chất.',
+      ],
+      relatedGuideTopicId: 'poisoning',
+    ),
+
+    // --- TRANG 2 ---
+    const MedicalDocumentModel(
+      id: 'doc_6',
+      title: 'Cầm máu vết cắt và vết rách sâu',
+      categoryId: 'wound',
+      categoryLabel: 'Vết thương',
+      dateAdded: '01/10/2025',
+      pageGroup: 2,
+      fileName: 'cam_mau_vet_cat_sau.pdf',
+      fileExtension: 'PDF',
+      fileSize: '1.3 MB',
+      localFilePath:
+          'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/cam_mau_vet_cat_sau.pdf',
+      summary: 'Kỹ thuật băng ép trực tiếp và kê cao chi bị thương nhằm kiểm soát chảy máu hiệu quả trước khi đến cơ sở y tế.',
+      contentPoints: [
+        '1. Đặt lớp gạc dày vô trùng trực tiếp lên miệng vết cắt và ấn giữ liên tục.',
+        '2. Nếu máu thấm ướt lớp gạc đầu tiên, đặt chồng thêm lớp gạc mới lên trên, không tháo lớp cũ.',
+        '3. Kê cao vùng tay hoặc chân bị thương cao hơn mức tim nếu không nghi ngờ gãy xương.',
+      ],
+      relatedGuideTopicId: 'cut_laceration',
+    ),
+    const MedicalDocumentModel(
+      id: 'doc_7',
+      title: 'Chăm sóc vết bầm tím phần mềm',
+      categoryId: 'wound',
+      categoryLabel: 'Vết thương',
+      dateAdded: '28/09/2025',
+      pageGroup: 2,
+      fileName: 'cham_soc_vet_bam_tim.docx',
+      fileExtension: 'DOCX',
+      fileSize: '780 KB',
+      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/cham_soc_vet_bam_tim.docx',
+      summary: 'Hướng dẫn áp dụng quy tắc chườm lạnh trong 24 giờ đầu và chườm ấm sau 48 giờ để giảm sưng đau và tan máu bầm.',
+      contentPoints: [
+        '1. Chườm lạnh bằng túi đá bọc khăn sạch 15 – 20 phút mỗi lần trong 24 giờ đầu.',
+        '2. Tuyệt đối không xoa bóp dầu nóng ngay sau khi mới va đập.',
+        '3. Sau 48 giờ, có thể chườm ấm nhẹ để tăng tuần hoàn giúp tan vết bầm.',
+      ],
+      relatedGuideTopicId: 'bruise',
+    ),
+    const MedicalDocumentModel(
+      id: 'doc_8',
+      title: 'Sơ cứu ngộ độc thực phẩm tại nhà',
+      categoryId: 'other',
+      categoryLabel: 'Khác',
+      dateAdded: '25/09/2025',
+      pageGroup: 2,
+      fileName: 'so_cuu_ngo_doc_thuc_pham.pdf',
+      fileExtension: 'PDF',
+      fileSize: '1.6 MB',
+      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/so_cuu_ngo_doc_thuc_pham.pdf',
+      summary: 'Cách bù nước điện giải Oresol và theo dõi dấu hiệu mất nước khi nghi ngờ ngộ độc thức ăn.',
+      contentPoints: [
+        '1. Ngừng ngay việc sử dụng thực phẩm nghi ngờ gây ngộ độc.',
+        '2. Cho người bệnh uống từng ngụm nhỏ dung dịch Oresol pha đúng tỷ lệ.',
+        '3. Đưa đi khám ngay nếu nôn ói liên tục, sốt cao hoặc li bì.',
+      ],
+      relatedGuideTopicId: 'poisoning',
+    ),
+
+    // --- TRANG 3 ---
+    const MedicalDocumentModel(
+      id: 'doc_9',
+      title: 'Danh mục dụng cụ trong hộp sơ cứu gia đình',
+      categoryId: 'basic_first_aid',
+      categoryLabel: 'Sơ cứu cơ bản',
+      dateAdded: '20/09/2025',
+      pageGroup: 3,
+      fileName: 'danh_muc_hop_so_cuu_gia_dinh.txt',
+      fileExtension: 'TXT',
+      fileSize: '95 KB',
+      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/danh_muc_hop_so_cuu_gia_dinh.txt',
+      summary: 'Danh sách các vật tư y tế thiết yếu cần chuẩn bị sẵn trong tủ thuốc và túi sơ cứu cá nhân.',
+      contentPoints: [
+        '1. Băng gạc vô trùng các kích cỡ, băng cuộn y tế và băng cá nhân.',
+        '2. Nước muối sinh lý NaCl 0.9% và dung dịch sát khuẩn Povidone-Iodine.',
+        '3. Nhíp y tế, kéo đầu tù, găng tay y tế sạch và nhiệt kế.',
+      ],
+      relatedGuideTopicId: 'abrasion',
+    ),
+    const MedicalDocumentModel(
+      id: 'doc_10',
+      title: 'Phòng ngừa nhiễm trùng vết thương hở',
+      categoryId: 'wound',
+      categoryLabel: 'Vết thương',
+      dateAdded: '15/09/2025',
+      pageGroup: 3,
+      fileName: 'phong_ngua_nhiem_trung_vet_thuong.pdf',
+      fileExtension: 'PDF',
+      fileSize: '1.2 MB',
+      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/phong_ngua_nhiem_trung_vet_thuong.pdf',
+      summary: 'Hướng dẫn theo dõi quá trình lành thương và nhận biết sớm các biểu hiện nhiễm khuẩn ngoài da.',
+      contentPoints: [
+        '1. Giữ vết thương luôn khô ráo, sạch sẽ và thay băng đúng định kỳ.',
+        '2. Không tự ý rắc bột kháng sinh hoặc đắp lá cây lên vết thương hở.',
+        '3. Đi khám bác sĩ nếu vết thương sưng tấy, tấy đỏ lan rộng hoặc chảy dịch vàng.',
+      ],
+      relatedGuideTopicId: 'abrasion',
+    ),
+  ];
+
+  List<MedicalDocumentModel> get allMedicalDocuments =>
+      List.unmodifiable(_medicalDocuments);
+
+  /// Lấy nhãn hiển thị trên cột danh mục bên trái (Cập nhật số lượng động khi người dùng thêm/xóa tài liệu)
+  String getDocumentCategorySidebarLabel(
+    MedicalDocumentCategoryModel category,
+  ) {
+    final userAddedCount = _medicalDocuments.where((d) => d.isUserAdded).length;
+    if (category.id == 'all') {
+      final totalCount = 24 + userAddedCount;
+      return 'Tất cả ($totalCount)';
+    }
+    if (category.id == 'wound') {
+      final userAddedWound = _medicalDocuments
+          .where((d) => d.isUserAdded && d.categoryId == 'wound')
+          .length;
+      return 'Vết thương (${6 + userAddedWound})';
+    }
+    return category.sidebarLabel;
+  }
+
+  /// Lấy nhãn tên danh mục từ `categoryId`
+  String getCategoryLabelById(String categoryId) {
+    for (final cat in documentCategories) {
+      if (cat.id == categoryId && cat.id != 'all') {
+        return cat.dropdownLabel;
+      }
+    }
+    return 'Sơ cứu cơ bản';
+  }
+
+  /// Lấy danh sách tài liệu hiển thị trên bảng dựa theo Bộ lọc danh mục, Từ khóa tìm kiếm và Phân trang
+  List<MedicalDocumentModel> get filteredMedicalDocuments {
+    final query = _documentSearchQuery.trim().toLowerCase();
+    final isFilteringOrSearching =
+        _selectedDocumentCategoryId != 'all' || query.isNotEmpty;
+
+    final matched = _medicalDocuments.where((doc) {
+      final matchesCategory =
+          _selectedDocumentCategoryId == 'all' ||
+          doc.categoryId == _selectedDocumentCategoryId;
+      final matchesQuery =
+          query.isEmpty ||
+          doc.title.toLowerCase().contains(query) ||
+          doc.categoryLabel.toLowerCase().contains(query) ||
+          doc.fileName.toLowerCase().contains(query) ||
+          doc.dateAdded.toLowerCase().contains(query);
+      return matchesCategory && matchesQuery;
+    }).toList();
+
+    // Khi đang ở chế độ mặc định ("Tất cả" và chưa nhập từ khóa), hiển thị theo trang 1, 2, 3
+    if (!isFilteringOrSearching) {
+      return matched
+          .where((doc) => doc.pageGroup == _currentDocumentPage)
+          .toList();
+    }
+
+    return matched;
+  }
 
   // Cấu hình văn bản chuẩn theo thiết kế màn hình "Phân tích hình ảnh tổn thương" (Màn hình 2)
   final AiUploadSpecModel uploadSpec = const AiUploadSpecModel(
@@ -618,7 +953,7 @@ class UserViewModel extends ChangeNotifier {
   ];
 
   // =========================================================================
-  // LOGIC ĐIỀU HƯỚNG XUYÊN SUỐT GIỮA 6 MÀN HÌNH (1 <-> 2 <-> 3 <-> 4 <-> 5 <-> 6)
+  // LOGIC ĐIỀU HƯỚNG XUYÊN SUỐT GIỮA 7 MÀN HÌNH (1 <-> 2 <-> 3 <-> 4 <-> 5 <-> 6 <-> 7)
   // =========================================================================
 
   /// Chuyển sang Màn hình 1: Trang chủ
@@ -669,50 +1004,52 @@ class UserViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Xử lý khi bấm chọn mục trên Top Navigation Bar
+  /// Chuyển sang Màn hình 7: Kho tài liệu y tế (Quản lý tài liệu lưu trữ cục bộ trên thiết bị)
+  void navigateToMedicalDocuments() {
+    _currentScreenIndex = 6;
+    _selectedSidebarIndex = 4;
+    _selectedNavIndex = 2;
+    notifyListeners();
+  }
+
+  /// Xử lý khi bấm chọn mục trên Top Navigation Bar: ['Trang chủ', 'Kiến thức', 'Tài liệu', 'Lịch sử']
   void selectNavIndex(int index) {
     _selectedNavIndex = index;
     if (index == 0) {
       _currentScreenIndex = 0;
       _selectedSidebarIndex = 0;
     } else if (index == 1) {
-      // Bấm "Kiến thức" trên Top Navigation Bar -> Mở Màn hình 5 (Tra cứu kiến thức)
       _currentScreenIndex = 4;
       _selectedSidebarIndex = 3;
     } else if (index == 2) {
-      // Đồng bộ với mục Tài liệu trên Sidebar
+      _currentScreenIndex = 6;
       _selectedSidebarIndex = 4;
     } else if (index == 3) {
-      // Mở nhanh không gian làm việc
+      _currentScreenIndex = 5;
       _selectedSidebarIndex = 5;
     }
     notifyListeners();
   }
 
-  /// Xử lý khi bấm chọn mục trên thanh Sidebar bên trái (Màn hình 2, 3, 4, 5, 6)
+  /// Xử lý khi bấm chọn mục trên thanh Sidebar bên trái
+  /// 0: Trang chủ, 1: Phân tích ảnh AI, 2: Hướng dẫn sơ cứu, 3: Kiến thức, 4: Tài liệu, 5: ChatBox AI
   void selectSidebarIndex(int index) {
     _selectedSidebarIndex = index;
     if (index == 0) {
-      // Bấm "Trang chủ" trên Sidebar -> Quay về Màn hình 1
       _currentScreenIndex = 0;
       _selectedNavIndex = 0;
     } else if (index == 1) {
-      // Bấm "Phân tích ảnh AI" -> Mở Màn hình 2
       _currentScreenIndex = 1;
     } else if (index == 2) {
-      // Bấm "Hướng dẫn sơ cứu" -> Mở Màn hình 4
       _currentScreenIndex = 3;
     } else if (index == 3) {
-      // Bấm "Kiến thức" -> Mở Màn hình 5 (Tra cứu kiến thức)
       _currentScreenIndex = 4;
       _selectedNavIndex = 1;
+    } else if (index == 4) {
+      _currentScreenIndex = 6;
+      _selectedNavIndex = 2;
     } else if (index == 5) {
-      // Bấm "ChatBox AI" -> Mở Màn hình 6 (ChatBox AI)
       _currentScreenIndex = 5;
-    } else {
-      debugPrint(
-        '[UserViewModel] Chuyển mục Sidebar: ${sidebarMenuItems[index].title}',
-      );
     }
     notifyListeners();
   }
@@ -721,9 +1058,6 @@ class UserViewModel extends ChangeNotifier {
   void selectInjuryLocation(String locationId) {
     if (_selectedLocationId == locationId) return;
     _selectedLocationId = locationId;
-    debugPrint(
-      '[UserViewModel] Đã chọn vị trí tổn thương: $selectedLocationLabel ($locationId)',
-    );
     notifyListeners();
   }
 
@@ -742,30 +1076,165 @@ class UserViewModel extends ChangeNotifier {
 
   /// Sự kiện bấm nút "Tìm kiếm" màu xanh trên Màn hình 5
   void onKnowledgeSearchSubmitted() {
-    debugPrint(
-      '[UserViewModel] Thực hiện tìm kiếm kiến thức với từ khóa: "$_knowledgeSearchQuery"',
-    );
     notifyListeners();
   }
 
   /// Sự kiện click vào từng thẻ vết thương trên Màn hình 5 -> Mở ngay Màn hình 4 (Hướng dẫn sơ cứu)
   void onKnowledgeTopicCardTapped(KnowledgeTopicModel topic) {
-    debugPrint(
-      '[UserViewModel] Click thẻ kiến thức "${topic.title}" -> Mở ngay Hướng dẫn sơ cứu',
-    );
     navigateToFirstAidGuide(topicId: topic.id);
   }
 
   // =========================================================================
-  // LOGIC TƯƠNG TÁC CHATBOX AI & TRẢ LỜI XÁC THỰC (GROUNDED QA - MÀN HÌNH 6)
+  // LOGIC QUẢN LÝ KHO TÀI LIỆU Y TẾ CỤC BỘ TRÊN THIẾT BỊ (MÀN HÌNH 7)
+  // 1. Thêm tài liệu | 2. Mở tài liệu | 3. Tìm kiếm | 4. Phân loại | 5. Quản lý | 6. Lưu cục bộ
   // =========================================================================
 
-  /// Cập nhật nội dung đang nhập trong ô ChatBox AI
+  /// 1. Thêm tài liệu mới từ tệp lưu trữ cục bộ trên thiết bị
+  void addLocalMedicalDocument({
+    required String title,
+    required String categoryId,
+    required String fileName,
+    required String fileExtension,
+    required String fileSize,
+    required String localFilePath,
+    required String summary,
+    List<String>? contentPoints,
+  }) {
+    final now = DateTime.now();
+    final formattedDate =
+        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+
+    final categoryLabel = getCategoryLabelById(categoryId);
+
+    String? mappedGuideTopicId;
+    if (categoryId == 'burn') {
+      mappedGuideTopicId = 'burn';
+    } else if (categoryId == 'wound') {
+      mappedGuideTopicId = 'cut_laceration';
+    } else if (categoryId == 'foreign_body') {
+      mappedGuideTopicId = 'foreign_body';
+    } else if (categoryId == 'other') {
+      mappedGuideTopicId = 'poisoning';
+    } else {
+      mappedGuideTopicId = 'abrasion';
+    }
+
+    final newDoc = MedicalDocumentModel(
+      id: 'local_doc_${now.microsecondsSinceEpoch}',
+      title: title.trim(),
+      categoryId: categoryId,
+      categoryLabel: categoryLabel,
+      dateAdded: formattedDate,
+      pageGroup: 1,
+      fileName: fileName.trim(),
+      fileExtension: fileExtension.toUpperCase(),
+      fileSize: fileSize,
+      localFilePath: localFilePath.trim(),
+      isUserAdded: true,
+      summary: summary.trim().isEmpty
+          ? 'Tài liệu y tế được người dùng thêm và lưu trữ cục bộ trên thiết bị.'
+          : summary.trim(),
+      contentPoints: (contentPoints != null && contentPoints.isNotEmpty)
+          ? contentPoints
+          : const [
+              '1. Tệp tài liệu đã được lưu trữ trong bộ nhớ cục bộ của thiết bị.',
+              '2. Có thể tra cứu nhanh ngoại tuyến (Offline) bất cứ lúc nào.',
+              '3. Tuân thủ hướng dẫn sơ cứu an toàn và liên hệ y tế khi cần thiết.',
+            ],
+      relatedGuideTopicId: mappedGuideTopicId,
+    );
+
+    // Chèn lên đầu danh sách để hiển thị ngay ở đầu bảng Trang 1
+    _medicalDocuments.insert(0, newDoc);
+    _currentDocumentPage = 1;
+    notifyListeners();
+  }
+
+  /// 2. Cập nhật / Phân loại lại tài liệu y tế (Quản lý tài liệu)
+  void updateMedicalDocument({
+    required String id,
+    required String newTitle,
+    required String newCategoryId,
+    required String newSummary,
+  }) {
+    final index = _medicalDocuments.indexWhere((doc) => doc.id == id);
+    if (index == -1) return;
+
+    final current = _medicalDocuments[index];
+    final updatedCategoryLabel = getCategoryLabelById(newCategoryId);
+
+    _medicalDocuments[index] = current.copyWith(
+      title: newTitle.trim().isEmpty ? current.title : newTitle.trim(),
+      categoryId: newCategoryId,
+      categoryLabel: updatedCategoryLabel,
+      summary: newSummary.trim().isEmpty ? current.summary : newSummary.trim(),
+    );
+    notifyListeners();
+  }
+
+  /// 3. Xóa tài liệu khỏi danh sách quản lý trên thiết bị
+  void deleteMedicalDocument(String id) {
+    _medicalDocuments.removeWhere((doc) => doc.id == id);
+    notifyListeners();
+  }
+
+  /// 4. Tìm kiếm tài liệu y tế theo từ khóa
+  void updateDocumentSearchQuery(String query) {
+    _documentSearchQuery = query;
+    _currentDocumentPage = 1;
+    notifyListeners();
+  }
+
+  /// 5. Phân loại / Lọc danh mục tài liệu (đồng bộ cả menu dọc bên trái và Dropdown phía trên)
+  void selectDocumentCategory(String categoryId) {
+    if (_selectedDocumentCategoryId == categoryId) return;
+    _selectedDocumentCategoryId = categoryId;
+    _currentDocumentPage = 1;
+    notifyListeners();
+  }
+
+  /// 6. Chuyển trang trên thanh phân trang (1, 2, 3) của Kho tài liệu y tế
+  void selectDocumentPage(int page) {
+    if (page < 1 || page > 3) return;
+    if (_currentDocumentPage == page) return;
+    _currentDocumentPage = page;
+    notifyListeners();
+  }
+
+  void goToPreviousDocumentPage() {
+    if (_currentDocumentPage > 1) {
+      _currentDocumentPage--;
+      notifyListeners();
+    }
+  }
+
+  void goToNextDocumentPage() {
+    if (_currentDocumentPage < 3) {
+      _currentDocumentPage++;
+      notifyListeners();
+    }
+  }
+
+  // =========================================================================
+  // LOGIC TƯƠNG TÁC CHATBOX AI & TỰ ĐỘNG CUỘN TIN NHẮN LÊN TRÊN (MÀN HÌNH 6)
+  // =========================================================================
+
   void updateChatInput(String value) {
     _currentChatInput = value;
   }
 
-  /// Gửi câu hỏi của người dùng và sinh phản hồi xác thực từ kho dữ liệu sơ cứu đã kiểm chứng
+  void _scrollToLatestMessage() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (chatScrollController.hasClients) {
+        chatScrollController.animateTo(
+          chatScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+  }
+
   void sendChatMessage([String? submittedText]) {
     final rawText = (submittedText ?? chatInputController.text).trim();
     if (rawText.isEmpty) return;
@@ -774,7 +1243,6 @@ class UserViewModel extends ChangeNotifier {
     final formattedTime =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
-    // 1. Thêm tin nhắn của người dùng vào lịch sử hội thoại
     _chatMessages.add(
       ChatMessageModel(
         id: 'user_${now.microsecondsSinceEpoch}',
@@ -784,27 +1252,42 @@ class UserViewModel extends ChangeNotifier {
       ),
     );
 
-    // 2. Xóa trắng ô nhập liệu
     chatInputController.clear();
     _currentChatInput = '';
 
-    // 3. Sinh phản hồi của AI dựa trên kho tri thức sơ cứu nội bộ đã kiểm chứng
     final aiReply = _generateGroundedAiReply(rawText, formattedTime);
     _chatMessages.add(aiReply);
 
-    debugPrint('[UserViewModel] Đã gửi câu hỏi ChatBox AI: "$rawText"');
     notifyListeners();
+    _scrollToLatestMessage();
   }
 
-  /// Đối chiếu câu hỏi của người dùng với kho dữ liệu `firstAidGuidesByTopic`
-  /// Nếu nằm ngoài phạm vi kiến thức đã kiểm chứng, từ chối suy đoán y khoa và hướng dẫn an toàn
   ChatMessageModel _generateGroundedAiReply(
     String userQuestion,
     String timestamp,
   ) {
-    final normalized = userQuestion.toLowerCase();
+    final normalized = userQuestion.toLowerCase().trim();
 
-    // Trường hợp hỏi về bỏng
+    if (normalized == 'hi' ||
+        normalized == 'hello' ||
+        normalized == 'chào' ||
+        normalized == 'alo' ||
+        normalized.startsWith('xin chào') ||
+        normalized.startsWith('chào ai')) {
+      return ChatMessageModel(
+        id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
+        isUser: false,
+        messageText: 'Xin chào! Tôi là Trợ lý Cứu hộ AI. Bạn có thể đặt câu hỏi trực tiếp về các tình huống sơ cứu sau:',
+        numberedSteps: const [
+          'Cách xử lý khi bị bỏng nhẹ (bỏng nước sôi, bỏng nhiệt).',
+          'Cách làm sạch và băng bó vết trầy xước ngoài da.',
+          'Cách cầm máu và sát trùng vết cắt / vết rách.',
+          'Cách chườm lạnh giảm sưng khi bị bầm tím, dị vật hoặc ngộ độc.',
+        ],
+        timestamp: timestamp,
+      );
+    }
+
     if (normalized.contains('bỏng') || normalized.contains('phỏng')) {
       return ChatMessageModel(
         id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
@@ -822,7 +1305,6 @@ class UserViewModel extends ChangeNotifier {
       );
     }
 
-    // Trường hợp hỏi về trầy xước
     if (normalized.contains('trầy') || normalized.contains('xước')) {
       final guide = firstAidGuidesByTopic['abrasion']!;
       return ChatMessageModel(
@@ -838,7 +1320,6 @@ class UserViewModel extends ChangeNotifier {
       );
     }
 
-    // Trường hợp hỏi về vết cắt / vết rách / chảy máu
     if (normalized.contains('cắt') ||
         normalized.contains('rách') ||
         normalized.contains('đứt tay') ||
@@ -857,7 +1338,6 @@ class UserViewModel extends ChangeNotifier {
       );
     }
 
-    // Trường hợp hỏi về vết bầm tím
     if (normalized.contains('bầm') || normalized.contains('tím')) {
       final guide = firstAidGuidesByTopic['bruise']!;
       return ChatMessageModel(
@@ -873,7 +1353,6 @@ class UserViewModel extends ChangeNotifier {
       );
     }
 
-    // Trường hợp hỏi về dị vật
     if (normalized.contains('dị vật') ||
         normalized.contains('dằm') ||
         normalized.contains('mảnh vỡ')) {
@@ -891,7 +1370,6 @@ class UserViewModel extends ChangeNotifier {
       );
     }
 
-    // Trường hợp hỏi về ngộ độc
     if (normalized.contains('ngộ độc') || normalized.contains('nhiễm độc')) {
       final guide = firstAidGuidesByTopic['poisoning']!;
       return ChatMessageModel(
@@ -907,7 +1385,6 @@ class UserViewModel extends ChangeNotifier {
       );
     }
 
-    // Trường hợp câu hỏi nằm ngoài phạm vi dữ liệu sơ cứu đã kiểm chứng (Refusal-Aware Safety)
     return ChatMessageModel(
       id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
       isUser: false,
@@ -924,20 +1401,15 @@ class UserViewModel extends ChangeNotifier {
   // CÁC HÀM SỰ KIỆN & CALLBACK ĐIỀU HƯỚNG NGHIỆP VỤ
   // =========================================================================
 
-  /// Sự kiện bấm nút "Phân tích hình ảnh ngay" trên Banner Trang chủ -> Mở Màn hình 2
   void onAnalyzeImageNowPressed() {
-    debugPrint('[UserViewModel] Chuyển sang màn hình: Phân tích ảnh AI');
     navigateToAiAnalysis();
   }
 
-  /// Sự kiện bấm nút "Tra cứu kiến thức" trên Banner Trang chủ -> Mở Màn hình 5
   void onLookupKnowledgePressed() {
-    debugPrint('[UserViewModel] Chuyển sang màn hình: 5. Tra cứu kiến thức');
     navigateToKnowledgeLookup();
   }
 
   void onSearchPressed() {
-    debugPrint('[UserViewModel] Bấm nút: Tìm kiếm trên thanh điều hướng');
     navigateToKnowledgeLookup();
   }
 
@@ -947,9 +1419,7 @@ class UserViewModel extends ChangeNotifier {
     );
   }
 
-  /// Sự kiện bấm vào 1 trong 4 Thẻ tính năng trên Trang chủ
   void onFeatureCardTapped(FeatureCardModel card) {
-    debugPrint('[UserViewModel] Chọn thẻ tính năng: ${card.title}');
     if (card.id == 'ai_image_analysis') {
       navigateToAiAnalysis();
     } else if (card.id == 'first_aid_guide') {
@@ -961,11 +1431,7 @@ class UserViewModel extends ChangeNotifier {
     }
   }
 
-  /// Sự kiện bấm vào thẻ Tình huống thường gặp trên Trang chủ -> Mở ngay Hướng dẫn sơ cứu tương ứng
   void onSituationCardTapped(CommonSituationModel situation) {
-    debugPrint(
-      '[UserViewModel] Chọn tình huống thường gặp: ${situation.title}',
-    );
     if (firstAidGuidesByTopic.containsKey(situation.id)) {
       navigateToFirstAidGuide(topicId: situation.id);
     } else {
@@ -973,43 +1439,27 @@ class UserViewModel extends ChangeNotifier {
     }
   }
 
-  /// Sự kiện bấm nút "Chọn ảnh" hoặc vùng Kéo thả ảnh trên Màn hình 2 -> Chuyển sang Màn hình 3
   void onSelectImageFromFilePressed() {
-    debugPrint(
-      '[UserViewModel] Chọn ảnh từ thiết bị thành công -> Hiển thị Màn hình 3: Kết quả phân tích',
-    );
     navigateToAnalysisResult(imageSourceName: 'selected_arm_abrasion.jpg');
   }
 
-  /// Sự kiện bấm nút "Chụp ảnh bằng camera" trên Màn hình 2 -> Chuyển sang Màn hình 3
   void onCaptureFromCameraPressed() {
-    debugPrint(
-      '[UserViewModel] Chụp ảnh từ Camera thành công -> Hiển thị Màn hình 3: Kết quả phân tích',
-    );
     navigateToAnalysisResult(imageSourceName: 'camera_capture_abrasion.jpg');
   }
 
-  /// Sự kiện bấm nút "Xem hướng dẫn sơ cứu ->" trên Màn hình 3 -> Chuyển sang Màn hình 4
   void onViewFirstAidGuidePressed() {
-    debugPrint(
-      '[UserViewModel] Chuyển sang Màn hình 4 (Hướng dẫn sơ cứu) cho tổn thương: '
-      '${analysisResult.injuryType} (${analysisResult.formattedConfidence}) - '
-      'Vị trí: $selectedLocationLabel',
-    );
     navigateToFirstAidGuide(topicId: 'abrasion');
   }
 
-  /// Sự kiện bấm nút "Quay lại phân tích ảnh" trên Màn hình 4 -> Quay lại Màn hình 2
   void onBackToImageAnalysisPressed() {
-    debugPrint(
-      '[UserViewModel] Bấm "Quay lại phân tích ảnh" -> Quay về Màn hình 2 (Phân tích ảnh AI)',
-    );
     navigateToAiAnalysis();
   }
 
   @override
   void dispose() {
     chatInputController.dispose();
+    chatScrollController.dispose();
+    documentSearchController.dispose();
     super.dispose();
   }
 }

@@ -11,7 +11,6 @@ class UserView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lắng nghe dữ liệu và trạng thái từ UserViewModel
     final viewModel = context.watch<UserViewModel>();
 
     return Scaffold(
@@ -39,7 +38,7 @@ class UserView extends StatelessWidget {
                 // 1. Thanh điều hướng trên cùng dùng chung cho toàn ứng dụng
                 _buildTopNavigationBar(context, viewModel),
 
-                // Đường kẻ phân tách mảnh dưới Header khi ở Màn hình 2, 3, 4, 5 hoặc 6
+                // Đường kẻ phân tách mảnh dưới Header khi ở các màn hình có Sidebar
                 if (viewModel.currentScreenIndex != 0)
                   const Divider(
                     height: 1,
@@ -47,7 +46,7 @@ class UserView extends StatelessWidget {
                     color: Color(0xFFE8EEF5),
                   ),
 
-                // 2. Chuyển đổi mượt mà giữa Trang chủ (0) và Không gian làm việc có Sidebar (1, 2, 3, 4, 5)
+                // 2. Chuyển đổi giữa Trang chủ (0) và Không gian làm việc có Sidebar (1..6)
                 if (viewModel.currentScreenIndex == 0)
                   _buildHomeScreenBody(context, viewModel)
                 else
@@ -157,7 +156,7 @@ class UserView extends StatelessWidget {
                   ),
                 ),
 
-              // Bên phải: Nút tìm kiếm (ở Trang chủ) + Ảnh đại diện & Tên "Nguyễn Văn A" (ở Màn hình 2, 3, 4, 5, 6)
+              // Bên phải: Nút tìm kiếm (ở Trang chủ) + Ảnh đại diện & Tên "Nguyễn Văn A"
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -220,7 +219,7 @@ class UserView extends StatelessWidget {
   }
 
   // ===========================================================================
-  // MÀN HÌNH 1: NỘI DUNG TRANG CHỦ (GIỮ NGUYÊN 100%)
+  // MÀN HÌNH 1: NỘI DUNG TRANG CHỦ
   // ===========================================================================
 
   Widget _buildHomeScreenBody(BuildContext context, UserViewModel viewModel) {
@@ -744,7 +743,7 @@ class UserView extends StatelessWidget {
   }
 
   // ===========================================================================
-  // KHUNG BỐ CỤC CHUNG CHO MÀN HÌNH 2, 3, 4, 5 & 6 (CÓ SIDEBAR BÊN TRÁI)
+  // KHUNG BỐ CỤC CHUNG CHO MÀN HÌNH 2, 3, 4, 5, 6 & 7 (CÓ SIDEBAR BÊN TRÁI)
   // ===========================================================================
 
   Widget _buildAiWorkspaceBody(BuildContext context, UserViewModel viewModel) {
@@ -753,7 +752,9 @@ class UserView extends StatelessWidget {
         final isWide = constraints.maxWidth >= 780;
 
         final Widget rightContent;
-        if (viewModel.currentScreenIndex == 5) {
+        if (viewModel.currentScreenIndex == 6) {
+          rightContent = _buildMedicalDocumentsMainContent(context, viewModel);
+        } else if (viewModel.currentScreenIndex == 5) {
           rightContent = _buildChatBoxAiMainContent(context, viewModel);
         } else if (viewModel.currentScreenIndex == 4) {
           rightContent = _buildKnowledgeLookupMainContent(context, viewModel);
@@ -775,22 +776,16 @@ class UserView extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Cột trái: Sidebar điều hướng 6 mục (Cố định 250px)
                 SizedBox(
                   width: 250,
                   child: _buildLeftSidebar(context, viewModel, isWide: true),
                 ),
-
-                // Khoảng cách 1px dành cho đường kẻ dọc phân tách
                 const SizedBox(width: 1),
-
-                // Cột phải: Nội dung Màn hình 2, 3, 4, 5 hoặc 6
                 Expanded(child: rightContent),
               ],
             ),
           );
         } else {
-          // Trên màn hình hẹp (< 780px): Xếp dọc để chống lỗi RenderFlex overflowed
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -804,7 +799,6 @@ class UserView extends StatelessWidget {
     );
   }
 
-  /// Xây dựng thanh Sidebar bên trái gồm 6 mục menu có icon
   Widget _buildLeftSidebar(
     BuildContext context,
     UserViewModel viewModel, {
@@ -885,7 +879,7 @@ class UserView extends StatelessWidget {
   }
 
   // ===========================================================================
-  // MÀN HÌNH 2: TẢI ẢNH / CHỤP ẢNH PHÂN TÍCH AI (GIỮ NGUYÊN 100%)
+  // MÀN HÌNH 2: TẢI ẢNH / CHỤP ẢNH PHÂN TÍCH AI
   // ===========================================================================
 
   Widget _buildAiAnalysisMainContent(
@@ -1138,7 +1132,7 @@ class UserView extends StatelessWidget {
   }
 
   // ===========================================================================
-  // MÀN HÌNH 3: KẾT QUẢ PHÂN TÍCH (NGƯỜI DÙNG) (GIỮ NGUYÊN 100%)
+  // MÀN HÌNH 3: KẾT QUẢ PHÂN TÍCH (NGƯỜI DÙNG)
   // ===========================================================================
 
   Widget _buildAnalysisResultMainContent(
@@ -1602,7 +1596,7 @@ class UserView extends StatelessWidget {
   }
 
   // ===========================================================================
-  // MÀN HÌNH 4: HƯỚNG DẪN SƠ CỨU (NGƯỜI DÙNG) (ĐỒNG BỘ ĐỘNG VỚI MÀN HÌNH 5)
+  // MÀN HÌNH 4: HƯỚNG DẪN SƠ CỨU (NGƯỜI DÙNG)
   // ===========================================================================
 
   Widget _buildFirstAidGuideMainContent(
@@ -1617,7 +1611,6 @@ class UserView extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. Tiêu đề chính: "Hướng dẫn sơ cứu – <Tên tổn thương>"
           Text(
             guide.screenTitle,
             style: const TextStyle(
@@ -1628,12 +1621,8 @@ class UserView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-
-          // 2. Hộp thông báo "Tình trạng tổn thương" (Màu vàng kem)
           _buildInjuryStatusYellowBox(guide),
           const SizedBox(height: 24),
-
-          // 3. Tiêu đề "Các bước sơ cứu" + Khung thẻ Timeline 4 bước
           Text(
             guide.stepsSectionTitle,
             style: const TextStyle(
@@ -1645,12 +1634,8 @@ class UserView extends StatelessWidget {
           const SizedBox(height: 14),
           _buildFirstAidStepsTimelineCard(guide.steps),
           const SizedBox(height: 24),
-
-          // 4. Hộp cảnh báo đỏ "Khi nào cần đi khám ngay?"
           _buildWhenToSeeDoctorRedBox(guide),
           const SizedBox(height: 24),
-
-          // 5. Nút hành động "Quay lại phân tích ảnh" ở góc dưới bên phải
           Align(
             alignment: Alignment.centerRight,
             child: _buildBackToImageAnalysisButton(
@@ -1920,7 +1905,7 @@ class UserView extends StatelessWidget {
   }
 
   // ===========================================================================
-  // MÀN HÌNH 5: TRA CỨU KIẾN THỨC (NGƯỜI DÙNG) (GIỮ NGUYÊN 100%)
+  // MÀN HÌNH 5: TRA CỨU KIẾN THỨC (NGƯỜI DÙNG)
   // ===========================================================================
 
   Widget _buildKnowledgeLookupMainContent(
@@ -1933,7 +1918,6 @@ class UserView extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. Tiêu đề chính: "Kiến thức sơ cứu"
           const Text(
             'Kiến thức sơ cứu',
             style: TextStyle(
@@ -1944,16 +1928,10 @@ class UserView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-
-          // 2. Thanh tìm kiếm: Ô nhập từ khóa + Nút "Tìm kiếm"
           _buildKnowledgeSearchBarRow(context),
           const SizedBox(height: 18),
-
-          // 3. Hàng 5 nút lọc danh mục: Tất cả, Vết thương, Bỏng, Xương khớp, Khác
           _buildKnowledgeCategoryFilterRow(context, viewModel),
           const SizedBox(height: 22),
-
-          // 4. Lưới 2 cột hiển thị 6 thẻ kiến thức sơ cứu (Click vào mở ngay Hướng dẫn sơ cứu)
           _buildKnowledgeTopicsGrid(context, viewModel),
         ],
       ),
@@ -2228,67 +2206,144 @@ class UserView extends StatelessWidget {
   }
 
   // ===========================================================================
-  // MÀN HÌNH 6: CHATBOX AI (NGƯỜI DÙNG) THEO ẢNH THIẾT KẾ MỚI
+  // MÀN HÌNH 6: CHATBOX AI (NGƯỜI DÙNG) - CUỘN TIN NHẮN & CỐ ĐỊNH THANH NHẬP
   // ===========================================================================
 
   Widget _buildChatBoxAiMainContent(
     BuildContext context,
     UserViewModel viewModel,
   ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 1. Tiêu đề chính "ChatBox AI" và Phụ đề
-          const Text(
-            'ChatBox AI',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0D2B6B),
-              letterSpacing: -0.3,
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final double fixedChatViewportHeight = math.max(540.0, screenHeight - 135);
+
+    return SizedBox(
+      height: fixedChatViewportHeight,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'ChatBox AI',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0D2B6B),
+                letterSpacing: -0.3,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Hỏi đáp nhanh về các tình huống sơ cứu',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              color: Color(0xFF475569),
+            const SizedBox(height: 6),
+            const Text(
+              'Hỏi đáp nhanh về các tình huống sơ cứu',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFF475569),
+              ),
             ),
-          ),
-          const SizedBox(height: 28),
-
-          // 2. Khu vực hiển thị danh sách tin nhắn hội thoại
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: List.generate(viewModel.chatMessages.length, (index) {
-              final message = viewModel.chatMessages[index];
-              final isLast = index == viewModel.chatMessages.length - 1;
-              return Padding(
-                padding: EdgeInsets.only(bottom: isLast ? 0 : 22),
-                child: message.isUser
-                    ? _buildUserChatMessageRow(message)
-                    : _buildAiChatMessageRow(context, message),
-              );
-            }),
-          ),
-
-          // Khoảng đệm tạo độ thoáng chuẩn theo ảnh thiết kế trước thanh nhập câu hỏi
-          const SizedBox(height: 76),
-
-          // 3. Thanh nhập câu hỏi ở dưới cùng
-          _buildChatBottomInputBar(context, viewModel),
-        ],
+            const SizedBox(height: 20),
+            Expanded(
+              child: viewModel.chatMessages.isEmpty
+                  ? _buildEmptyChatWelcomeState(context, viewModel)
+                  : Scrollbar(
+                      controller: viewModel.chatScrollController,
+                      thumbVisibility: true,
+                      child: ListView.separated(
+                        controller: viewModel.chatScrollController,
+                        padding: const EdgeInsets.only(
+                          top: 4,
+                          bottom: 16,
+                          right: 8,
+                        ),
+                        itemCount: viewModel.chatMessages.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 22),
+                        itemBuilder: (context, index) {
+                          final message = viewModel.chatMessages[index];
+                          return message.isUser
+                              ? _buildUserChatMessageRow(message)
+                              : _buildAiChatMessageRow(context, message);
+                        },
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 16),
+            _buildChatBottomInputBar(context, viewModel),
+          ],
+        ),
       ),
     );
   }
 
-  /// Hàng hiển thị tin nhắn của Người dùng (Căn phải kèm ảnh đại diện tròn bên phải)
+  Widget _buildEmptyChatWelcomeState(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    return Center(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F1FF),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFBFDBFE), width: 1.5),
+              ),
+              child: const Icon(
+                Icons.smart_toy_outlined,
+                color: Color(0xFF2563EB),
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Bắt đầu cuộc trò chuyện với Trợ lý Cứu hộ AI',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0D2B6B),
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Nhập câu hỏi của bạn vào ô bên dưới hoặc chọn nhanh một tình huống gợi ý:',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13.5, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 18),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 10,
+              children: viewModel.quickSuggestedQuestions.map((question) {
+                return ActionChip(
+                  backgroundColor: const Color(0xFFF8FAFC),
+                  side: const BorderSide(color: Color(0xFFDBEAFE)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  label: Text(
+                    question,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2563EB),
+                    ),
+                  ),
+                  onPressed: () =>
+                      context.read<UserViewModel>().sendChatMessage(question),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildUserChatMessageRow(ChatMessageModel message) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -2299,7 +2354,6 @@ class UserView extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // Bong bóng tin nhắn người dùng màu xanh dương nhạt
               Container(
                 constraints: const BoxConstraints(maxWidth: 460),
                 padding: const EdgeInsets.symmetric(
@@ -2326,8 +2380,6 @@ class UserView extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 5),
-
-              // Nhãn thời gian bên dưới bong bóng tin nhắn người dùng
               Padding(
                 padding: const EdgeInsets.only(right: 4),
                 child: Text(
@@ -2343,8 +2395,6 @@ class UserView extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-
-        // Ảnh đại diện tròn của người dùng bên phải bong bóng chat
         Container(
           width: 34,
           height: 34,
@@ -2359,7 +2409,6 @@ class UserView extends StatelessWidget {
     );
   }
 
-  /// Hàng hiển thị tin nhắn của Trợ lý AI (Căn trái kèm huy hiệu tròn khiên bảo vệ màu xanh)
   Widget _buildAiChatMessageRow(
     BuildContext context,
     ChatMessageModel message,
@@ -2368,7 +2417,6 @@ class UserView extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Huy hiệu Trợ lý AI hình tròn xanh dương có biểu tượng khiên bảo vệ trắng
         Container(
           width: 40,
           height: 40,
@@ -2391,8 +2439,6 @@ class UserView extends StatelessWidget {
           child: const CustomPaint(painter: _AiShieldBadgePainter()),
         ),
         const SizedBox(width: 12),
-
-        // Khung bong bóng phản hồi của Trợ lý AI
         Flexible(
           child: Container(
             constraints: const BoxConstraints(maxWidth: 560),
@@ -2406,7 +2452,6 @@ class UserView extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Câu mở đầu của AI
                 Text(
                   message.messageText,
                   style: const TextStyle(
@@ -2416,8 +2461,6 @@ class UserView extends StatelessWidget {
                     height: 1.45,
                   ),
                 ),
-
-                // Danh sách các bước đánh số thứ tự (1., 2., 3., 4.)
                 if (message.numberedSteps.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   ...List.generate(message.numberedSteps.length, (index) {
@@ -2459,8 +2502,6 @@ class UserView extends StatelessWidget {
                     );
                   }),
                 ],
-
-                // Nhãn thời gian ở góc dưới bên trái bên trong bong bóng AI
                 const SizedBox(height: 10),
                 Text(
                   message.timestamp,
@@ -2478,7 +2519,6 @@ class UserView extends StatelessWidget {
     );
   }
 
-  /// Thanh nhập câu hỏi ở dưới cùng của Màn hình 6 ("Nhập câu hỏi của bạn..." + Nút gửi máy bay giấy)
   Widget _buildChatBottomInputBar(
     BuildContext context,
     UserViewModel viewModel,
@@ -2526,8 +2566,6 @@ class UserView extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-
-          // Nút gửi tin nhắn hình tròn màu xanh dương chứa biểu tượng máy bay giấy trắng
           Material(
             color: const Color(0xFF2563EB),
             shape: const CircleBorder(),
@@ -2548,13 +2586,1546 @@ class UserView extends StatelessWidget {
       ),
     );
   }
+
+  // ===========================================================================
+  // MÀN HÌNH 7: KHO TÀI LIỆU Y TẾ (QUẢN LÝ TÀI LIỆU CỤC BỘ TRÊN THIẾT BỊ)
+  // Đầy đủ 6 chức năng: Thêm tài liệu, Mở tài liệu, Tìm kiếm, Phân loại, Quản lý, Lưu cục bộ
+  // ===========================================================================
+
+  Widget _buildMedicalDocumentsMainContent(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 1. Hàng Tiêu đề "Kho tài liệu y tế" (Trái) + Nút "+ Thêm tài liệu" (Phải) chuẩn theo ảnh thiết kế
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 16,
+            runSpacing: 12,
+            children: [
+              const Text(
+                'Kho tài liệu y tế',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0D2B6B),
+                  letterSpacing: -0.3,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () =>
+                    _showAddLocalDocumentDialog(context, viewModel),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                icon: const Icon(Icons.add_rounded, size: 20),
+                label: const Text(
+                  'Thêm tài liệu',
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+
+          // 2. Hàng Thanh tìm kiếm "Tìm kiếm tài liệu..." + Dropdown "Tất cả danh mục"
+          _buildDocumentsSearchAndDropdownRow(context, viewModel),
+          const SizedBox(height: 22),
+
+          // 3. Khu vực chính: Cột danh mục tài liệu bên trái + Bảng danh sách tài liệu bên phải
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWideContent = constraints.maxWidth >= 680;
+
+              if (isWideContent) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Cột danh mục con bên trái (Tất cả (24), Sơ cứu cơ bản, Vết thương (6), Bỏng, Dị vật, Khác)
+                    SizedBox(
+                      width: 200,
+                      child: _buildDocumentCategorySubMenu(
+                        context,
+                        viewModel,
+                        isVertical: true,
+                      ),
+                    ),
+                    const SizedBox(width: 22),
+
+                    // Bảng danh sách tài liệu bên phải
+                    Expanded(
+                      child: _buildMedicalDocumentsTableCard(
+                        context,
+                        viewModel,
+                      ),
+                    ),
+                  ],
+                );
+              } else {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildDocumentCategorySubMenu(
+                      context,
+                      viewModel,
+                      isVertical: false,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildMedicalDocumentsTableCard(context, viewModel),
+                  ],
+                );
+              }
+            },
+          ),
+          const SizedBox(height: 20),
+
+          // 4. Thanh phân trang (< 1 2 3 >) ở góc dưới bên phải
+          Align(
+            alignment: Alignment.centerRight,
+            child: _buildDocumentsPaginationBar(context, viewModel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Hàng Tìm kiếm tài liệu và Dropdown chọn danh mục
+  Widget _buildDocumentsSearchAndDropdownRow(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 520;
+
+        // Ô nhập tìm kiếm "Tìm kiếm tài liệu..."
+        final searchBox = Container(
+          height: 46,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFD8E3F2), width: 1.2),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
+          child: TextField(
+            controller: viewModel.documentSearchController,
+            onChanged: (value) =>
+                context.read<UserViewModel>().updateDocumentSearchQuery(value),
+            style: const TextStyle(
+              fontSize: 14.5,
+              color: Color(0xFF1E293B),
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: const InputDecoration(
+              isDense: true,
+              border: InputBorder.none,
+              icon: Icon(
+                Icons.search_rounded,
+                color: Color(0xFF64748B),
+                size: 20,
+              ),
+              hintText: 'Tìm kiếm tài liệu...',
+              hintStyle: TextStyle(
+                fontSize: 14.5,
+                color: Color(0xFF94A3B8),
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ),
+        );
+
+        // Hộp Dropdown "Tất cả danh mục"
+        final categoryDropdown = Container(
+          height: 46,
+          width: isCompact ? double.infinity : 210,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFD8E3F2), width: 1.2),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: viewModel.selectedDocumentCategoryId,
+              isExpanded: true,
+              icon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: Color(0xFF475569),
+                size: 22,
+              ),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF334155),
+              ),
+              dropdownColor: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              items: viewModel.documentCategories.map((cat) {
+                return DropdownMenuItem<String>(
+                  value: cat.id,
+                  child: Text(
+                    cat.dropdownLabel,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (selectedId) {
+                if (selectedId != null) {
+                  context.read<UserViewModel>().selectDocumentCategory(
+                    selectedId,
+                  );
+                }
+              },
+            ),
+          ),
+        );
+
+        if (isCompact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [searchBox, const SizedBox(height: 10), categoryDropdown],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: searchBox),
+            const SizedBox(width: 14),
+            categoryDropdown,
+          ],
+        );
+      },
+    );
+  }
+
+  /// Menu danh mục bên trái của Kho tài liệu y tế:
+  /// Tất cả (24), Sơ cứu cơ bản, Vết thương (6), Bỏng, Dị vật, Khác
+  Widget _buildDocumentCategorySubMenu(
+    BuildContext context,
+    UserViewModel viewModel, {
+    required bool isVertical,
+  }) {
+    if (!isVertical) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: viewModel.documentCategories.map((cat) {
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _buildSingleDocumentCategoryItem(context, viewModel, cat),
+            );
+          }).toList(),
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: viewModel.documentCategories.map((cat) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: _buildSingleDocumentCategoryItem(context, viewModel, cat),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildSingleDocumentCategoryItem(
+    BuildContext context,
+    UserViewModel viewModel,
+    MedicalDocumentCategoryModel category,
+  ) {
+    final isSelected = viewModel.selectedDocumentCategoryId == category.id;
+    final displayLabel = viewModel.getDocumentCategorySidebarLabel(category);
+
+    return Material(
+      color: isSelected ? const Color(0xFFE8F1FF) : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () =>
+            context.read<UserViewModel>().selectDocumentCategory(category.id),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CustomPaint(
+                  painter: _DocumentSubCategoryIconPainter(
+                    categoryId: category.id,
+                    color: isSelected
+                        ? const Color(0xFF2563EB)
+                        : const Color(0xFF64748B),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  displayLabel,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? const Color(0xFF2563EB)
+                        : const Color(0xFF334155),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Bảng danh sách tài liệu y tế gồm 3 cột chuẩn thiết kế: Tên tài liệu | Danh mục | Ngày thêm
+  Widget _buildMedicalDocumentsTableCard(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    final docs = viewModel.filteredMedicalDocuments;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x050D2B6B),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header của bảng: Tên tài liệu | Danh mục | Ngày thêm
+          Container(
+            color: const Color(0xFFF8FAFC),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              children: const [
+                Expanded(
+                  flex: 52,
+                  child: Text(
+                    'Tên tài liệu',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF475569),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 28,
+                  child: Text(
+                    'Danh mục',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF475569),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 20,
+                  child: Text(
+                    'Ngày thêm',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF475569),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE8EEF5)),
+
+          // Danh sách các hàng tài liệu
+          if (docs.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 42, horizontal: 20),
+              child: Center(
+                child: Text(
+                  'Không tìm thấy tài liệu y tế phù hợp.',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...List.generate(docs.length, (index) {
+              final doc = docs[index];
+              final isLast = index == docs.length - 1;
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildSingleMedicalDocumentRow(context, viewModel, doc),
+                  if (!isLast)
+                    const Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Color(0xFFF1F5F9),
+                    ),
+                ],
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  /// Từng dòng tài liệu trong bảng (Click vào để Mở tài liệu & Quản lý tài liệu cục bộ)
+  Widget _buildSingleMedicalDocumentRow(
+    BuildContext context,
+    UserViewModel viewModel,
+    MedicalDocumentModel doc,
+  ) {
+    final isHighlightedBadge = doc.categoryId == 'basic_first_aid';
+
+    return Material(
+      color: Colors.white,
+      child: InkWell(
+        onTap: () => _showOpenAndManageDocumentDialog(context, viewModel, doc),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Cột 1: Icon tài liệu y tế nền xanh nhạt + Tên tài liệu
+              Expanded(
+                flex: 52,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEBF2FE),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      child: const CustomPaint(
+                        painter: _MedicalDocumentRowIconPainter(),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            doc.title,
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF0D2B6B),
+                              height: 1.3,
+                            ),
+                          ),
+                          if (doc.isUserAdded) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              '${doc.fileName} (${doc.fileSize})',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF2563EB),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Cột 2: Nhãn Danh mục
+              Expanded(
+                flex: 28,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isHighlightedBadge ? 10 : 0,
+                      vertical: isHighlightedBadge ? 5 : 0,
+                    ),
+                    decoration: isHighlightedBadge
+                        ? BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                          )
+                        : null,
+                    child: Text(
+                      doc.categoryLabel,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Cột 3: Ngày thêm
+              Expanded(
+                flex: 20,
+                child: Text(
+                  doc.dateAdded,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Hộp thoại "+ Thêm tài liệu": Cho phép chọn tệp trên thiết bị, phân loại danh mục và lưu cục bộ
+  void _showAddLocalDocumentDialog(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    final titleController = TextEditingController();
+    final fileNameController = TextEditingController(
+      text: viewModel.sampleDeviceFiles.first['fileName'],
+    );
+    final localPathController = TextEditingController(
+      text: viewModel.sampleDeviceFiles.first['localFilePath'],
+    );
+    final summaryController = TextEditingController();
+
+    String selectedCategoryId = 'basic_first_aid';
+    String selectedExtension =
+        viewModel.sampleDeviceFiles.first['fileExtension']!;
+    String selectedFileSize = viewModel.sampleDeviceFiles.first['fileSize']!;
+
+    final selectableCategories = viewModel.documentCategories
+        .where((c) => c.id != 'all')
+        .toList();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Dialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 540),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F1FF),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.upload_file_rounded,
+                              color: Color(0xFF2563EB),
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Thêm tài liệu y tế vào thiết bị',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF0D2B6B),
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Lưu trữ, phân loại và mở tệp tài liệu cục bộ trên thiết bị',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                      const SizedBox(height: 16),
+
+                      // Chọn nhanh tệp từ bộ nhớ thiết bị
+                      const Text(
+                        '1. Chọn tệp trên thiết bị:',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0D2B6B),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: viewModel.sampleDeviceFiles.map((fileInfo) {
+                          final isCurrentFile =
+                              fileNameController.text == fileInfo['fileName'];
+                          return ActionChip(
+                            backgroundColor: isCurrentFile
+                                ? const Color(0xFFE8F1FF)
+                                : const Color(0xFFF8FAFC),
+                            side: BorderSide(
+                              color: isCurrentFile
+                                  ? const Color(0xFF2563EB)
+                                  : const Color(0xFFE2E8F0),
+                            ),
+                            avatar: Icon(
+                              Icons.insert_drive_file_outlined,
+                              size: 16,
+                              color: isCurrentFile
+                                  ? const Color(0xFF2563EB)
+                                  : const Color(0xFF64748B),
+                            ),
+                            label: Text(
+                              fileInfo['fileName']!,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: isCurrentFile
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: isCurrentFile
+                                    ? const Color(0xFF2563EB)
+                                    : const Color(0xFF334155),
+                              ),
+                            ),
+                            onPressed: () {
+                              setModalState(() {
+                                fileNameController.text = fileInfo['fileName']!;
+                                localPathController.text =
+                                    fileInfo['localFilePath']!;
+                                selectedExtension = fileInfo['fileExtension']!;
+                                selectedFileSize = fileInfo['fileSize']!;
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Tên tài liệu hiển thị
+                      const Text(
+                        '2. Tên tài liệu y tế (*):',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0D2B6B),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: titleController,
+                        decoration: InputDecoration(
+                          hintText: 'Nhập tên tài liệu (ví dụ: Sổ tay sơ cứu gia đình)',
+                          hintStyle: const TextStyle(
+                            fontSize: 13.5,
+                            color: Color(0xFF94A3B8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFCBD5E1),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFCBD5E1),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Phân loại danh mục
+                      const Text(
+                        '3. Phân loại danh mục:',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0D2B6B),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFCBD5E1)),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedCategoryId,
+                            isExpanded: true,
+                            items: selectableCategories.map((cat) {
+                              return DropdownMenuItem<String>(
+                                value: cat.id,
+                                child: Text(cat.dropdownLabel),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setModalState(() {
+                                  selectedCategoryId = val;
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Đường dẫn tệp cục bộ trên thiết bị
+                      const Text(
+                        '4. Đường dẫn tệp lưu trữ cục bộ trên thiết bị:',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0D2B6B),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: localPathController,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF334155),
+                        ),
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(
+                            Icons.folder_outlined,
+                            size: 19,
+                            color: Color(0xFF2563EB),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFCBD5E1),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFCBD5E1),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Nội dung tóm tắt / Ghi chú
+                      const Text(
+                        '5. Tóm tắt nội dung tài liệu:',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0D2B6B),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: summaryController,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          hintText:
+                              'Mô tả ngắn gọn nội dung tệp tài liệu y tế...',
+                          hintStyle: const TextStyle(
+                            fontSize: 13.5,
+                            color: Color(0xFF94A3B8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFCBD5E1),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFCBD5E1),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            child: const Text(
+                              'Hủy',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              final enteredTitle = titleController.text.trim();
+                              final finalTitle = enteredTitle.isNotEmpty
+                                  ? enteredTitle
+                                  : fileNameController.text
+                                        .replaceAll('.pdf', '')
+                                        .replaceAll('.docx', '')
+                                        .replaceAll('.txt', '')
+                                        .replaceAll('_', ' ');
+
+                              viewModel.addLocalMedicalDocument(
+                                title: finalTitle,
+                                categoryId: selectedCategoryId,
+                                fileName: fileNameController.text,
+                                fileExtension: selectedExtension,
+                                fileSize: selectedFileSize,
+                                localFilePath: localPathController.text,
+                                summary: summaryController.text,
+                              );
+                              Navigator.of(dialogContext).pop();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2563EB),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 13,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: const Icon(Icons.save_outlined, size: 18),
+                            label: const Text(
+                              'Lưu tài liệu vào thiết bị',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Hộp thoại Mở Tài liệu & Quản lý Tài liệu Cục bộ (Xem tệp, Đổi danh mục, Sửa tên, Xóa tài liệu)
+  void _showOpenAndManageDocumentDialog(
+    BuildContext context,
+    UserViewModel viewModel,
+    MedicalDocumentModel doc,
+  ) {
+    bool isEditing = false;
+    final editTitleController = TextEditingController(text: doc.title);
+    final editSummaryController = TextEditingController(text: doc.summary);
+    String editCategoryId = doc.categoryId;
+
+    final selectableCategories = viewModel.documentCategories
+        .where((c) => c.id != 'all')
+        .toList();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Dialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 580),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header hộp thoại mở tài liệu
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEBF2FE),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.all(9),
+                            child: const CustomPaint(
+                              painter: _MedicalDocumentRowIconPainter(),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isEditing
+                                      ? 'Quản lý & Phân loại tài liệu'
+                                      : doc.title,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF0D2B6B),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 10,
+                                  runSpacing: 6,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE8F1FF),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        viewModel.getCategoryLabelById(
+                                          editCategoryId,
+                                        ),
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF2563EB),
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      'Ngày thêm: ${doc.dateAdded}',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Khung thông tin Tệp lưu trữ cục bộ trên thiết bị
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.sd_storage_outlined,
+                                  size: 18,
+                                  color: Color(0xFF2563EB),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Tệp cục bộ: ${doc.fileName} (${doc.fileExtension} • ${doc.fileSize})',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF1E293B),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Đường dẫn thiết bị: ${doc.localFilePath}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      if (isEditing) ...[
+                        // Chế độ Quản lý & Phân loại lại tài liệu
+                        const Text(
+                          'Tên tài liệu:',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0D2B6B),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: editTitleController,
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Phân loại danh mục:',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0D2B6B),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: editCategoryId,
+                              isExpanded: true,
+                              items: selectableCategories.map((cat) {
+                                return DropdownMenuItem<String>(
+                                  value: cat.id,
+                                  child: Text(cat.dropdownLabel),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setModalState(() {
+                                    editCategoryId = val;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Tóm tắt nội dung:',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0D2B6B),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: editSummaryController,
+                          maxLines: 3,
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        // Chế độ Mở xem nội dung tài liệu
+                        Text(
+                          doc.summary,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF334155),
+                            height: 1.45,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        ...doc.contentPoints.map(
+                          (point) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              point,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF1E293B),
+                                height: 1.45,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 20),
+
+                      // Hàng nút chức năng: Xóa tài liệu | Sửa/Phân loại | Mở hướng dẫn sơ cứu | Đóng/Lưu
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          // Nút Xóa tài liệu khỏi thiết bị
+                          TextButton.icon(
+                            onPressed: () {
+                              viewModel.deleteMedicalDocument(doc.id);
+                              Navigator.of(dialogContext).pop();
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFFDC2626),
+                            ),
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 19,
+                            ),
+                            label: const Text(
+                              'Xóa tài liệu',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Nút Chuyển đổi giữa Xem và Sửa/Phân loại
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  if (isEditing) {
+                                    viewModel.updateMedicalDocument(
+                                      id: doc.id,
+                                      newTitle: editTitleController.text,
+                                      newCategoryId: editCategoryId,
+                                      newSummary: editSummaryController.text,
+                                    );
+                                    Navigator.of(dialogContext).pop();
+                                  } else {
+                                    setModalState(() {
+                                      isEditing = true;
+                                    });
+                                  }
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF0D2B6B),
+                                  side: const BorderSide(
+                                    color: Color(0xFFCBD5E1),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                icon: Icon(
+                                  isEditing
+                                      ? Icons.check_rounded
+                                      : Icons.edit_outlined,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  isEditing
+                                      ? 'Lưu thay đổi'
+                                      : 'Phân loại / Sửa',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+
+                              if (!isEditing &&
+                                  doc.relatedGuideTopicId != null) ...[
+                                OutlinedButton(
+                                  onPressed: () {
+                                    Navigator.of(dialogContext).pop();
+                                    viewModel.navigateToFirstAidGuide(
+                                      topicId: doc.relatedGuideTopicId,
+                                    );
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF2563EB),
+                                    side: const BorderSide(
+                                      color: Color(0xFFBFDBFE),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Hướng dẫn sơ cứu',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+
+                              ElevatedButton(
+                                onPressed: () =>
+                                    Navigator.of(dialogContext).pop(),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF2563EB),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Đóng',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Thanh phân trang (< 1 2 3 >) ở góc dưới bên phải của Kho tài liệu y tế
+  Widget _buildDocumentsPaginationBar(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildPaginationArrowButton(
+          icon: Icons.chevron_left_rounded,
+          onTap: () => context.read<UserViewModel>().goToPreviousDocumentPage(),
+        ),
+        const SizedBox(width: 6),
+        ...[1, 2, 3].map((page) {
+          final isSelected = viewModel.currentDocumentPage == page;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Material(
+              color: isSelected ? const Color(0xFF2563EB) : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () =>
+                    context.read<UserViewModel>().selectDocumentPage(page),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF2563EB)
+                          : const Color(0xFFE2E8F0),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Text(
+                    '$page',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF475569),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+        const SizedBox(width: 6),
+        _buildPaginationArrowButton(
+          icon: Icons.chevron_right_rounded,
+          onTap: () => context.read<UserViewModel>().goToNextDocumentPage(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPaginationArrowButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+          ),
+          child: Icon(icon, size: 19, color: const Color(0xFF64748B)),
+        ),
+      ),
+    );
+  }
 }
 
 // =============================================================================
 // CÁC LỚP CUSTOM PAINTER VẼ ĐỒ HỌA THUẦN FLUTTER (KHÔNG PHỤ THUỘC ASSET NGOÀI)
 // =============================================================================
 
-/// CustomPainter vẽ biểu tượng Khiên Bảo Vệ có dấu tích trắng bên trong huy hiệu AI (Màn hình 6)
+class _MedicalDocumentRowIconPainter extends CustomPainter {
+  const _MedicalDocumentRowIconPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    final paint = Paint()
+      ..color = const Color(0xFF2563EB)
+      ..strokeWidth = 1.9
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final docPath = Path()
+      ..moveTo(w * 0.20, h * 0.08)
+      ..lineTo(w * 0.62, h * 0.08)
+      ..lineTo(w * 0.84, h * 0.30)
+      ..lineTo(w * 0.84, h * 0.88)
+      ..quadraticBezierTo(w * 0.84, h * 0.94, w * 0.76, h * 0.94)
+      ..lineTo(w * 0.24, h * 0.94)
+      ..quadraticBezierTo(w * 0.16, h * 0.94, w * 0.16, h * 0.88)
+      ..lineTo(w * 0.16, h * 0.14)
+      ..quadraticBezierTo(w * 0.16, h * 0.08, w * 0.20, h * 0.08)
+      ..close();
+    canvas.drawPath(docPath, paint);
+
+    final foldPath = Path()
+      ..moveTo(w * 0.60, h * 0.08)
+      ..lineTo(w * 0.60, h * 0.30)
+      ..lineTo(w * 0.84, h * 0.30);
+    canvas.drawPath(foldPath, paint);
+
+    canvas.drawLine(
+      Offset(w * 0.50, h * 0.45),
+      Offset(w * 0.50, h * 0.71),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(w * 0.37, h * 0.58),
+      Offset(w * 0.63, h * 0.58),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _DocumentSubCategoryIconPainter extends CustomPainter {
+  final String categoryId;
+  final Color color;
+
+  const _DocumentSubCategoryIconPainter({
+    required this.categoryId,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.8
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    if (categoryId == 'other') {
+      canvas.drawCircle(Offset(w * 0.50, h * 0.32), w * 0.18, paint);
+      final bodyPath = Path()
+        ..moveTo(w * 0.20, h * 0.86)
+        ..quadraticBezierTo(w * 0.24, h * 0.58, w * 0.50, h * 0.58)
+        ..quadraticBezierTo(w * 0.76, h * 0.58, w * 0.80, h * 0.86);
+      canvas.drawPath(bodyPath, paint);
+      return;
+    }
+
+    if (categoryId == 'all') {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(w * 0.14, h * 0.22, w * 0.72, h * 0.64),
+          const Radius.circular(3.5),
+        ),
+        paint,
+      );
+      canvas.drawLine(
+        Offset(w * 0.32, h * 0.44),
+        Offset(w * 0.68, h * 0.44),
+        paint,
+      );
+      canvas.drawLine(
+        Offset(w * 0.32, h * 0.64),
+        Offset(w * 0.58, h * 0.64),
+        paint,
+      );
+      return;
+    }
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * 0.18, h * 0.12, w * 0.64, h * 0.76),
+        const Radius.circular(3.5),
+      ),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(w * 0.50, h * 0.36),
+      Offset(w * 0.50, h * 0.64),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(w * 0.36, h * 0.50),
+      Offset(w * 0.64, h * 0.50),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _DocumentSubCategoryIconPainter oldDelegate) {
+    return oldDelegate.categoryId != categoryId || oldDelegate.color != color;
+  }
+}
+
 class _AiShieldBadgePainter extends CustomPainter {
   const _AiShieldBadgePainter();
 
@@ -2581,7 +4152,6 @@ class _AiShieldBadgePainter extends CustomPainter {
 
     canvas.drawPath(shieldPath, shieldStrokePaint);
 
-    // Dấu tích (Checkmark) bên trong khiên
     final checkPath = Path()
       ..moveTo(w * 0.35, h * 0.51)
       ..lineTo(w * 0.46, h * 0.62)
@@ -2593,7 +4163,6 @@ class _AiShieldBadgePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// CustomPainter vẽ ảnh đại diện chân dung người dùng cạnh bong bóng tin nhắn (Màn hình 6)
 class _ChatUserPortraitAvatarPainter extends CustomPainter {
   const _ChatUserPortraitAvatarPainter();
 
@@ -2603,10 +4172,8 @@ class _ChatUserPortraitAvatarPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // Nền tròn xanh xám nhạt
     canvas.drawRect(rect, Paint()..color = const Color(0xFFDCEBFE));
 
-    // Phần áo vest/sơ mi xanh đen lịch sự ở phía dưới
     final suitPath = Path()
       ..moveTo(w * 0.12, h)
       ..quadraticBezierTo(w * 0.20, h * 0.64, w * 0.50, h * 0.64)
@@ -2614,7 +4181,6 @@ class _ChatUserPortraitAvatarPainter extends CustomPainter {
       ..close();
     canvas.drawPath(suitPath, Paint()..color = const Color(0xFF1E3A8A));
 
-    // Cổ áo sơ mi trắng chữ V ở giữa
     final collarPath = Path()
       ..moveTo(w * 0.38, h * 0.66)
       ..lineTo(w * 0.50, h * 0.86)
@@ -2622,7 +4188,6 @@ class _ChatUserPortraitAvatarPainter extends CustomPainter {
       ..close();
     canvas.drawPath(collarPath, Paint()..color = Colors.white);
 
-    // Phần cổ và khuôn mặt
     canvas.drawRect(
       Rect.fromCenter(
         center: Offset(w * 0.50, h * 0.61),
@@ -2640,7 +4205,6 @@ class _ChatUserPortraitAvatarPainter extends CustomPainter {
       Paint()..color = const Color(0xFFF3CFB6),
     );
 
-    // Mái tóc gọn gàng phía trên
     final hairPath = Path()
       ..moveTo(w * 0.31, h * 0.40)
       ..quadraticBezierTo(w * 0.32, h * 0.16, w * 0.52, h * 0.17)
@@ -2654,7 +4218,6 @@ class _ChatUserPortraitAvatarPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// CustomPainter vẽ biểu tượng máy bay giấy nét mảnh màu trắng trên nút Gửi tin nhắn (Màn hình 6)
 class _PaperPlaneSendIconPainter extends CustomPainter {
   const _PaperPlaneSendIconPainter();
 
@@ -2689,7 +4252,6 @@ class _PaperPlaneSendIconPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// CustomPainter vẽ hình ảnh minh họa thu nhỏ cho 6 thẻ kiến thức trên Màn hình 5
 class _KnowledgeTopicThumbnailPainter extends CustomPainter {
   final String topicId;
 
@@ -2703,7 +4265,6 @@ class _KnowledgeTopicThumbnailPainter extends CustomPainter {
 
     switch (topicId) {
       case 'abrasion':
-        // 1. Trầy xước: Nền da sáng mịn với vết trầy xước đỏ hồng ở trung tâm
         final skinPaint = Paint()
           ..shader = const LinearGradient(
             begin: Alignment.topLeft,
@@ -2732,7 +4293,6 @@ class _KnowledgeTopicThumbnailPainter extends CustomPainter {
         break;
 
       case 'cut_laceration':
-        // 2. Vết cắt / Vết rách: Nền da cẳng tay có đường vết cắt chéo đỏ sẫm
         final skinPaint = Paint()
           ..shader = const LinearGradient(
             begin: Alignment.topCenter,
@@ -2771,7 +4331,6 @@ class _KnowledgeTopicThumbnailPainter extends CustomPainter {
         break;
 
       case 'burn':
-        // 3. Bỏng: Nền tối mờ với mu bàn tay có vết bỏng đỏ hồng
         final bgPaint = Paint()
           ..shader = const LinearGradient(
             begin: Alignment.topLeft,
@@ -2807,7 +4366,6 @@ class _KnowledgeTopicThumbnailPainter extends CustomPainter {
         break;
 
       case 'bruise':
-        // 4. Bầm: Vùng da sáng có vết bầm tím xanh sẫm lan tỏa ở giữa
         final skinPaint = Paint()
           ..shader = const LinearGradient(
             begin: Alignment.topLeft,
@@ -2830,7 +4388,6 @@ class _KnowledgeTopicThumbnailPainter extends CustomPainter {
         break;
 
       case 'foreign_body':
-        // 5. Dị vật: Nền xám đen kim loại với vòng tròn dị vật ở trung tâm
         final darkBgPaint = Paint()
           ..shader = const LinearGradient(
             begin: Alignment.topLeft,
@@ -2872,7 +4429,6 @@ class _KnowledgeTopicThumbnailPainter extends CustomPainter {
 
       case 'poisoning':
       default:
-        // 6. Ngộ độc: Thực phẩm/quả bị nấm mốc xanh lục trên nền sáng
         final tablePaint = Paint()
           ..shader = const LinearGradient(
             begin: Alignment.topLeft,
@@ -2913,8 +4469,6 @@ class _KnowledgeTopicThumbnailPainter extends CustomPainter {
   }
 }
 
-/// CustomPainter tô màu nền Sidebar bên trái và vẽ đường phân cách dọc kéo dài
-/// hết chiều cao thực tế của Row mà không cần dùng IntrinsicHeight
 class _WorkspaceSidebarBackgroundPainter extends CustomPainter {
   final double sidebarWidth;
   final Color backgroundColor;
@@ -2952,7 +4506,6 @@ class _WorkspaceSidebarBackgroundPainter extends CustomPainter {
   }
 }
 
-/// CustomPainter vẽ biểu tượng tam giác cảnh báo bo góc màu vàng cam mềm mại (Màn hình 4)
 class _SoftAmberWarningTrianglePainter extends CustomPainter {
   const _SoftAmberWarningTrianglePainter();
 
@@ -3004,7 +4557,6 @@ class _SoftAmberWarningTrianglePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// CustomPainter vẽ biểu tượng y tế màu trắng bên trong 4 ô vuông xanh của Các bước sơ cứu (Màn hình 4)
 class _FirstAidStepIconPainter extends CustomPainter {
   final String stepId;
 
@@ -3082,7 +4634,6 @@ class _FirstAidStepIconPainter extends CustomPainter {
   }
 }
 
-/// CustomPainter vẽ đường viền nét đứt bo góc (Dashed Rounded Border) cho Màn hình 2
 class _DashedBorderPainter extends CustomPainter {
   final Color color;
   final double strokeWidth;
@@ -3189,7 +4740,6 @@ class _DashedBorderPainter extends CustomPainter {
   }
 }
 
-/// CustomPainter tái tạo chân thực hình chụp cánh tay có vết trầy xước đỏ ở giữa (Màn hình 3)
 class _ForearmAbrasionPainter extends CustomPainter {
   const _ForearmAbrasionPainter();
 
@@ -3327,7 +4877,6 @@ class _ForearmAbrasionPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// CustomPainter vẽ 5 biểu tượng vị trí cơ thể dạng Line-Art chuẩn theo ảnh thiết kế Màn hình 3
 class _BodyPartIconPainter extends CustomPainter {
   final String partId;
   final Color color;
