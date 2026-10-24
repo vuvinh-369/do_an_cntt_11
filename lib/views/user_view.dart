@@ -39,19 +39,19 @@ class UserView extends StatelessWidget {
                 // 1. Thanh điều hướng trên cùng dùng chung cho toàn ứng dụng
                 _buildTopNavigationBar(context, viewModel),
 
-                // Đường kẻ phân tách mảnh dưới Header khi ở màn hình Phân tích ảnh AI
-                if (viewModel.currentScreenIndex == 1)
+                // Đường kẻ phân tách mảnh dưới Header khi ở Màn hình 2, 3, 4 hoặc 5
+                if (viewModel.currentScreenIndex != 0)
                   const Divider(
                     height: 1,
                     thickness: 1,
                     color: Color(0xFFE8EEF5),
                   ),
 
-                // 2. Chuyển đổi mượt mà giữa Trang chủ (0) và Phân tích ảnh AI (1)
+                // 2. Chuyển đổi mượt mà giữa Trang chủ (0) và Không gian làm việc có Sidebar (1, 2, 3, 4)
                 if (viewModel.currentScreenIndex == 0)
                   _buildHomeScreenBody(context, viewModel)
                 else
-                  _buildAiAnalysisScreenBody(context, viewModel),
+                  _buildAiWorkspaceBody(context, viewModel),
               ],
             ),
           ),
@@ -157,7 +157,7 @@ class UserView extends StatelessWidget {
                   ),
                 ),
 
-              // Bên phải: Nút tìm kiếm (ở Trang chủ) + Ảnh đại diện & Tên "Nguyễn Văn A" (ở Màn hình 2)
+              // Bên phải: Nút tìm kiếm (ở Trang chủ) + Ảnh đại diện & Tên "Nguyễn Văn A" (ở Màn hình 2, 3, 4, 5)
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -220,7 +220,7 @@ class UserView extends StatelessWidget {
   }
 
   // ===========================================================================
-  // MÀN HÌNH 1: NỘI DUNG TRANG CHỦ (GIỮ NGUYÊN 100% TỪ BƯỚC TRƯỚC)
+  // MÀN HÌNH 1: NỘI DUNG TRANG CHỦ (GIỮ NGUYÊN 100%)
   // ===========================================================================
 
   Widget _buildHomeScreenBody(BuildContext context, UserViewModel viewModel) {
@@ -744,21 +744,34 @@ class UserView extends StatelessWidget {
   }
 
   // ===========================================================================
-  // MÀN HÌNH 2: PHÂN TÍCH ẢNH AI (NGƯỜI DÙNG) THEO ẢNH THIẾT KẾ MỚI
+  // KHUNG BỐ CỤC CHUNG CHO MÀN HÌNH 2, MÀN HÌNH 3, MÀN HÌNH 4 & MÀN HÌNH 5
   // ===========================================================================
 
-  Widget _buildAiAnalysisScreenBody(
-    BuildContext context,
-    UserViewModel viewModel,
-  ) {
+  Widget _buildAiWorkspaceBody(BuildContext context, UserViewModel viewModel) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 780;
 
+        final Widget rightContent;
+        if (viewModel.currentScreenIndex == 4) {
+          rightContent = _buildKnowledgeLookupMainContent(context, viewModel);
+        } else if (viewModel.currentScreenIndex == 3) {
+          rightContent = _buildFirstAidGuideMainContent(context, viewModel);
+        } else if (viewModel.currentScreenIndex == 2) {
+          rightContent = _buildAnalysisResultMainContent(context, viewModel);
+        } else {
+          rightContent = _buildAiAnalysisMainContent(context, viewModel);
+        }
+
         if (isWide) {
-          return IntrinsicHeight(
+          return CustomPaint(
+            painter: const _WorkspaceSidebarBackgroundPainter(
+              sidebarWidth: 250,
+              backgroundColor: Color(0xFFFAFBFD),
+              dividerColor: Color(0xFFE8EEF5),
+            ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Cột trái: Sidebar điều hướng 6 mục (Cố định 250px)
                 SizedBox(
@@ -766,17 +779,11 @@ class UserView extends StatelessWidget {
                   child: _buildLeftSidebar(context, viewModel, isWide: true),
                 ),
 
-                // Đường kẻ dọc phân tách Sidebar và Nội dung chính
-                const VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  color: Color(0xFFE8EEF5),
-                ),
+                // Khoảng cách 1px dành cho đường kẻ dọc phân tách
+                const SizedBox(width: 1),
 
-                // Cột phải: Nội dung Phân tích hình ảnh tổn thương
-                Expanded(
-                  child: _buildAiAnalysisMainContent(context, viewModel),
-                ),
+                // Cột phải: Nội dung Màn hình 2, 3, 4 hoặc 5
+                Expanded(child: rightContent),
               ],
             ),
           );
@@ -787,7 +794,7 @@ class UserView extends StatelessWidget {
             children: [
               _buildLeftSidebar(context, viewModel, isWide: false),
               const Divider(height: 1, thickness: 1, color: Color(0xFFE8EEF5)),
-              _buildAiAnalysisMainContent(context, viewModel),
+              rightContent,
             ],
           );
         }
@@ -802,10 +809,11 @@ class UserView extends StatelessWidget {
     required bool isWide,
   }) {
     return Container(
-      color: const Color(0xFFFAFBFD),
+      color: isWide ? Colors.transparent : const Color(0xFFFAFBFD),
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: isWide ? 24 : 14),
       child: isWide
           ? Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: List.generate(
                 viewModel.sidebarMenuItems.length,
@@ -874,7 +882,10 @@ class UserView extends StatelessWidget {
     );
   }
 
-  /// Xây dựng khu vực nội dung chính bên phải: "Phân tích hình ảnh tổn thương"
+  // ===========================================================================
+  // MÀN HÌNH 2: TẢI ẢNH / CHỤP ẢNH PHÂN TÍCH AI (GIỮ NGUYÊN 100%)
+  // ===========================================================================
+
   Widget _buildAiAnalysisMainContent(
     BuildContext context,
     UserViewModel viewModel,
@@ -886,7 +897,6 @@ class UserView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. Tiêu đề chính: "Phân tích hình ảnh tổn thương"
           Text(
             spec.screenTitle,
             style: const TextStyle(
@@ -897,29 +907,20 @@ class UserView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-
-          // 2. Khung viền nét đứt Kéo thả hoặc Chọn ảnh
           _buildDashedUploadArea(context, spec),
           const SizedBox(height: 28),
-
-          // 3. Dòng phân cách "Hoặc chụp ảnh"
           _buildOrCaptureDivider(spec.dividerText),
           const SizedBox(height: 24),
-
-          // 4. Nút "Chụp ảnh bằng camera" căn giữa
           Center(
             child: _buildCameraCaptureButton(context, spec.cameraButtonLabel),
           ),
           const SizedBox(height: 32),
-
-          // 5. Hộp lưu ý màu xanh nhạt ở dưới cùng
           _buildBottomWarningNotice(spec),
         ],
       ),
     );
   }
 
-  /// Khung tải ảnh có viền nét đứt (Dashed Border) chuẩn theo ảnh thiết kế
   Widget _buildDashedUploadArea(BuildContext context, AiUploadSpecModel spec) {
     return CustomPaint(
       painter: const _DashedBorderPainter(
@@ -941,7 +942,6 @@ class UserView extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Icon đám mây xanh dương ở giữa
                 SizedBox(
                   width: 68,
                   height: 58,
@@ -965,8 +965,6 @@ class UserView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // Dòng chữ: "Kéo thả ảnh vào đây hoặc chọn ảnh"
                 RichText(
                   textAlign: TextAlign.center,
                   text: TextSpan(
@@ -985,8 +983,6 @@ class UserView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-
-                // Dòng phụ: "Hỗ trợ: JPG, PNG, WEBP (tối đa 10MB)"
                 Text(
                   spec.supportedFormatsText,
                   textAlign: TextAlign.center,
@@ -997,8 +993,6 @@ class UserView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 22),
-
-                // Nút bấm "Chọn ảnh" màu xanh dương
                 ElevatedButton(
                   onPressed: () => context
                       .read<UserViewModel>()
@@ -1029,7 +1023,6 @@ class UserView extends StatelessWidget {
     );
   }
 
-  /// Dòng kẻ ngang kèm chữ "Hoặc chụp ảnh" ở chính giữa
   Widget _buildOrCaptureDivider(String text) {
     return Row(
       children: [
@@ -1050,7 +1043,6 @@ class UserView extends StatelessWidget {
     );
   }
 
-  /// Nút "Chụp ảnh bằng camera" có viền sáng, bo góc và icon máy ảnh nền xanh nhạt
   Widget _buildCameraCaptureButton(BuildContext context, String label) {
     return OutlinedButton(
       onPressed: () =>
@@ -1092,7 +1084,6 @@ class UserView extends StatelessWidget {
     );
   }
 
-  /// Hộp thông báo lưu ý màu xanh nhạt ở dưới cùng
   Widget _buildBottomWarningNotice(AiUploadSpecModel spec) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -1143,10 +1134,1507 @@ class UserView extends StatelessWidget {
       ),
     );
   }
+
+  // ===========================================================================
+  // MÀN HÌNH 3: KẾT QUẢ PHÂN TÍCH (NGƯỜI DÙNG) (GIỮ NGUYÊN 100%)
+  // ===========================================================================
+
+  Widget _buildAnalysisResultMainContent(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    final result = viewModel.analysisResult;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildTopConfidenceBanner(result),
+          const SizedBox(height: 24),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isTwoColumn = constraints.maxWidth >= 660;
+
+              if (isTwoColumn) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 46,
+                      child: _buildAnalyzedWoundImageCard(result),
+                    ),
+                    const SizedBox(width: 28),
+                    Expanded(
+                      flex: 54,
+                      child: _buildRightIdentificationColumn(
+                        context,
+                        viewModel,
+                      ),
+                    ),
+                  ],
+                );
+              } else {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildAnalyzedWoundImageCard(result),
+                    const SizedBox(height: 24),
+                    _buildRightIdentificationColumn(context, viewModel),
+                  ],
+                );
+              }
+            },
+          ),
+          const SizedBox(height: 26),
+          _buildResultBottomInfoNotice(result.bottomNoticeText),
+          const SizedBox(height: 24),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _buildViewFirstAidGuideButton(
+              context,
+              result.primaryActionLabel,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopConfidenceBanner(AiAnalysisResultModel result) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECFDF5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFA7F3D0), width: 1.2),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFFD1FAE5),
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFF10B981), width: 1.8),
+            ),
+            child: const Icon(
+              Icons.check_rounded,
+              color: Color(0xFF059669),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  result.bannerTitle,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  result.bannerConfidenceText,
+                  style: const TextStyle(
+                    fontSize: 17.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF15803D),
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnalyzedWoundImageCard(AiAnalysisResultModel result) {
+    return Container(
+      height: 336,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x140D2B6B),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (result.analyzedImageUrl != null &&
+              result.analyzedImageUrl!.isNotEmpty)
+            Image.network(
+              result.analyzedImageUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return const CustomPaint(painter: _ForearmAbrasionPainter());
+              },
+            )
+          else
+            const CustomPaint(painter: _ForearmAbrasionPainter()),
+          Center(
+            child: SizedBox(
+              width: 196,
+              height: 196,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF22C55E),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(6),
+                      ),
+                    ),
+                    child: Text(
+                      result.boundingBoxLabel,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: const Color(0xFF22C55E),
+                          width: 2.5,
+                        ),
+                        borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(6),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRightIdentificationColumn(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    final result = viewModel.analysisResult;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x060D2B6B),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                result.infoCardTitle,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0D2B6B),
+                ),
+              ),
+              const SizedBox(height: 18),
+              _buildIdentificationInfoRow(
+                label: result.injuryTypeLabel,
+                value: result.injuryType,
+              ),
+              const SizedBox(height: 14),
+              _buildIdentificationInfoRow(
+                label: result.confidenceRowLabel,
+                value: result.formattedConfidence,
+              ),
+              const SizedBox(height: 14),
+              _buildIdentificationInfoRow(
+                label: result.locationRowLabel,
+                value: viewModel.selectedLocationLabel,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          result.locationSectionTitle,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0D2B6B),
+          ),
+        ),
+        const SizedBox(height: 14),
+        _buildLocationSelectorRow(context, viewModel),
+      ],
+    );
+  }
+
+  Widget _buildIdentificationInfoRow({
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 132,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF64748B),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocationSelectorRow(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        const double spacing = 10;
+        final int count = viewModel.injuryLocations.length;
+
+        int columns = count;
+        if (maxWidth < 280) {
+          columns = 2;
+        } else if (maxWidth < 390) {
+          columns = 3;
+        }
+
+        final double cardWidth =
+            (maxWidth - (spacing * (columns - 1))) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: viewModel.injuryLocations.map((option) {
+            final isSelected = viewModel.selectedLocationId == option.id;
+            return SizedBox(
+              width: cardWidth,
+              child: _buildSingleLocationOptionCard(
+                context,
+                option: option,
+                isSelected: isSelected,
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildSingleLocationOptionCard(
+    BuildContext context, {
+    required InjuryLocationOptionModel option,
+    required bool isSelected,
+  }) {
+    final Color strokeAndTextColor = isSelected
+        ? const Color(0xFF2563EB)
+        : const Color(0xFF64748B);
+    final Color iconStrokeColor = isSelected
+        ? const Color(0xFF2563EB)
+        : const Color(0xFF94A3B8);
+
+    return Material(
+      color: isSelected ? const Color(0xFFEBF2FE) : const Color(0xFFFAFBFD),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () =>
+            context.read<UserViewModel>().selectInjuryLocation(option.id),
+        child: Container(
+          height: 98,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected
+                  ? const Color(0xFF3B82F6)
+                  : const Color(0xFFE2E8F0),
+              width: isSelected ? 1.6 : 1.2,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 36,
+                height: 36,
+                child: CustomPaint(
+                  painter: _BodyPartIconPainter(
+                    partId: option.id,
+                    color: iconStrokeColor,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                option.label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                  color: strokeAndTextColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultBottomInfoNotice(String message) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFDBEAFE), width: 1.2),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.verified_user_outlined,
+            color: Color(0xFF2563EB),
+            size: 24,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF334155),
+                height: 1.45,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewFirstAidGuideButton(BuildContext context, String label) {
+    return ElevatedButton(
+      onPressed: () =>
+          context.read<UserViewModel>().onViewFirstAidGuidePressed(),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF2563EB),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 18),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(width: 10),
+          const Icon(Icons.arrow_forward_rounded, size: 19),
+        ],
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // MÀN HÌNH 4: HƯỚNG DẪN SƠ CỨU (NGƯỜI DÙNG) (ĐỒNG BỘ ĐỘNG VỚI MÀN HÌNH 5)
+  // ===========================================================================
+
+  Widget _buildFirstAidGuideMainContent(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    final guide = viewModel.firstAidGuide;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 1. Tiêu đề chính: "Hướng dẫn sơ cứu – <Tên tổn thương>"
+          Text(
+            guide.screenTitle,
+            style: const TextStyle(
+              fontSize: 23,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0D2B6B),
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // 2. Hộp thông báo "Tình trạng tổn thương" (Màu vàng kem)
+          _buildInjuryStatusYellowBox(guide),
+          const SizedBox(height: 24),
+
+          // 3. Tiêu đề "Các bước sơ cứu" + Khung thẻ Timeline 4 bước
+          Text(
+            guide.stepsSectionTitle,
+            style: const TextStyle(
+              fontSize: 18.5,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0D2B6B),
+            ),
+          ),
+          const SizedBox(height: 14),
+          _buildFirstAidStepsTimelineCard(guide.steps),
+          const SizedBox(height: 24),
+
+          // 4. Hộp cảnh báo đỏ "Khi nào cần đi khám ngay?"
+          _buildWhenToSeeDoctorRedBox(guide),
+          const SizedBox(height: 24),
+
+          // 5. Nút hành động "Quay lại phân tích ảnh" ở góc dưới bên phải
+          Align(
+            alignment: Alignment.centerRight,
+            child: _buildBackToImageAnalysisButton(
+              context,
+              guide.backButtonLabel,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInjuryStatusYellowBox(FirstAidGuideModel guide) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEFBEB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFDE68A), width: 1.2),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(
+            width: 44,
+            height: 44,
+            child: CustomPaint(painter: _SoftAmberWarningTrianglePainter()),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  guide.statusBoxTitle,
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  guide.severityText,
+                  style: const TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  guide.safetyNoteText,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFirstAidStepsTimelineCard(List<FirstAidStepModel> steps) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x050D2B6B),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: List.generate(steps.length, (index) {
+          final isLast = index == steps.length - 1;
+          return _buildSingleFirstAidTimelineStep(
+            step: steps[index],
+            isLast: isLast,
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildSingleFirstAidTimelineStep({
+    required FirstAidStepModel step,
+    required bool isLast,
+  }) {
+    return Stack(
+      children: [
+        if (!isLast)
+          Positioned(
+            left: 13.25,
+            top: 28,
+            bottom: 0,
+            width: 1.5,
+            child: Container(color: const Color(0xFFCBD5E1)),
+          ),
+        Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : 24),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                margin: const EdgeInsets.only(top: 4),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF2563EB),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '${step.stepNumber}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3B82F6),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                padding: const EdgeInsets.all(7),
+                child: CustomPaint(
+                  painter: _FirstAidStepIconPainter(stepId: step.id),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      step.title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0D2B6B),
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      step.description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF475569),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWhenToSeeDoctorRedBox(FirstAidGuideModel guide) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFECACA), width: 1.2),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.warning_amber_rounded,
+                color: Color(0xFFDC2626),
+                size: 24,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  guide.redWarningTitle,
+                  style: const TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFB91C1C),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...guide.redWarningBullets.map(
+            (bullet) => Padding(
+              padding: const EdgeInsets.only(left: 18, bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '•  ',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF991B1B),
+                      height: 1.45,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      bullet,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF991B1B),
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBackToImageAnalysisButton(BuildContext context, String label) {
+    return ElevatedButton(
+      onPressed: () =>
+          context.read<UserViewModel>().onBackToImageAnalysisPressed(),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF2563EB),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // MÀN HÌNH 5: TRA CỨU KIẾN THỨC (NGƯỜI DÙNG) THEO ẢNH THIẾT KẾ MỚI
+  // ===========================================================================
+
+  Widget _buildKnowledgeLookupMainContent(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 1. Tiêu đề chính: "Kiến thức sơ cứu"
+          const Text(
+            'Kiến thức sơ cứu',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0D2B6B),
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // 2. Thanh tìm kiếm: Ô nhập từ khóa + Nút "Tìm kiếm"
+          _buildKnowledgeSearchBarRow(context),
+          const SizedBox(height: 18),
+
+          // 3. Hàng 5 nút lọc danh mục: Tất cả, Vết thương, Bỏng, Xương khớp, Khác
+          _buildKnowledgeCategoryFilterRow(context, viewModel),
+          const SizedBox(height: 22),
+
+          // 4. Lưới 2 cột hiển thị 6 thẻ kiến thức sơ cứu (Click vào mở ngay Hướng dẫn sơ cứu)
+          _buildKnowledgeTopicsGrid(context, viewModel),
+        ],
+      ),
+    );
+  }
+
+  /// Thành phần 2 (Màn hình 5): Thanh tìm kiếm có ô nhập và nút "Tìm kiếm"
+  Widget _buildKnowledgeSearchBarRow(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 480;
+
+        final searchInputBox = Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFD8E3F2), width: 1.2),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
+          child: TextField(
+            onChanged: (value) =>
+                context.read<UserViewModel>().updateKnowledgeSearchQuery(value),
+            onSubmitted: (_) =>
+                context.read<UserViewModel>().onKnowledgeSearchSubmitted(),
+            style: const TextStyle(
+              fontSize: 14.5,
+              color: Color(0xFF1E293B),
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: const InputDecoration(
+              isDense: true,
+              border: InputBorder.none,
+              icon: Icon(
+                Icons.search_rounded,
+                color: Color(0xFF64748B),
+                size: 21,
+              ),
+              hintText: 'Tìm kiếm kiến thức, ví dụ: bỏng, vết cắt...',
+              hintStyle: TextStyle(
+                fontSize: 14.5,
+                color: Color(0xFF94A3B8),
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ),
+        );
+
+        final searchButton = SizedBox(
+          height: 48,
+          child: ElevatedButton.icon(
+            onPressed: () =>
+                context.read<UserViewModel>().onKnowledgeSearchSubmitted(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.search_rounded, size: 19),
+            label: const Text(
+              'Tìm kiếm',
+              style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+            ),
+          ),
+        );
+
+        if (isCompact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              searchInputBox,
+              const SizedBox(height: 10),
+              searchButton,
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: searchInputBox),
+            const SizedBox(width: 12),
+            searchButton,
+          ],
+        );
+      },
+    );
+  }
+
+  /// Thành phần 3 (Màn hình 5): Dãy 5 nút lọc danh mục (Tất cả, Vết thương, Bỏng, Xương khớp, Khác)
+  Widget _buildKnowledgeCategoryFilterRow(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: viewModel.knowledgeCategories.map((category) {
+        final isSelected = viewModel.selectedKnowledgeCategoryId == category.id;
+
+        return Material(
+          color: isSelected ? const Color(0xFF2563EB) : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => context.read<UserViewModel>().selectKnowledgeCategory(
+              category.id,
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF2563EB)
+                      : const Color(0xFFE2E8F0),
+                  width: 1.2,
+                ),
+              ),
+              child: Text(
+                category.label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                  color: isSelected ? Colors.white : const Color(0xFF334155),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// Thành phần 4 (Màn hình 5): Lưới 2 cột gồm 6 thẻ kiến thức sơ cứu
+  Widget _buildKnowledgeTopicsGrid(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    final topics = viewModel.filteredKnowledgeTopics;
+
+    if (topics.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: const Center(
+          child: Text(
+            'Không tìm thấy kiến thức sơ cứu phù hợp với từ khóa.',
+            style: TextStyle(
+              fontSize: 14.5,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final int columns = maxWidth >= 560 ? 2 : 1;
+        const double spacing = 20;
+        const double runSpacing = 18;
+        final double cardWidth =
+            (maxWidth - (spacing * (columns - 1))) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: runSpacing,
+          children: topics.map((topic) {
+            return SizedBox(
+              width: cardWidth,
+              child: _buildSingleKnowledgeTopicCard(context, topic),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  /// Từng thẻ kiến thức sơ cứu (Khi click vào sẽ chuyển ngay sang Màn hình 4: Hướng dẫn sơ cứu)
+  Widget _buildSingleKnowledgeTopicCard(
+    BuildContext context,
+    KnowledgeTopicModel topic,
+  ) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () =>
+            context.read<UserViewModel>().onKnowledgeTopicCardTapped(topic),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x060D2B6B),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Ảnh thu nhỏ (Thumbnail) bo góc bên trái
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  width: 82,
+                  height: 76,
+                  child: _buildSafeKnowledgeThumbnail(topic),
+                ),
+              ),
+              const SizedBox(width: 16),
+
+              // Cột Tiêu đề & Mô tả ngắn bên phải
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      topic.title,
+                      style: const TextStyle(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0D2B6B),
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      topic.subtitle,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF64748B),
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSafeKnowledgeThumbnail(KnowledgeTopicModel topic) {
+    if (topic.imageUrl != null && topic.imageUrl!.isNotEmpty) {
+      return Image.network(
+        topic.imageUrl!,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return CustomPaint(
+            painter: _KnowledgeTopicThumbnailPainter(topicId: topic.id),
+          );
+        },
+      );
+    }
+    return CustomPaint(
+      painter: _KnowledgeTopicThumbnailPainter(topicId: topic.id),
+    );
+  }
 }
 
-/// CustomPainter vẽ đường viền nét đứt bo góc (Dashed Rounded Border)
-/// Sử dụng 100% thư viện chuẩn của Flutter mà không cần cài thêm package ngoài.
+// =============================================================================
+// CÁC LỚP CUSTOM PAINTER VẼ ĐỒ HỌA THUẦN FLUTTER (KHÔNG PHỤ THUỘC ASSET NGOÀI)
+// =============================================================================
+
+/// CustomPainter vẽ hình ảnh minh họa thu nhỏ cho 6 thẻ kiến thức trên Màn hình 5
+class _KnowledgeTopicThumbnailPainter extends CustomPainter {
+  final String topicId;
+
+  const _KnowledgeTopicThumbnailPainter({required this.topicId});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final w = size.width;
+    final h = size.height;
+
+    switch (topicId) {
+      case 'abrasion':
+        // 1. Trầy xước: Nền da sáng mịn với vết trầy xước đỏ hồng ở trung tâm
+        final skinPaint = Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF3D5C1), Color(0xFFE5B89B), Color(0xFFD6A080)],
+          ).createShader(rect);
+        canvas.drawRect(rect, skinPaint);
+
+        final center = Offset(w * 0.50, h * 0.50);
+        final glowPaint = Paint()
+          ..shader = RadialGradient(
+            colors: [
+              const Color(0xFFDC2626).withValues(alpha: 0.45),
+              const Color(0xFFDC2626).withValues(alpha: 0.0),
+            ],
+          ).createShader(Rect.fromCircle(center: center, radius: 24));
+        canvas.drawCircle(center, 24, glowPaint);
+
+        final patchPaint = Paint()
+          ..color = const Color(0xFFC84B31).withValues(alpha: 0.78)
+          ..style = PaintingStyle.fill;
+        canvas.drawOval(
+          Rect.fromCenter(center: center, width: 18, height: 26),
+          patchPaint,
+        );
+        break;
+
+      case 'cut_laceration':
+        // 2. Vết cắt / Vết rách: Nền da cẳng tay có đường vết cắt chéo đỏ sẫm
+        final skinPaint = Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFECC7B0), Color(0xFFD8A486), Color(0xFFC58C6D)],
+          ).createShader(rect);
+        canvas.drawRect(rect, skinPaint);
+
+        final cutGlowPaint = Paint()
+          ..color = const Color(0xFFDC2626).withValues(alpha: 0.28)
+          ..strokeWidth = 10
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke;
+        canvas.drawLine(
+          Offset(w * 0.34, h * 0.18),
+          Offset(w * 0.62, h * 0.80),
+          cutGlowPaint,
+        );
+
+        final cutLinePaint = Paint()
+          ..color = const Color(0xFF991B1B)
+          ..strokeWidth = 3.2
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke;
+        canvas.drawLine(
+          Offset(w * 0.34, h * 0.18),
+          Offset(w * 0.62, h * 0.80),
+          cutLinePaint,
+        );
+
+        // Đốm trắng nhỏ băng/mô dọc vết rách giống ảnh mẫu
+        canvas.drawCircle(
+          Offset(w * 0.49, h * 0.52),
+          3.2,
+          Paint()..color = const Color(0xFFFEE2E2),
+        );
+        break;
+
+      case 'burn':
+        // 3. Bỏng: Nền tối mờ với mu bàn tay có vết bỏng đỏ hồng
+        final bgPaint = Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF64748B), Color(0xFF475569)],
+          ).createShader(rect);
+        canvas.drawRect(rect, bgPaint);
+
+        final handPath = Path()
+          ..moveTo(w * 0.15, h)
+          ..quadraticBezierTo(w * 0.22, h * 0.25, w * 0.58, h * 0.18)
+          ..quadraticBezierTo(w * 0.88, h * 0.24, w * 0.86, h)
+          ..close();
+
+        final handSkinPaint = Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFEABFA4), Color(0xFFD79C7A)],
+          ).createShader(rect);
+        canvas.drawPath(handPath, handSkinPaint);
+
+        final burnCenter = Offset(w * 0.54, h * 0.55);
+        final burnPaint = Paint()
+          ..shader = RadialGradient(
+            colors: [
+              const Color(0xFFDC2626).withValues(alpha: 0.72),
+              const Color(0xFFEA580C).withValues(alpha: 0.35),
+              const Color(0xFFEA580C).withValues(alpha: 0.0),
+            ],
+          ).createShader(Rect.fromCircle(center: burnCenter, radius: 24));
+        canvas.drawCircle(burnCenter, 24, burnPaint);
+        break;
+
+      case 'bruise':
+        // 4. Bầm: Vùng da sáng có vết bầm tím xanh sẫm lan tỏa ở giữa
+        final skinPaint = Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF1D4C2), Color(0xFFE0B8A0)],
+          ).createShader(rect);
+        canvas.drawRect(rect, skinPaint);
+
+        final bruiseCenter = Offset(w * 0.48, h * 0.52);
+        final bruisePaint = Paint()
+          ..shader = RadialGradient(
+            colors: [
+              const Color(0xFF4C1D95).withValues(alpha: 0.65),
+              const Color(0xFF6D28D9).withValues(alpha: 0.38),
+              const Color(0xFF7C3AED).withValues(alpha: 0.0),
+            ],
+            stops: const [0.0, 0.55, 1.0],
+          ).createShader(Rect.fromCircle(center: bruiseCenter, radius: 28));
+        canvas.drawCircle(bruiseCenter, 28, bruisePaint);
+        break;
+
+      case 'foreign_body':
+        // 5. Dị vật: Nền xám đen kim loại với vòng tròn dị vật ở trung tâm
+        final darkBgPaint = Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF64748B), Color(0xFF334155), Color(0xFF1E293B)],
+          ).createShader(rect);
+        canvas.drawRect(rect, darkBgPaint);
+
+        // Vệt chéo kim loại phía dưới
+        final strapPaint = Paint()
+          ..color = const Color(0xFF0F172A)
+          ..strokeWidth = 12
+          ..strokeCap = StrokeCap.round;
+        canvas.drawLine(
+          Offset(w * 0.20, h * 0.88),
+          Offset(w * 0.78, h * 0.22),
+          strapPaint,
+        );
+
+        final objCenter = Offset(w * 0.48, h * 0.50);
+        canvas.drawCircle(
+          objCenter,
+          17,
+          Paint()..color = const Color(0xFF1E293B),
+        );
+        canvas.drawCircle(
+          objCenter,
+          14,
+          Paint()
+            ..color = const Color(0xFFD97706)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3.0,
+        );
+        canvas.drawCircle(
+          objCenter,
+          8,
+          Paint()..color = const Color(0xFF78350F),
+        );
+        break;
+
+      case 'poisoning':
+      default:
+        // 6. Ngộ độc: Thực phẩm/quả bị nấm mốc xanh lục trên nền sáng
+        final tablePaint = Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF5E1DA), Color(0xFFE5C4B8)],
+          ).createShader(rect);
+        canvas.drawRect(rect, tablePaint);
+
+        // Quả/thực phẩm đỏ cam phía sau
+        canvas.drawCircle(
+          Offset(w * 0.36, h * 0.44),
+          16,
+          Paint()..color = const Color(0xFFDC2626).withValues(alpha: 0.75),
+        );
+
+        // Khối nấm mốc xanh lục đặc trưng ở trung tâm
+        final moldCenter = Offset(w * 0.54, h * 0.54);
+        canvas.drawCircle(
+          moldCenter,
+          19,
+          Paint()..color = const Color(0xFF4D7C0F),
+        );
+        canvas.drawCircle(
+          Offset(w * 0.52, h * 0.50),
+          13,
+          Paint()..color = const Color(0xFF84CC16),
+        );
+        canvas.drawCircle(
+          Offset(w * 0.60, h * 0.58),
+          8,
+          Paint()..color = const Color(0xFFBEF264),
+        );
+        break;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _KnowledgeTopicThumbnailPainter oldDelegate) {
+    return oldDelegate.topicId != topicId;
+  }
+}
+
+/// CustomPainter tô màu nền Sidebar bên trái và vẽ đường phân cách dọc kéo dài
+/// hết chiều cao thực tế của Row mà không cần dùng IntrinsicHeight
+class _WorkspaceSidebarBackgroundPainter extends CustomPainter {
+  final double sidebarWidth;
+  final Color backgroundColor;
+  final Color dividerColor;
+
+  const _WorkspaceSidebarBackgroundPainter({
+    required this.sidebarWidth,
+    required this.backgroundColor,
+    required this.dividerColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bgPaint = Paint()
+      ..color = backgroundColor
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(Rect.fromLTWH(0, 0, sidebarWidth, size.height), bgPaint);
+
+    final dividerPaint = Paint()
+      ..color = dividerColor
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(
+      Offset(sidebarWidth + 0.5, 0),
+      Offset(sidebarWidth + 0.5, size.height),
+      dividerPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _WorkspaceSidebarBackgroundPainter oldDelegate) {
+    return oldDelegate.sidebarWidth != sidebarWidth ||
+        oldDelegate.backgroundColor != backgroundColor ||
+        oldDelegate.dividerColor != dividerColor;
+  }
+}
+
+/// CustomPainter vẽ biểu tượng tam giác cảnh báo bo góc màu vàng cam mềm mại (Màn hình 4)
+class _SoftAmberWarningTrianglePainter extends CustomPainter {
+  const _SoftAmberWarningTrianglePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    final trianglePath = Path()
+      ..moveTo(w * 0.50, h * 0.10)
+      ..quadraticBezierTo(w * 0.55, h * 0.10, w * 0.59, h * 0.18)
+      ..lineTo(w * 0.90, h * 0.76)
+      ..quadraticBezierTo(w * 0.95, h * 0.86, w * 0.84, h * 0.88)
+      ..lineTo(w * 0.16, h * 0.88)
+      ..quadraticBezierTo(w * 0.05, h * 0.86, w * 0.10, h * 0.76)
+      ..lineTo(w * 0.41, h * 0.18)
+      ..quadraticBezierTo(w * 0.45, h * 0.10, w * 0.50, h * 0.10)
+      ..close();
+
+    final fillPaint = Paint()
+      ..color = const Color(0xFFFDE68A).withValues(alpha: 0.65)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(trianglePath, fillPaint);
+
+    final borderPaint = Paint()
+      ..color = const Color(0xFFF59E0B)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(trianglePath, borderPaint);
+
+    final exclamationPaint = Paint()
+      ..color = const Color(0xFFD97706)
+      ..strokeWidth = 2.6
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(w * 0.50, h * 0.36),
+      Offset(w * 0.50, h * 0.60),
+      exclamationPaint,
+    );
+    canvas.drawCircle(
+      Offset(w * 0.50, h * 0.73),
+      1.6,
+      Paint()..color = const Color(0xFFD97706),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// CustomPainter vẽ biểu tượng y tế màu trắng bên trong 4 ô vuông xanh của Các bước sơ cứu (Màn hình 4)
+class _FirstAidStepIconPainter extends CustomPainter {
+  final String stepId;
+
+  const _FirstAidStepIconPainter({required this.stepId});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    final strokePaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 1.8
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    switch (stepId) {
+      case 'wash_hands':
+      case 'clean_wound':
+      case 'antiseptic':
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(w * 0.24, h * 0.34, w * 0.52, h * 0.58),
+            const Radius.circular(3.5),
+          ),
+          strokePaint,
+        );
+        canvas.drawRect(
+          Rect.fromLTWH(w * 0.38, h * 0.20, w * 0.24, h * 0.14),
+          strokePaint,
+        );
+        canvas.drawLine(
+          Offset(w * 0.50, h * 0.20),
+          Offset(w * 0.50, h * 0.10),
+          strokePaint,
+        );
+        canvas.drawLine(
+          Offset(w * 0.36, h * 0.10),
+          Offset(w * 0.68, h * 0.10),
+          strokePaint,
+        );
+        canvas.drawLine(
+          Offset(w * 0.50, h * 0.52),
+          Offset(w * 0.50, h * 0.72),
+          strokePaint,
+        );
+        canvas.drawLine(
+          Offset(w * 0.40, h * 0.62),
+          Offset(w * 0.60, h * 0.62),
+          strokePaint,
+        );
+        break;
+
+      case 'bandage_wound':
+      default:
+        final dropPath = Path()
+          ..moveTo(w * 0.50, h * 0.14)
+          ..quadraticBezierTo(w * 0.80, h * 0.48, w * 0.76, h * 0.68)
+          ..arcToPoint(
+            Offset(w * 0.24, h * 0.68),
+            radius: Radius.circular(w * 0.26),
+            clockwise: true,
+          )
+          ..quadraticBezierTo(w * 0.20, h * 0.48, w * 0.50, h * 0.14)
+          ..close();
+        canvas.drawPath(dropPath, strokePaint);
+        break;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _FirstAidStepIconPainter oldDelegate) {
+    return oldDelegate.stepId != stepId;
+  }
+}
+
+/// CustomPainter vẽ đường viền nét đứt bo góc (Dashed Rounded Border) cho Màn hình 2
 class _DashedBorderPainter extends CustomPainter {
   final Color color;
   final double strokeWidth;
@@ -1172,7 +2660,6 @@ class _DashedBorderPainter extends CustomPainter {
 
     final r = math.min(borderRadius, math.min(size.width, size.height) / 2);
 
-    // Vẽ 4 cạnh thẳng nét đứt
     _drawDashedLine(canvas, paint, Offset(r, 0), Offset(size.width - r, 0));
     _drawDashedLine(
       canvas,
@@ -1188,7 +2675,6 @@ class _DashedBorderPainter extends CustomPainter {
     );
     _drawDashedLine(canvas, paint, Offset(0, size.height - r), Offset(0, r));
 
-    // Vẽ 4 góc bo tròn
     if (r > 0) {
       canvas.drawArc(
         Rect.fromCircle(center: Offset(r, r), radius: r),
@@ -1252,5 +2738,322 @@ class _DashedBorderPainter extends CustomPainter {
         oldDelegate.dashLength != dashLength ||
         oldDelegate.gapLength != gapLength ||
         oldDelegate.borderRadius != borderRadius;
+  }
+}
+
+/// CustomPainter tái tạo chân thực hình chụp cánh tay có vết trầy xước đỏ ở giữa (Màn hình 3)
+class _ForearmAbrasionPainter extends CustomPainter {
+  const _ForearmAbrasionPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+
+    final bgPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+        colors: [Color(0xFF475569), Color(0xFF1E293B), Color(0xFF0F172A)],
+      ).createShader(rect);
+    canvas.drawRect(rect, bgPaint);
+
+    final armPath = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width * 0.62, 0)
+      ..quadraticBezierTo(
+        size.width * 0.85,
+        size.height * 0.48,
+        size.width,
+        size.height * 0.88,
+      )
+      ..lineTo(size.width, size.height)
+      ..lineTo(size.width * 0.14, size.height)
+      ..quadraticBezierTo(
+        size.width * 0.04,
+        size.height * 0.62,
+        0,
+        size.height * 0.42,
+      )
+      ..close();
+
+    final skinPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFFE5B899),
+          Color(0xFFD9A17C),
+          Color(0xFFC68863),
+          Color(0xFFA86B47),
+        ],
+        stops: [0.0, 0.38, 0.75, 1.0],
+      ).createShader(rect);
+    canvas.drawPath(armPath, skinPaint);
+
+    final highlightCenter = Offset(size.width * 0.46, size.height * 0.50);
+    final skinHighlightPaint = Paint()
+      ..shader = RadialGradient(
+        center: Alignment.center,
+        radius: 0.65,
+        colors: [
+          const Color(0xFFF7D7C0).withValues(alpha: 0.48),
+          const Color(0xFFE5B899).withValues(alpha: 0.0),
+        ],
+      ).createShader(Rect.fromCircle(center: highlightCenter, radius: 130));
+    canvas.drawPath(armPath, skinHighlightPaint);
+
+    final woundCenter = Offset(size.width * 0.50, size.height * 0.52);
+    final inflammationPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFFB91C1C).withValues(alpha: 0.42),
+          const Color(0xFFDC2626).withValues(alpha: 0.18),
+          const Color(0xFFDC2626).withValues(alpha: 0.0),
+        ],
+        stops: const [0.0, 0.55, 1.0],
+      ).createShader(Rect.fromCircle(center: woundCenter, radius: 54));
+    canvas.drawCircle(woundCenter, 54, inflammationPaint);
+
+    canvas.save();
+    canvas.translate(woundCenter.dx, woundCenter.dy);
+    canvas.rotate(-0.25);
+
+    final abrasionOuterPath = Path()
+      ..moveTo(-18, -32)
+      ..cubicTo(-4, -38, 18, -30, 24, -14)
+      ..cubicTo(30, 4, 26, 26, 10, 34)
+      ..cubicTo(-8, 40, -24, 28, -28, 10)
+      ..cubicTo(-32, -8, -28, -24, -18, -32)
+      ..close();
+
+    final abrasionBasePaint = Paint()
+      ..color = const Color(0xFFC24136).withValues(alpha: 0.72)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(abrasionOuterPath, abrasionBasePaint);
+
+    final scratchPaint = Paint()
+      ..color = const Color(0xFF991B1B).withValues(alpha: 0.82)
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawLine(const Offset(-12, -20), const Offset(8, 18), scratchPaint);
+    canvas.drawLine(const Offset(-4, -24), const Offset(14, 10), scratchPaint);
+    canvas.drawLine(const Offset(-18, -8), const Offset(2, 24), scratchPaint);
+
+    final spotPaint = Paint()
+      ..color = const Color(0xFF7F1D1D).withValues(alpha: 0.85)
+      ..style = PaintingStyle.fill;
+
+    const List<Offset> spots = [
+      Offset(-8, -14),
+      Offset(6, -16),
+      Offset(-14, 2),
+      Offset(0, -2),
+      Offset(12, 4),
+      Offset(-6, 16),
+      Offset(8, 18),
+      Offset(-12, -6),
+      Offset(4, 10),
+    ];
+    for (final pt in spots) {
+      canvas.drawCircle(pt, 2.6, spotPaint);
+    }
+
+    final lightTissuePaint = Paint()
+      ..color = const Color(0xFFFCA5A5).withValues(alpha: 0.55)
+      ..style = PaintingStyle.fill;
+    canvas.drawOval(
+      Rect.fromCenter(center: const Offset(-2, -6), width: 14, height: 8),
+      lightTissuePaint,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: const Offset(4, 12), width: 12, height: 7),
+      lightTissuePaint,
+    );
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// CustomPainter vẽ 5 biểu tượng vị trí cơ thể dạng Line-Art chuẩn theo ảnh thiết kế Màn hình 3
+class _BodyPartIconPainter extends CustomPainter {
+  final String partId;
+  final Color color;
+
+  const _BodyPartIconPainter({required this.partId, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final w = size.width;
+    final h = size.height;
+
+    switch (partId) {
+      case 'arm':
+        final path = Path()
+          ..moveTo(w * 0.24, h * 0.62)
+          ..quadraticBezierTo(w * 0.16, h * 0.84, w * 0.42, h * 0.84)
+          ..lineTo(w * 0.72, h * 0.78)
+          ..quadraticBezierTo(w * 0.86, h * 0.72, w * 0.78, h * 0.56)
+          ..quadraticBezierTo(w * 0.66, h * 0.46, w * 0.52, h * 0.56)
+          ..lineTo(w * 0.56, h * 0.26)
+          ..quadraticBezierTo(w * 0.56, h * 0.14, w * 0.44, h * 0.16)
+          ..quadraticBezierTo(w * 0.34, h * 0.18, w * 0.36, h * 0.32)
+          ..lineTo(w * 0.34, h * 0.56);
+        canvas.drawPath(path, paint);
+        break;
+
+      case 'leg':
+        final legPath = Path()
+          ..moveTo(w * 0.36, h * 0.16)
+          ..lineTo(w * 0.36, h * 0.68)
+          ..quadraticBezierTo(w * 0.22, h * 0.74, w * 0.22, h * 0.82)
+          ..lineTo(w * 0.68, h * 0.82)
+          ..quadraticBezierTo(w * 0.76, h * 0.82, w * 0.74, h * 0.72)
+          ..lineTo(w * 0.58, h * 0.66)
+          ..lineTo(w * 0.58, h * 0.16);
+        canvas.drawPath(legPath, paint);
+        break;
+
+      case 'head':
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset(w * 0.5, h * 0.42),
+            width: w * 0.52,
+            height: h * 0.56,
+          ),
+          paint,
+        );
+        canvas.drawArc(
+          Rect.fromCenter(
+            center: Offset(w * 0.23, h * 0.44),
+            width: w * 0.1,
+            height: h * 0.16,
+          ),
+          math.pi / 2,
+          math.pi,
+          false,
+          paint,
+        );
+        canvas.drawArc(
+          Rect.fromCenter(
+            center: Offset(w * 0.77, h * 0.44),
+            width: w * 0.1,
+            height: h * 0.16,
+          ),
+          -math.pi / 2,
+          math.pi,
+          false,
+          paint,
+        );
+        canvas.drawLine(
+          Offset(w * 0.40, h * 0.68),
+          Offset(w * 0.36, h * 0.84),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(w * 0.60, h * 0.68),
+          Offset(w * 0.64, h * 0.84),
+          paint,
+        );
+        break;
+
+      case 'back':
+        final torsoPath = Path()
+          ..moveTo(w * 0.22, h * 0.26)
+          ..quadraticBezierTo(w * 0.50, h * 0.18, w * 0.78, h * 0.26)
+          ..lineTo(w * 0.72, h * 0.82)
+          ..lineTo(w * 0.28, h * 0.82)
+          ..close();
+        canvas.drawPath(torsoPath, paint);
+        canvas.drawLine(
+          Offset(w * 0.50, h * 0.24),
+          Offset(w * 0.50, h * 0.80),
+          paint,
+        );
+        break;
+
+      case 'other':
+      default:
+        canvas.drawLine(
+          Offset(w * 0.42, h * 0.42),
+          Offset(w * 0.20, h * 0.20),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(w * 0.20, h * 0.20),
+          Offset(w * 0.36, h * 0.20),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(w * 0.20, h * 0.20),
+          Offset(w * 0.20, h * 0.36),
+          paint,
+        );
+
+        canvas.drawLine(
+          Offset(w * 0.58, h * 0.42),
+          Offset(w * 0.80, h * 0.20),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(w * 0.80, h * 0.20),
+          Offset(w * 0.64, h * 0.20),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(w * 0.80, h * 0.20),
+          Offset(w * 0.80, h * 0.36),
+          paint,
+        );
+
+        canvas.drawLine(
+          Offset(w * 0.42, h * 0.58),
+          Offset(w * 0.20, h * 0.80),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(w * 0.20, h * 0.80),
+          Offset(w * 0.36, h * 0.80),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(w * 0.20, h * 0.80),
+          Offset(w * 0.20, h * 0.64),
+          paint,
+        );
+
+        canvas.drawLine(
+          Offset(w * 0.58, h * 0.58),
+          Offset(w * 0.80, h * 0.80),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(w * 0.80, h * 0.80),
+          Offset(w * 0.64, h * 0.80),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(w * 0.80, h * 0.80),
+          Offset(w * 0.80, h * 0.64),
+          paint,
+        );
+        break;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BodyPartIconPainter oldDelegate) {
+    return oldDelegate.partId != partId || oldDelegate.color != color;
   }
 }
