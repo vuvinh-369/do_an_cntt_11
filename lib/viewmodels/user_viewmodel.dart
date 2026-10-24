@@ -9,6 +9,7 @@ class UserViewModel extends ChangeNotifier {
   // 2 = Kết quả phân tích (Màn hình 3)
   // 3 = Hướng dẫn sơ cứu (Màn hình 4)
   // 4 = Tra cứu kiến thức (Màn hình 5)
+  // 5 = ChatBox AI (Màn hình 6)
   int _currentScreenIndex = 0;
   int get currentScreenIndex => _currentScreenIndex;
 
@@ -16,8 +17,8 @@ class UserViewModel extends ChangeNotifier {
   int _selectedNavIndex = 0;
   int get selectedNavIndex => _selectedNavIndex;
 
-  // Trạng thái mục đang chọn trên Sidebar bên trái (Màn hình 2, 3, 4, 5)
-  // 0: Trang chủ, 1: Phân tích ảnh AI, 2: Hướng dẫn sơ cứu, 3: Kiến thức, 4: Tài liệu, 5: Lịch sử phân tích
+  // Trạng thái mục đang chọn trên Sidebar bên trái (Màn hình 2, 3, 4, 5, 6)
+  // 0: Trang chủ, 1: Phân tích ảnh AI, 2: Hướng dẫn sơ cứu, 3: Kiến thức, 4: Tài liệu, 5: ChatBox AI
   int _selectedSidebarIndex = 1;
   int get selectedSidebarIndex => _selectedSidebarIndex;
 
@@ -44,6 +45,11 @@ class UserViewModel extends ChangeNotifier {
   String _knowledgeSearchQuery = '';
   String get knowledgeSearchQuery => _knowledgeSearchQuery;
 
+  // Bộ điều khiển và trạng thái văn bản đang nhập trên Màn hình 6: ChatBox AI
+  final TextEditingController chatInputController = TextEditingController();
+  String _currentChatInput = '';
+  String get currentChatInput => _currentChatInput;
+
   // Danh sách 4 mục menu ngang trên Top Navigation Bar
   final List<String> navItems = const [
     'Trang chủ',
@@ -52,7 +58,7 @@ class UserViewModel extends ChangeNotifier {
     'Lịch sử',
   ];
 
-  // Danh sách 6 mục menu dọc trên Sidebar bên trái (Màn hình 2, 3, 4, 5)
+  // Danh sách 6 mục menu dọc trên Sidebar bên trái (Màn hình 2, 3, 4, 5, 6)
   final List<SidebarMenuItemModel> sidebarMenuItems = const [
     SidebarMenuItemModel(
       id: 'home',
@@ -80,11 +86,37 @@ class UserViewModel extends ChangeNotifier {
       icon: Icons.description_outlined,
     ),
     SidebarMenuItemModel(
-      id: 'analysis_history',
-      title: 'Lịch sử phân tích',
-      icon: Icons.history,
+      id: 'ai_chatbox',
+      title: 'ChatBox AI',
+      icon: Icons.smart_toy_outlined,
     ),
   ];
+
+  // Lịch sử tin nhắn hội thoại trên Màn hình 6: "6. ChatBox AI (Người dùng)"
+  // Khởi tạo sẵn 2 tin nhắn chuẩn xác 100% theo ảnh thiết kế
+  final List<ChatMessageModel> _chatMessages = [
+    const ChatMessageModel(
+      id: 'msg_user_initial_1',
+      isUser: true,
+      messageText: 'Làm sao để xử lý khi bị bỏng nhẹ?',
+      timestamp: '10:24',
+    ),
+    const ChatMessageModel(
+      id: 'msg_ai_initial_2',
+      isUser: false,
+      messageText: 'Với vết bỏng nhẹ (độ 1), bạn có thể làm theo các bước sau:',
+      numberedSteps: [
+        'Làm mát vùng bỏng bằng nước sạch mát trong 10–20 phút.',
+        'Không chọc vỡ bóng nước (nếu có).',
+        'Bôi thuốc mỡ kháng sinh và băng gạc sạch.',
+        'Theo dõi, nếu có dấu hiệu nhiễm trùng hoặc đau tăng, hãy đi khám bác sĩ.',
+      ],
+      timestamp: '10:24',
+      relatedTopicId: 'burn',
+    ),
+  ];
+
+  List<ChatMessageModel> get chatMessages => List.unmodifiable(_chatMessages);
 
   // Cấu hình văn bản chuẩn theo thiết kế màn hình "Phân tích hình ảnh tổn thương" (Màn hình 2)
   final AiUploadSpecModel uploadSpec = const AiUploadSpecModel(
@@ -209,7 +241,7 @@ class UserViewModel extends ChangeNotifier {
     }).toList();
   }
 
-  // Từ điển dữ liệu Hướng dẫn sơ cứu (Màn hình 4) tương ứng với từng vết thương khi click từ Màn hình 5 hoặc Trang chủ
+  // Từ điển dữ liệu Hướng dẫn sơ cứu (Màn hình 4) tương ứng với từng vết thương
   final Map<String, FirstAidGuideModel> firstAidGuidesByTopic = const {
     'abrasion': FirstAidGuideModel(
       topicId: 'abrasion',
@@ -586,7 +618,7 @@ class UserViewModel extends ChangeNotifier {
   ];
 
   // =========================================================================
-  // LOGIC ĐIỀU HƯỚNG XUYÊN SUỐT GIỮA 5 MÀN HÌNH (1 <-> 2 <-> 3 <-> 4 <-> 5)
+  // LOGIC ĐIỀU HƯỚNG XUYÊN SUỐT GIỮA 6 MÀN HÌNH (1 <-> 2 <-> 3 <-> 4 <-> 5 <-> 6)
   // =========================================================================
 
   /// Chuyển sang Màn hình 1: Trang chủ
@@ -630,6 +662,13 @@ class UserViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Chuyển sang Màn hình 6: ChatBox AI (Người dùng)
+  void navigateToChatBoxAi() {
+    _currentScreenIndex = 5;
+    _selectedSidebarIndex = 5;
+    notifyListeners();
+  }
+
   /// Xử lý khi bấm chọn mục trên Top Navigation Bar
   void selectNavIndex(int index) {
     _selectedNavIndex = index;
@@ -644,13 +683,13 @@ class UserViewModel extends ChangeNotifier {
       // Đồng bộ với mục Tài liệu trên Sidebar
       _selectedSidebarIndex = 4;
     } else if (index == 3) {
-      // Đồng bộ với mục Lịch sử phân tích trên Sidebar
+      // Mở nhanh không gian làm việc
       _selectedSidebarIndex = 5;
     }
     notifyListeners();
   }
 
-  /// Xử lý khi bấm chọn mục trên thanh Sidebar bên trái (Màn hình 2, 3, 4, 5)
+  /// Xử lý khi bấm chọn mục trên thanh Sidebar bên trái (Màn hình 2, 3, 4, 5, 6)
   void selectSidebarIndex(int index) {
     _selectedSidebarIndex = index;
     if (index == 0) {
@@ -667,6 +706,9 @@ class UserViewModel extends ChangeNotifier {
       // Bấm "Kiến thức" -> Mở Màn hình 5 (Tra cứu kiến thức)
       _currentScreenIndex = 4;
       _selectedNavIndex = 1;
+    } else if (index == 5) {
+      // Bấm "ChatBox AI" -> Mở Màn hình 6 (ChatBox AI)
+      _currentScreenIndex = 5;
     } else {
       debugPrint(
         '[UserViewModel] Chuyển mục Sidebar: ${sidebarMenuItems[index].title}',
@@ -715,6 +757,170 @@ class UserViewModel extends ChangeNotifier {
   }
 
   // =========================================================================
+  // LOGIC TƯƠNG TÁC CHATBOX AI & TRẢ LỜI XÁC THỰC (GROUNDED QA - MÀN HÌNH 6)
+  // =========================================================================
+
+  /// Cập nhật nội dung đang nhập trong ô ChatBox AI
+  void updateChatInput(String value) {
+    _currentChatInput = value;
+  }
+
+  /// Gửi câu hỏi của người dùng và sinh phản hồi xác thực từ kho dữ liệu sơ cứu đã kiểm chứng
+  void sendChatMessage([String? submittedText]) {
+    final rawText = (submittedText ?? chatInputController.text).trim();
+    if (rawText.isEmpty) return;
+
+    final now = DateTime.now();
+    final formattedTime =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    // 1. Thêm tin nhắn của người dùng vào lịch sử hội thoại
+    _chatMessages.add(
+      ChatMessageModel(
+        id: 'user_${now.microsecondsSinceEpoch}',
+        isUser: true,
+        messageText: rawText,
+        timestamp: formattedTime,
+      ),
+    );
+
+    // 2. Xóa trắng ô nhập liệu
+    chatInputController.clear();
+    _currentChatInput = '';
+
+    // 3. Sinh phản hồi của AI dựa trên kho tri thức sơ cứu nội bộ đã kiểm chứng
+    final aiReply = _generateGroundedAiReply(rawText, formattedTime);
+    _chatMessages.add(aiReply);
+
+    debugPrint('[UserViewModel] Đã gửi câu hỏi ChatBox AI: "$rawText"');
+    notifyListeners();
+  }
+
+  /// Đối chiếu câu hỏi của người dùng với kho dữ liệu `firstAidGuidesByTopic`
+  /// Nếu nằm ngoài phạm vi kiến thức đã kiểm chứng, từ chối suy đoán y khoa và hướng dẫn an toàn
+  ChatMessageModel _generateGroundedAiReply(
+    String userQuestion,
+    String timestamp,
+  ) {
+    final normalized = userQuestion.toLowerCase();
+
+    // Trường hợp hỏi về bỏng
+    if (normalized.contains('bỏng') || normalized.contains('phỏng')) {
+      return ChatMessageModel(
+        id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
+        isUser: false,
+        messageText:
+            'Với vết bỏng nhẹ (độ 1), bạn có thể làm theo các bước sau:',
+        numberedSteps: const [
+          'Làm mát vùng bỏng bằng nước sạch mát trong 10–20 phút.',
+          'Không chọc vỡ bóng nước (nếu có).',
+          'Bôi thuốc mỡ kháng sinh và băng gạc sạch.',
+          'Theo dõi, nếu có dấu hiệu nhiễm trùng hoặc đau tăng, hãy đi khám bác sĩ.',
+        ],
+        timestamp: timestamp,
+        relatedTopicId: 'burn',
+      );
+    }
+
+    // Trường hợp hỏi về trầy xước
+    if (normalized.contains('trầy') || normalized.contains('xước')) {
+      final guide = firstAidGuidesByTopic['abrasion']!;
+      return ChatMessageModel(
+        id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
+        isUser: false,
+        messageText:
+            'Đối với tình huống ${guide.severityText.toLowerCase()}, bạn hãy thực hiện theo các bước sơ cứu đã kiểm chứng sau:',
+        numberedSteps: guide.steps
+            .map((step) => '${step.title}: ${step.description}')
+            .toList(),
+        timestamp: timestamp,
+        relatedTopicId: 'abrasion',
+      );
+    }
+
+    // Trường hợp hỏi về vết cắt / vết rách / chảy máu
+    if (normalized.contains('cắt') ||
+        normalized.contains('rách') ||
+        normalized.contains('đứt tay') ||
+        normalized.contains('chảy máu')) {
+      final guide = firstAidGuidesByTopic['cut_laceration']!;
+      return ChatMessageModel(
+        id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
+        isUser: false,
+        messageText:
+            'Khi gặp ${guide.severityText.toLowerCase()}, bạn cần thực hiện các bước sơ cứu sau:',
+        numberedSteps: guide.steps
+            .map((step) => '${step.title}: ${step.description}')
+            .toList(),
+        timestamp: timestamp,
+        relatedTopicId: 'cut_laceration',
+      );
+    }
+
+    // Trường hợp hỏi về vết bầm tím
+    if (normalized.contains('bầm') || normalized.contains('tím')) {
+      final guide = firstAidGuidesByTopic['bruise']!;
+      return ChatMessageModel(
+        id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
+        isUser: false,
+        messageText:
+            'Với tình trạng ${guide.severityText.toLowerCase()}, bạn có thể xử lý theo các bước sau:',
+        numberedSteps: guide.steps
+            .map((step) => '${step.title}: ${step.description}')
+            .toList(),
+        timestamp: timestamp,
+        relatedTopicId: 'bruise',
+      );
+    }
+
+    // Trường hợp hỏi về dị vật
+    if (normalized.contains('dị vật') ||
+        normalized.contains('dằm') ||
+        normalized.contains('mảnh vỡ')) {
+      final guide = firstAidGuidesByTopic['foreign_body']!;
+      return ChatMessageModel(
+        id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
+        isUser: false,
+        messageText:
+            'Khi xử lý ${guide.severityText.toLowerCase()}, bạn hãy tuân thủ các bước an toàn sau:',
+        numberedSteps: guide.steps
+            .map((step) => '${step.title}: ${step.description}')
+            .toList(),
+        timestamp: timestamp,
+        relatedTopicId: 'foreign_body',
+      );
+    }
+
+    // Trường hợp hỏi về ngộ độc
+    if (normalized.contains('ngộ độc') || normalized.contains('nhiễm độc')) {
+      final guide = firstAidGuidesByTopic['poisoning']!;
+      return ChatMessageModel(
+        id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
+        isUser: false,
+        messageText:
+            'Trong trường hợp ${guide.severityText.toLowerCase()}, bạn cần thực hiện ngay các bước sau:',
+        numberedSteps: guide.steps
+            .map((step) => '${step.title}: ${step.description}')
+            .toList(),
+        timestamp: timestamp,
+        relatedTopicId: 'poisoning',
+      );
+    }
+
+    // Trường hợp câu hỏi nằm ngoài phạm vi dữ liệu sơ cứu đã kiểm chứng (Refusal-Aware Safety)
+    return ChatMessageModel(
+      id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
+      isUser: false,
+      messageText: 'Hiện tại hệ thống chỉ cung cấp hướng dẫn đã kiểm chứng cho 6 tình huống sơ cứu cơ bản (Bỏng, Trầy xước, Vết cắt/Vết rách, Bầm, Dị vật, Ngộ độc) và chưa có đủ cơ sở dữ liệu y khoa đã xác thực cho câu hỏi của bạn.',
+      numberedSteps: const [
+        'Vui lòng mô tả rõ một trong các tình trạng trên hoặc mở mục "Hướng dẫn sơ cứu" / "Kiến thức" ở thanh menu bên trái.',
+        'Nếu nạn nhân có dấu hiệu nguy cấp, hãy liên hệ ngay cơ sở y tế gần nhất hoặc gọi cấp cứu 115.',
+      ],
+      timestamp: timestamp,
+    );
+  }
+
+  // =========================================================================
   // CÁC HÀM SỰ KIỆN & CALLBACK ĐIỀU HƯỚNG NGHIỆP VỤ
   // =========================================================================
 
@@ -750,6 +956,8 @@ class UserViewModel extends ChangeNotifier {
       navigateToFirstAidGuide(topicId: 'abrasion');
     } else if (card.id == 'knowledge_lookup') {
       navigateToKnowledgeLookup();
+    } else if (card.id == 'ai_chatbox') {
+      navigateToChatBoxAi();
     }
   }
 
@@ -797,5 +1005,11 @@ class UserViewModel extends ChangeNotifier {
       '[UserViewModel] Bấm "Quay lại phân tích ảnh" -> Quay về Màn hình 2 (Phân tích ảnh AI)',
     );
     navigateToAiAnalysis();
+  }
+
+  @override
+  void dispose() {
+    chatInputController.dispose();
+    super.dispose();
   }
 }

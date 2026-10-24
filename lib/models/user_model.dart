@@ -38,7 +38,7 @@ class CommonSituationModel {
   });
 }
 
-/// Mô hình dữ liệu cho từng mục menu trên thanh Sidebar bên trái (Màn hình 2, 3, 4, 5)
+/// Mô hình dữ liệu cho từng mục menu trên thanh Sidebar bên trái (Màn hình 2, 3, 4, 5, 6)
 class SidebarMenuItemModel {
   final String id;
   final String title;
@@ -192,5 +192,24 @@ class KnowledgeTopicModel {
     required this.title,
     required this.subtitle,
     this.imageUrl,
+  });
+}
+
+/// Mô hình dữ liệu cho từng Tin nhắn trong màn hình "6. ChatBox AI (Người dùng)" (Màn hình 6)
+class ChatMessageModel {
+  final String id;
+  final bool isUser;
+  final String messageText;
+  final List<String> numberedSteps;
+  final String timestamp;
+  final String? relatedTopicId;
+
+  const ChatMessageModel({
+    required this.id,
+    required this.isUser,
+    required this.messageText,
+    this.numberedSteps = const [],
+    required this.timestamp,
+    this.relatedTopicId,
   });
 }

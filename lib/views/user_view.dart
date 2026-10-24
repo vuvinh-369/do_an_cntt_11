@@ -39,7 +39,7 @@ class UserView extends StatelessWidget {
                 // 1. Thanh điều hướng trên cùng dùng chung cho toàn ứng dụng
                 _buildTopNavigationBar(context, viewModel),
 
-                // Đường kẻ phân tách mảnh dưới Header khi ở Màn hình 2, 3, 4 hoặc 5
+                // Đường kẻ phân tách mảnh dưới Header khi ở Màn hình 2, 3, 4, 5 hoặc 6
                 if (viewModel.currentScreenIndex != 0)
                   const Divider(
                     height: 1,
@@ -47,7 +47,7 @@ class UserView extends StatelessWidget {
                     color: Color(0xFFE8EEF5),
                   ),
 
-                // 2. Chuyển đổi mượt mà giữa Trang chủ (0) và Không gian làm việc có Sidebar (1, 2, 3, 4)
+                // 2. Chuyển đổi mượt mà giữa Trang chủ (0) và Không gian làm việc có Sidebar (1, 2, 3, 4, 5)
                 if (viewModel.currentScreenIndex == 0)
                   _buildHomeScreenBody(context, viewModel)
                 else
@@ -157,7 +157,7 @@ class UserView extends StatelessWidget {
                   ),
                 ),
 
-              // Bên phải: Nút tìm kiếm (ở Trang chủ) + Ảnh đại diện & Tên "Nguyễn Văn A" (ở Màn hình 2, 3, 4, 5)
+              // Bên phải: Nút tìm kiếm (ở Trang chủ) + Ảnh đại diện & Tên "Nguyễn Văn A" (ở Màn hình 2, 3, 4, 5, 6)
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -744,7 +744,7 @@ class UserView extends StatelessWidget {
   }
 
   // ===========================================================================
-  // KHUNG BỐ CỤC CHUNG CHO MÀN HÌNH 2, MÀN HÌNH 3, MÀN HÌNH 4 & MÀN HÌNH 5
+  // KHUNG BỐ CỤC CHUNG CHO MÀN HÌNH 2, 3, 4, 5 & 6 (CÓ SIDEBAR BÊN TRÁI)
   // ===========================================================================
 
   Widget _buildAiWorkspaceBody(BuildContext context, UserViewModel viewModel) {
@@ -753,7 +753,9 @@ class UserView extends StatelessWidget {
         final isWide = constraints.maxWidth >= 780;
 
         final Widget rightContent;
-        if (viewModel.currentScreenIndex == 4) {
+        if (viewModel.currentScreenIndex == 5) {
+          rightContent = _buildChatBoxAiMainContent(context, viewModel);
+        } else if (viewModel.currentScreenIndex == 4) {
           rightContent = _buildKnowledgeLookupMainContent(context, viewModel);
         } else if (viewModel.currentScreenIndex == 3) {
           rightContent = _buildFirstAidGuideMainContent(context, viewModel);
@@ -782,7 +784,7 @@ class UserView extends StatelessWidget {
                 // Khoảng cách 1px dành cho đường kẻ dọc phân tách
                 const SizedBox(width: 1),
 
-                // Cột phải: Nội dung Màn hình 2, 3, 4 hoặc 5
+                // Cột phải: Nội dung Màn hình 2, 3, 4, 5 hoặc 6
                 Expanded(child: rightContent),
               ],
             ),
@@ -1918,7 +1920,7 @@ class UserView extends StatelessWidget {
   }
 
   // ===========================================================================
-  // MÀN HÌNH 5: TRA CỨU KIẾN THỨC (NGƯỜI DÙNG) THEO ẢNH THIẾT KẾ MỚI
+  // MÀN HÌNH 5: TRA CỨU KIẾN THỨC (NGƯỜI DÙNG) (GIỮ NGUYÊN 100%)
   // ===========================================================================
 
   Widget _buildKnowledgeLookupMainContent(
@@ -1958,7 +1960,6 @@ class UserView extends StatelessWidget {
     );
   }
 
-  /// Thành phần 2 (Màn hình 5): Thanh tìm kiếm có ô nhập và nút "Tìm kiếm"
   Widget _buildKnowledgeSearchBarRow(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -2045,7 +2046,6 @@ class UserView extends StatelessWidget {
     );
   }
 
-  /// Thành phần 3 (Màn hình 5): Dãy 5 nút lọc danh mục (Tất cả, Vết thương, Bỏng, Xương khớp, Khác)
   Widget _buildKnowledgeCategoryFilterRow(
     BuildContext context,
     UserViewModel viewModel,
@@ -2090,7 +2090,6 @@ class UserView extends StatelessWidget {
     );
   }
 
-  /// Thành phần 4 (Màn hình 5): Lưới 2 cột gồm 6 thẻ kiến thức sơ cứu
   Widget _buildKnowledgeTopicsGrid(
     BuildContext context,
     UserViewModel viewModel,
@@ -2141,7 +2140,6 @@ class UserView extends StatelessWidget {
     );
   }
 
-  /// Từng thẻ kiến thức sơ cứu (Khi click vào sẽ chuyển ngay sang Màn hình 4: Hướng dẫn sơ cứu)
   Widget _buildSingleKnowledgeTopicCard(
     BuildContext context,
     KnowledgeTopicModel topic,
@@ -2169,7 +2167,6 @@ class UserView extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Ảnh thu nhỏ (Thumbnail) bo góc bên trái
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: SizedBox(
@@ -2179,8 +2176,6 @@ class UserView extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
-
-              // Cột Tiêu đề & Mô tả ngắn bên phải
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -2231,11 +2226,468 @@ class UserView extends StatelessWidget {
       painter: _KnowledgeTopicThumbnailPainter(topicId: topic.id),
     );
   }
+
+  // ===========================================================================
+  // MÀN HÌNH 6: CHATBOX AI (NGƯỜI DÙNG) THEO ẢNH THIẾT KẾ MỚI
+  // ===========================================================================
+
+  Widget _buildChatBoxAiMainContent(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 1. Tiêu đề chính "ChatBox AI" và Phụ đề
+          const Text(
+            'ChatBox AI',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0D2B6B),
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Hỏi đáp nhanh về các tình huống sơ cứu',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFF475569),
+            ),
+          ),
+          const SizedBox(height: 28),
+
+          // 2. Khu vực hiển thị danh sách tin nhắn hội thoại
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: List.generate(viewModel.chatMessages.length, (index) {
+              final message = viewModel.chatMessages[index];
+              final isLast = index == viewModel.chatMessages.length - 1;
+              return Padding(
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 22),
+                child: message.isUser
+                    ? _buildUserChatMessageRow(message)
+                    : _buildAiChatMessageRow(context, message),
+              );
+            }),
+          ),
+
+          // Khoảng đệm tạo độ thoáng chuẩn theo ảnh thiết kế trước thanh nhập câu hỏi
+          const SizedBox(height: 76),
+
+          // 3. Thanh nhập câu hỏi ở dưới cùng
+          _buildChatBottomInputBar(context, viewModel),
+        ],
+      ),
+    );
+  }
+
+  /// Hàng hiển thị tin nhắn của Người dùng (Căn phải kèm ảnh đại diện tròn bên phải)
+  Widget _buildUserChatMessageRow(ChatMessageModel message) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Flexible(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Bong bóng tin nhắn người dùng màu xanh dương nhạt
+              Container(
+                constraints: const BoxConstraints(maxWidth: 460),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 13,
+                ),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE8F1FF),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(14),
+                    topRight: Radius.circular(14),
+                    bottomLeft: Radius.circular(14),
+                    bottomRight: Radius.circular(6),
+                  ),
+                ),
+                child: Text(
+                  message.messageText,
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF0F172A),
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 5),
+
+              // Nhãn thời gian bên dưới bong bóng tin nhắn người dùng
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Text(
+                  message.timestamp,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF94A3B8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+
+        // Ảnh đại diện tròn của người dùng bên phải bong bóng chat
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: const Color(0xFFDBEAFE), width: 1.2),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: const CustomPaint(painter: _ChatUserPortraitAvatarPainter()),
+        ),
+      ],
+    );
+  }
+
+  /// Hàng hiển thị tin nhắn của Trợ lý AI (Căn trái kèm huy hiệu tròn khiên bảo vệ màu xanh)
+  Widget _buildAiChatMessageRow(
+    BuildContext context,
+    ChatMessageModel message,
+  ) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Huy hiệu Trợ lý AI hình tròn xanh dương có biểu tượng khiên bảo vệ trắng
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2563EB),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: const Color(0xFF93C5FD).withValues(alpha: 0.55),
+              width: 2.0,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x1F2563EB),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(8.5),
+          child: const CustomPaint(painter: _AiShieldBadgePainter()),
+        ),
+        const SizedBox(width: 12),
+
+        // Khung bong bóng phản hồi của Trợ lý AI
+        Flexible(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 560),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Câu mở đầu của AI
+                Text(
+                  message.messageText,
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1E293B),
+                    height: 1.45,
+                  ),
+                ),
+
+                // Danh sách các bước đánh số thứ tự (1., 2., 3., 4.)
+                if (message.numberedSteps.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  ...List.generate(message.numberedSteps.length, (index) {
+                    final stepNumber = index + 1;
+                    final stepContent = message.numberedSteps[index];
+                    final isLastStep =
+                        index == message.numberedSteps.length - 1;
+
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: isLastStep ? 0 : 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            child: Text(
+                              '$stepNumber.',
+                              style: const TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1E293B),
+                                height: 1.42,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              stepContent,
+                              style: const TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF1E293B),
+                                height: 1.42,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+
+                // Nhãn thời gian ở góc dưới bên trái bên trong bong bóng AI
+                const SizedBox(height: 10),
+                Text(
+                  message.timestamp,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF94A3B8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Thanh nhập câu hỏi ở dưới cùng của Màn hình 6 ("Nhập câu hỏi của bạn..." + Nút gửi máy bay giấy)
+  Widget _buildChatBottomInputBar(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    return Container(
+      height: 54,
+      padding: const EdgeInsets.only(left: 20, right: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060D2B6B),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: TextField(
+              controller: viewModel.chatInputController,
+              onChanged: (value) =>
+                  context.read<UserViewModel>().updateChatInput(value),
+              onSubmitted: (value) =>
+                  context.read<UserViewModel>().sendChatMessage(value),
+              style: const TextStyle(
+                fontSize: 14.5,
+                color: Color(0xFF1E293B),
+                fontWeight: FontWeight.w500,
+              ),
+              decoration: const InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                hintText: 'Nhập câu hỏi của bạn...',
+                hintStyle: TextStyle(
+                  fontSize: 14.5,
+                  color: Color(0xFF94A3B8),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+
+          // Nút gửi tin nhắn hình tròn màu xanh dương chứa biểu tượng máy bay giấy trắng
+          Material(
+            color: const Color(0xFF2563EB),
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () => context.read<UserViewModel>().sendChatMessage(),
+              child: const SizedBox(
+                width: 40,
+                height: 40,
+                child: Padding(
+                  padding: EdgeInsets.all(10),
+                  child: CustomPaint(painter: _PaperPlaneSendIconPainter()),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // =============================================================================
 // CÁC LỚP CUSTOM PAINTER VẼ ĐỒ HỌA THUẦN FLUTTER (KHÔNG PHỤ THUỘC ASSET NGOÀI)
 // =============================================================================
+
+/// CustomPainter vẽ biểu tượng Khiên Bảo Vệ có dấu tích trắng bên trong huy hiệu AI (Màn hình 6)
+class _AiShieldBadgePainter extends CustomPainter {
+  const _AiShieldBadgePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    final shieldStrokePaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final shieldPath = Path()
+      ..moveTo(w * 0.50, h * 0.08)
+      ..lineTo(w * 0.86, h * 0.22)
+      ..lineTo(w * 0.86, h * 0.50)
+      ..quadraticBezierTo(w * 0.86, h * 0.78, w * 0.50, h * 0.92)
+      ..quadraticBezierTo(w * 0.14, h * 0.78, w * 0.14, h * 0.50)
+      ..lineTo(w * 0.14, h * 0.22)
+      ..close();
+
+    canvas.drawPath(shieldPath, shieldStrokePaint);
+
+    // Dấu tích (Checkmark) bên trong khiên
+    final checkPath = Path()
+      ..moveTo(w * 0.35, h * 0.51)
+      ..lineTo(w * 0.46, h * 0.62)
+      ..lineTo(w * 0.67, h * 0.39);
+    canvas.drawPath(checkPath, shieldStrokePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// CustomPainter vẽ ảnh đại diện chân dung người dùng cạnh bong bóng tin nhắn (Màn hình 6)
+class _ChatUserPortraitAvatarPainter extends CustomPainter {
+  const _ChatUserPortraitAvatarPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final w = size.width;
+    final h = size.height;
+
+    // Nền tròn xanh xám nhạt
+    canvas.drawRect(rect, Paint()..color = const Color(0xFFDCEBFE));
+
+    // Phần áo vest/sơ mi xanh đen lịch sự ở phía dưới
+    final suitPath = Path()
+      ..moveTo(w * 0.12, h)
+      ..quadraticBezierTo(w * 0.20, h * 0.64, w * 0.50, h * 0.64)
+      ..quadraticBezierTo(w * 0.80, h * 0.64, w * 0.88, h)
+      ..close();
+    canvas.drawPath(suitPath, Paint()..color = const Color(0xFF1E3A8A));
+
+    // Cổ áo sơ mi trắng chữ V ở giữa
+    final collarPath = Path()
+      ..moveTo(w * 0.38, h * 0.66)
+      ..lineTo(w * 0.50, h * 0.86)
+      ..lineTo(w * 0.62, h * 0.66)
+      ..close();
+    canvas.drawPath(collarPath, Paint()..color = Colors.white);
+
+    // Phần cổ và khuôn mặt
+    canvas.drawRect(
+      Rect.fromCenter(
+        center: Offset(w * 0.50, h * 0.61),
+        width: w * 0.16,
+        height: h * 0.14,
+      ),
+      Paint()..color = const Color(0xFFEAC0A2),
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(w * 0.50, h * 0.40),
+        width: w * 0.38,
+        height: h * 0.42,
+      ),
+      Paint()..color = const Color(0xFFF3CFB6),
+    );
+
+    // Mái tóc gọn gàng phía trên
+    final hairPath = Path()
+      ..moveTo(w * 0.31, h * 0.40)
+      ..quadraticBezierTo(w * 0.32, h * 0.16, w * 0.52, h * 0.17)
+      ..quadraticBezierTo(w * 0.70, h * 0.18, w * 0.69, h * 0.39)
+      ..quadraticBezierTo(w * 0.54, h * 0.28, w * 0.31, h * 0.40)
+      ..close();
+    canvas.drawPath(hairPath, Paint()..color = const Color(0xFF1E293B));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// CustomPainter vẽ biểu tượng máy bay giấy nét mảnh màu trắng trên nút Gửi tin nhắn (Màn hình 6)
+class _PaperPlaneSendIconPainter extends CustomPainter {
+  const _PaperPlaneSendIconPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 1.8
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final planePath = Path()
+      ..moveTo(w * 0.88, h * 0.12)
+      ..lineTo(w * 0.10, h * 0.46)
+      ..lineTo(w * 0.44, h * 0.56)
+      ..lineTo(w * 0.56, h * 0.90)
+      ..close();
+
+    canvas.drawPath(planePath, paint);
+    canvas.drawLine(
+      Offset(w * 0.88, h * 0.12),
+      Offset(w * 0.44, h * 0.56),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
 
 /// CustomPainter vẽ hình ảnh minh họa thu nhỏ cho 6 thẻ kiến thức trên Màn hình 5
 class _KnowledgeTopicThumbnailPainter extends CustomPainter {
@@ -2311,7 +2763,6 @@ class _KnowledgeTopicThumbnailPainter extends CustomPainter {
           cutLinePaint,
         );
 
-        // Đốm trắng nhỏ băng/mô dọc vết rách giống ảnh mẫu
         canvas.drawCircle(
           Offset(w * 0.49, h * 0.52),
           3.2,
@@ -2388,7 +2839,6 @@ class _KnowledgeTopicThumbnailPainter extends CustomPainter {
           ).createShader(rect);
         canvas.drawRect(rect, darkBgPaint);
 
-        // Vệt chéo kim loại phía dưới
         final strapPaint = Paint()
           ..color = const Color(0xFF0F172A)
           ..strokeWidth = 12
@@ -2431,14 +2881,12 @@ class _KnowledgeTopicThumbnailPainter extends CustomPainter {
           ).createShader(rect);
         canvas.drawRect(rect, tablePaint);
 
-        // Quả/thực phẩm đỏ cam phía sau
         canvas.drawCircle(
           Offset(w * 0.36, h * 0.44),
           16,
           Paint()..color = const Color(0xFFDC2626).withValues(alpha: 0.75),
         );
 
-        // Khối nấm mốc xanh lục đặc trưng ở trung tâm
         final moldCenter = Offset(w * 0.54, h * 0.54);
         canvas.drawCircle(
           moldCenter,
