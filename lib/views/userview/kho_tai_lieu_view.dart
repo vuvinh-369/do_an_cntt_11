@@ -1,3 +1,4 @@
+// File: lib/views/userview/kho_tai_lieu_view.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -11,27 +12,30 @@ class KhoTaiLieuView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<UserViewModel>();
+    final isMobile = MediaQuery.sizeOf(context).width < 768;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 36,
+        vertical: isMobile ? 16 : 28,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. Hàng Tiêu đề "Kho tài liệu y tế" (Trái) + Nút "+ Thêm tài liệu" (Phải)
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 16,
-            runSpacing: 12,
+          // 1. Hàng Tiêu đề + Nút "+ Thêm tài liệu"
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Kho tài liệu y tế',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0D2B6B),
-                  letterSpacing: -0.3,
+              Expanded(
+                child: Text(
+                  isMobile ? 'Tài liệu lưu trữ' : 'Kho tài liệu y tế',
+                  style: TextStyle(
+                    fontSize: isMobile ? 18 : 24,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF0D2B6B),
+                    letterSpacing: -0.3,
+                  ),
                 ),
               ),
               ElevatedButton.icon(
@@ -41,29 +45,32 @@ class KhoTaiLieuView extends StatelessWidget {
                   backgroundColor: const Color(0xFF2563EB),
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 14,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 14 : 20,
+                    vertical: isMobile ? 11 : 14,
                   ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                icon: const Icon(Icons.add_rounded, size: 20),
-                label: const Text(
+                icon: const Icon(Icons.add_rounded, size: 19),
+                label: Text(
                   'Thêm tài liệu',
-                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: isMobile ? 13 : 14.5,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 22),
+          SizedBox(height: isMobile ? 14 : 22),
 
-          // 2. Hàng Thanh tìm kiếm "Tìm kiếm tài liệu..." + Dropdown "Tất cả danh mục"
+          // 2. Thanh tìm kiếm + Dropdown lọc danh mục
           _buildDocumentsSearchAndDropdownRow(context, viewModel),
-          const SizedBox(height: 22),
+          SizedBox(height: isMobile ? 14 : 22),
 
-          // 3. Khu vực chính: Cột danh mục tài liệu bên trái + Bảng danh sách tài liệu bên phải
+          // 3. Khu vực chính: Danh mục + Danh sách tài liệu
           LayoutBuilder(
             builder: (context, constraints) {
               final isWideContent = constraints.maxWidth >= 680;
@@ -85,6 +92,7 @@ class KhoTaiLieuView extends StatelessWidget {
                       child: _buildMedicalDocumentsTableCard(
                         context,
                         viewModel,
+                        isMobile: false,
                       ),
                     ),
                   ],
@@ -98,18 +106,22 @@ class KhoTaiLieuView extends StatelessWidget {
                       viewModel,
                       isVertical: false,
                     ),
-                    const SizedBox(height: 16),
-                    _buildMedicalDocumentsTableCard(context, viewModel),
+                    const SizedBox(height: 14),
+                    _buildMedicalDocumentsTableCard(
+                      context,
+                      viewModel,
+                      isMobile: isMobile,
+                    ),
                   ],
                 );
               }
             },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
-          // 4. Thanh phân trang (< 1 2 3 >) ở góc dưới bên phải
+          // 4. Thanh phân trang (< 1 2 3 >)
           Align(
-            alignment: Alignment.centerRight,
+            alignment: isMobile ? Alignment.center : Alignment.centerRight,
             child: _buildDocumentsPaginationBar(context, viewModel),
           ),
         ],
@@ -139,7 +151,7 @@ class KhoTaiLieuView extends StatelessWidget {
             onChanged: (value) =>
                 context.read<UserViewModel>().updateDocumentSearchQuery(value),
             style: const TextStyle(
-              fontSize: 14.5,
+              fontSize: 14,
               color: Color(0xFF1E293B),
               fontWeight: FontWeight.w500,
             ),
@@ -153,7 +165,7 @@ class KhoTaiLieuView extends StatelessWidget {
               ),
               hintText: 'Tìm kiếm tài liệu...',
               hintStyle: TextStyle(
-                fontSize: 14.5,
+                fontSize: 14,
                 color: Color(0xFF94A3B8),
                 fontWeight: FontWeight.w400,
               ),
@@ -271,13 +283,13 @@ class KhoTaiLieuView extends StatelessWidget {
         onTap: () =>
             context.read<UserViewModel>().selectDocumentCategory(category.id),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                width: 20,
-                height: 20,
+                width: 18,
+                height: 18,
                 child: CustomPaint(
                   painter: DocumentSubCategoryIconPainter(
                     categoryId: category.id,
@@ -287,13 +299,13 @@ class KhoTaiLieuView extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Flexible(
                 child: Text(
                   displayLabel,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 14.5,
+                    fontSize: 13.5,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected
                         ? const Color(0xFF2563EB)
@@ -310,8 +322,9 @@ class KhoTaiLieuView extends StatelessWidget {
 
   Widget _buildMedicalDocumentsTableCard(
     BuildContext context,
-    UserViewModel viewModel,
-  ) {
+    UserViewModel viewModel, {
+    required bool isMobile,
+  }) {
     final docs = viewModel.filteredMedicalDocuments;
 
     return Container(
@@ -332,49 +345,51 @@ class KhoTaiLieuView extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            color: const Color(0xFFF8FAFC),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            child: Row(
-              children: const [
-                Expanded(
-                  flex: 52,
-                  child: Text(
-                    'Tên tài liệu',
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF475569),
+          if (!isMobile) ...[
+            Container(
+              color: const Color(0xFFF8FAFC),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              child: Row(
+                children: const [
+                  Expanded(
+                    flex: 52,
+                    child: Text(
+                      'Tên tài liệu',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF475569),
+                      ),
                     ),
                   ),
-                ),
-                Expanded(
-                  flex: 28,
-                  child: Text(
-                    'Danh mục',
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF475569),
+                  Expanded(
+                    flex: 28,
+                    child: Text(
+                      'Danh mục',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF475569),
+                      ),
                     ),
                   ),
-                ),
-                Expanded(
-                  flex: 20,
-                  child: Text(
-                    'Ngày thêm',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF475569),
+                  Expanded(
+                    flex: 20,
+                    child: Text(
+                      'Ngày thêm',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF475569),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const Divider(height: 1, thickness: 1, color: Color(0xFFE8EEF5)),
+            const Divider(height: 1, thickness: 1, color: Color(0xFFE8EEF5)),
+          ],
           if (docs.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 42, horizontal: 20),
@@ -396,7 +411,12 @@ class KhoTaiLieuView extends StatelessWidget {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildSingleMedicalDocumentRow(context, viewModel, doc),
+                  _buildSingleMedicalDocumentRow(
+                    context,
+                    viewModel,
+                    doc,
+                    isMobile: isMobile,
+                  ),
                   if (!isLast)
                     const Divider(
                       height: 1,
@@ -414,9 +434,68 @@ class KhoTaiLieuView extends StatelessWidget {
   Widget _buildSingleMedicalDocumentRow(
     BuildContext context,
     UserViewModel viewModel,
-    MedicalDocumentModel doc,
-  ) {
+    MedicalDocumentModel doc, {
+    required bool isMobile,
+  }) {
     final isHighlightedBadge = doc.categoryId == 'basic_first_aid';
+
+    if (isMobile) {
+      return Material(
+        color: Colors.white,
+        child: InkWell(
+          onTap: () =>
+              _showOpenAndManageDocumentDialog(context, viewModel, doc),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEBF2FE),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  child: const CustomPaint(
+                    painter: MedicalDocumentRowIconPainter(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        doc.title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0D2B6B),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${doc.categoryLabel} • ${doc.dateAdded}',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFF94A3B8),
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Material(
       color: Colors.white,
@@ -584,16 +663,16 @@ class KhoTaiLieuView extends StatelessWidget {
                                 Text(
                                   'Thêm tài liệu y tế vào thiết bị',
                                   style: TextStyle(
-                                    fontSize: 18,
+                                    fontSize: 17,
                                     fontWeight: FontWeight.w800,
                                     color: Color(0xFF0D2B6B),
                                   ),
                                 ),
                                 SizedBox(height: 2),
                                 Text(
-                                  'Lưu trữ, phân loại và mở tệp tài liệu cục bộ trên thiết bị',
+                                  'Lưu trữ, phân loại và mở tệp tài liệu cục bộ',
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 12.5,
                                     color: Color(0xFF64748B),
                                   ),
                                 ),
@@ -695,12 +774,6 @@ class KhoTaiLieuView extends StatelessWidget {
                               color: Color(0xFFCBD5E1),
                             ),
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFCBD5E1),
-                            ),
-                          ),
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -741,47 +814,7 @@ class KhoTaiLieuView extends StatelessWidget {
                       ),
                       const SizedBox(height: 14),
                       const Text(
-                        '4. Đường dẫn tệp lưu trữ cục bộ trên thiết bị:',
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0D2B6B),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: localPathController,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF334155),
-                        ),
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(
-                            Icons.folder_outlined,
-                            size: 19,
-                            color: Color(0xFF2563EB),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFCBD5E1),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFCBD5E1),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        '5. Tóm tắt nội dung tài liệu:',
+                        '4. Tóm tắt nội dung tài liệu:',
                         style: TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w700,
@@ -804,12 +837,6 @@ class KhoTaiLieuView extends StatelessWidget {
                             vertical: 10,
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFCBD5E1),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide: const BorderSide(
                               color: Color(0xFFCBD5E1),
@@ -859,8 +886,8 @@ class KhoTaiLieuView extends StatelessWidget {
                               foregroundColor: Colors.white,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 13,
+                                horizontal: 18,
+                                vertical: 12,
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
@@ -868,7 +895,7 @@ class KhoTaiLieuView extends StatelessWidget {
                             ),
                             icon: const Icon(Icons.save_outlined, size: 18),
                             label: const Text(
-                              'Lưu tài liệu vào thiết bị',
+                              'Lưu tài liệu',
                               style: TextStyle(fontWeight: FontWeight.w700),
                             ),
                           ),
@@ -921,8 +948,8 @@ class KhoTaiLieuView extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            width: 44,
-                            height: 44,
+                            width: 42,
+                            height: 42,
                             decoration: BoxDecoration(
                               color: const Color(0xFFEBF2FE),
                               borderRadius: BorderRadius.circular(10),
@@ -932,7 +959,7 @@ class KhoTaiLieuView extends StatelessWidget {
                               painter: MedicalDocumentRowIconPainter(),
                             ),
                           ),
-                          const SizedBox(width: 14),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -942,7 +969,7 @@ class KhoTaiLieuView extends StatelessWidget {
                                       ? 'Quản lý & Phân loại tài liệu'
                                       : doc.title,
                                   style: const TextStyle(
-                                    fontSize: 18,
+                                    fontSize: 17,
                                     fontWeight: FontWeight.w800,
                                     color: Color(0xFF0D2B6B),
                                   ),
@@ -967,7 +994,7 @@ class KhoTaiLieuView extends StatelessWidget {
                                           editCategoryId,
                                         ),
                                         style: const TextStyle(
-                                          fontSize: 12.5,
+                                          fontSize: 12,
                                           fontWeight: FontWeight.w700,
                                           color: Color(0xFF2563EB),
                                         ),
@@ -976,7 +1003,7 @@ class KhoTaiLieuView extends StatelessWidget {
                                     Text(
                                       'Ngày thêm: ${doc.dateAdded}',
                                       style: const TextStyle(
-                                        fontSize: 13,
+                                        fontSize: 12.5,
                                         color: Color(0xFF64748B),
                                       ),
                                     ),
@@ -993,48 +1020,6 @@ class KhoTaiLieuView extends StatelessWidget {
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.sd_storage_outlined,
-                                  size: 18,
-                                  color: Color(0xFF2563EB),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Tệp cục bộ: ${doc.fileName} (${doc.fileExtension} • ${doc.fileSize})',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF1E293B),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Đường dẫn thiết bị: ${doc.localFilePath}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                       const SizedBox(height: 16),
                       if (isEditing) ...[
@@ -1122,20 +1107,20 @@ class KhoTaiLieuView extends StatelessWidget {
                         Text(
                           doc.summary,
                           style: const TextStyle(
-                            fontSize: 14.5,
+                            fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: Color(0xFF334155),
                             height: 1.45,
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 12),
                         ...doc.contentPoints.map(
                           (point) => Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: Text(
                               point,
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 13.5,
                                 color: Color(0xFF1E293B),
                                 height: 1.45,
                               ),
@@ -1146,9 +1131,8 @@ class KhoTaiLieuView extends StatelessWidget {
                       const SizedBox(height: 20),
                       Wrap(
                         alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 10,
-                        runSpacing: 10,
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
                           TextButton.icon(
                             onPressed: () {
@@ -1160,113 +1144,44 @@ class KhoTaiLieuView extends StatelessWidget {
                             ),
                             icon: const Icon(
                               Icons.delete_outline_rounded,
-                              size: 19,
+                              size: 18,
                             ),
                             label: const Text(
-                              'Xóa tài liệu',
+                              'Xóa',
                               style: TextStyle(fontWeight: FontWeight.w700),
                             ),
                           ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              OutlinedButton.icon(
-                                onPressed: () {
-                                  if (isEditing) {
-                                    viewModel.updateMedicalDocument(
-                                      id: doc.id,
-                                      newTitle: editTitleController.text,
-                                      newCategoryId: editCategoryId,
-                                      newSummary: editSummaryController.text,
-                                    );
-                                    Navigator.of(dialogContext).pop();
-                                  } else {
-                                    setModalState(() {
-                                      isEditing = true;
-                                    });
-                                  }
-                                },
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF0D2B6B),
-                                  side: const BorderSide(
-                                    color: Color(0xFFCBD5E1),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                icon: Icon(
-                                  isEditing
-                                      ? Icons.check_rounded
-                                      : Icons.edit_outlined,
-                                  size: 18,
-                                ),
-                                label: Text(
-                                  isEditing
-                                      ? 'Lưu thay đổi'
-                                      : 'Phân loại / Sửa',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              if (!isEditing &&
-                                  doc.relatedGuideTopicId != null) ...[
-                                OutlinedButton(
-                                  onPressed: () {
-                                    Navigator.of(dialogContext).pop();
-                                    viewModel.navigateToFirstAidGuide(
-                                      topicId: doc.relatedGuideTopicId,
-                                    );
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: const Color(0xFF2563EB),
-                                    side: const BorderSide(
-                                      color: Color(0xFFBFDBFE),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 12,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Hướng dẫn sơ cứu',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                              ],
-                              ElevatedButton(
-                                onPressed: () =>
-                                    Navigator.of(dialogContext).pop(),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF2563EB),
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Đóng',
-                                  style: TextStyle(fontWeight: FontWeight.w700),
-                                ),
-                              ),
-                            ],
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              if (isEditing) {
+                                viewModel.updateMedicalDocument(
+                                  id: doc.id,
+                                  newTitle: editTitleController.text,
+                                  newCategoryId: editCategoryId,
+                                  newSummary: editSummaryController.text,
+                                );
+                                Navigator.of(dialogContext).pop();
+                              } else {
+                                setModalState(() {
+                                  isEditing = true;
+                                });
+                              }
+                            },
+                            icon: Icon(
+                              isEditing
+                                  ? Icons.check_rounded
+                                  : Icons.edit_outlined,
+                              size: 17,
+                            ),
+                            label: Text(isEditing ? 'Lưu' : 'Sửa'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2563EB),
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Đóng'),
                           ),
                         ],
                       ),

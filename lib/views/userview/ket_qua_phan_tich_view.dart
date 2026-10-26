@@ -1,3 +1,4 @@
+// File: lib/views/userview/ket_qua_phan_tich_view.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -12,15 +13,19 @@ class KetQuaPhanTichView extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<UserViewModel>();
     final result = viewModel.analysisResult;
+    final isMobile = MediaQuery.sizeOf(context).width < 768;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 36,
+        vertical: isMobile ? 16 : 28,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildTopConfidenceBanner(result),
-          const SizedBox(height: 24),
+          _buildTopConfidenceBanner(result, isMobile: isMobile),
+          SizedBox(height: isMobile ? 16 : 24),
           LayoutBuilder(
             builder: (context, constraints) {
               final isTwoColumn = constraints.maxWidth >= 660;
@@ -48,32 +53,49 @@ class KetQuaPhanTichView extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildAnalyzedWoundImageCard(result),
-                    const SizedBox(height: 24),
-                    _buildRightIdentificationColumn(context, viewModel),
+                    _buildAnalyzedWoundImageCard(result, isMobile: isMobile),
+                    const SizedBox(height: 18),
+                    _buildRightIdentificationColumn(
+                      context,
+                      viewModel,
+                      isMobile: isMobile,
+                    ),
                   ],
                 );
               }
             },
           ),
-          const SizedBox(height: 26),
+          SizedBox(height: isMobile ? 18 : 26),
           _buildResultBottomInfoNotice(result.bottomNoticeText),
-          const SizedBox(height: 24),
-          Align(
-            alignment: Alignment.centerRight,
-            child: _buildViewFirstAidGuideButton(
+          SizedBox(height: isMobile ? 18 : 24),
+          if (isMobile)
+            _buildViewFirstAidGuideButton(
               context,
               result.primaryActionLabel,
+              isMobile: true,
+            )
+          else
+            Align(
+              alignment: Alignment.centerRight,
+              child: _buildViewFirstAidGuideButton(
+                context,
+                result.primaryActionLabel,
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildTopConfidenceBanner(AiAnalysisResultModel result) {
+  Widget _buildTopConfidenceBanner(
+    AiAnalysisResultModel result, {
+    bool isMobile = false,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 14 : 20,
+        vertical: isMobile ? 12 : 16,
+      ),
       decoration: BoxDecoration(
         color: const Color(0xFFECFDF5),
         borderRadius: BorderRadius.circular(12),
@@ -95,7 +117,7 @@ class KetQuaPhanTichView extends StatelessWidget {
               size: 20,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -104,18 +126,18 @@ class KetQuaPhanTichView extends StatelessWidget {
                 Text(
                   result.bannerTitle,
                   style: const TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1E293B),
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   result.bannerConfidenceText,
-                  style: const TextStyle(
-                    fontSize: 17.5,
+                  style: TextStyle(
+                    fontSize: isMobile ? 16 : 17.5,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF15803D),
+                    color: const Color(0xFF15803D),
                     letterSpacing: -0.2,
                   ),
                 ),
@@ -127,9 +149,12 @@ class KetQuaPhanTichView extends StatelessWidget {
     );
   }
 
-  Widget _buildAnalyzedWoundImageCard(AiAnalysisResultModel result) {
+  Widget _buildAnalyzedWoundImageCard(
+    AiAnalysisResultModel result, {
+    bool isMobile = false,
+  }) {
     return Container(
-      height: 336,
+      height: isMobile ? 250 : 336,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         boxShadow: const [
@@ -157,8 +182,8 @@ class KetQuaPhanTichView extends StatelessWidget {
             const CustomPaint(painter: ForearmAbrasionPainter()),
           Center(
             child: SizedBox(
-              width: 196,
-              height: 196,
+              width: isMobile ? 164 : 196,
+              height: isMobile ? 164 : 196,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -176,9 +201,9 @@ class KetQuaPhanTichView extends StatelessWidget {
                     child: Text(
                       result.boundingBoxLabel,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 15,
+                        fontSize: isMobile ? 13.5 : 15,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.1,
                       ),
@@ -208,8 +233,9 @@ class KetQuaPhanTichView extends StatelessWidget {
 
   Widget _buildRightIdentificationColumn(
     BuildContext context,
-    UserViewModel viewModel,
-  ) {
+    UserViewModel viewModel, {
+    bool isMobile = false,
+  }) {
     final result = viewModel.analysisResult;
 
     return Column(
@@ -217,7 +243,7 @@ class KetQuaPhanTichView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          padding: const EdgeInsets.all(22),
+          padding: EdgeInsets.all(isMobile ? 16 : 22),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -237,22 +263,22 @@ class KetQuaPhanTichView extends StatelessWidget {
               Text(
                 result.infoCardTitle,
                 style: const TextStyle(
-                  fontSize: 17,
+                  fontSize: 16.5,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF0D2B6B),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
               _buildIdentificationInfoRow(
                 label: result.injuryTypeLabel,
                 value: result.injuryType,
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               _buildIdentificationInfoRow(
                 label: result.confidenceRowLabel,
                 value: result.formattedConfidence,
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               _buildIdentificationInfoRow(
                 label: result.locationRowLabel,
                 value: viewModel.selectedLocationLabel,
@@ -260,7 +286,7 @@ class KetQuaPhanTichView extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
         Text(
           result.locationSectionTitle,
           style: const TextStyle(
@@ -269,7 +295,7 @@ class KetQuaPhanTichView extends StatelessWidget {
             color: Color(0xFF0D2B6B),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _buildLocationSelectorRow(context, viewModel),
       ],
     );
@@ -283,11 +309,11 @@ class KetQuaPhanTichView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 132,
+          width: 126,
           child: Text(
             label,
             style: const TextStyle(
-              fontSize: 14.5,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
               color: Color(0xFF64748B),
             ),
@@ -297,7 +323,7 @@ class KetQuaPhanTichView extends StatelessWidget {
           child: Text(
             value,
             style: const TextStyle(
-              fontSize: 15,
+              fontSize: 14.5,
               fontWeight: FontWeight.w700,
               color: Color(0xFF0F172A),
             ),
@@ -320,7 +346,7 @@ class KetQuaPhanTichView extends StatelessWidget {
         int columns = count;
         if (maxWidth < 280) {
           columns = 2;
-        } else if (maxWidth < 390) {
+        } else if (maxWidth < 420) {
           columns = 3;
         }
 
@@ -363,10 +389,13 @@ class KetQuaPhanTichView extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
-        onTap: () =>
-            context.read<UserViewModel>().selectInjuryLocation(option.id),
+        onTap: () {
+          final vm = context.read<UserViewModel>();
+          vm.selectInjuryLocation(option.id);
+          vm.updateLatestHistoryLocation(option.label);
+        },
         child: Container(
-          height: 98,
+          height: 92,
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
@@ -381,8 +410,8 @@ class KetQuaPhanTichView extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
-                width: 36,
-                height: 36,
+                width: 34,
+                height: 34,
                 child: CustomPaint(
                   painter: BodyPartIconPainter(
                     partId: option.id,
@@ -390,14 +419,14 @@ class KetQuaPhanTichView extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
                 option.label,
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12.5,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                   color: strokeAndTextColor,
                 ),
@@ -411,7 +440,7 @@ class KetQuaPhanTichView extends StatelessWidget {
 
   Widget _buildResultBottomInfoNotice(String message) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: const Color(0xFFEFF6FF),
         borderRadius: BorderRadius.circular(12),
@@ -423,14 +452,14 @@ class KetQuaPhanTichView extends StatelessWidget {
           const Icon(
             Icons.verified_user_outlined,
             color: Color(0xFF2563EB),
-            size: 24,
+            size: 22,
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               message,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 13.5,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFF334155),
                 height: 1.45,
@@ -442,27 +471,40 @@ class KetQuaPhanTichView extends StatelessWidget {
     );
   }
 
-  Widget _buildViewFirstAidGuideButton(BuildContext context, String label) {
-    return ElevatedButton(
-      onPressed: () =>
-          context.read<UserViewModel>().onViewFirstAidGuidePressed(),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF2563EB),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 18),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+  Widget _buildViewFirstAidGuideButton(
+    BuildContext context,
+    String label, {
+    bool isMobile = false,
+  }) {
+    return SizedBox(
+      width: isMobile ? double.infinity : null,
+      child: ElevatedButton(
+        onPressed: () =>
+            context.read<UserViewModel>().onViewFirstAidGuidePressed(),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2563EB),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: EdgeInsets.symmetric(
+            horizontal: 26,
+            vertical: isMobile ? 15 : 18,
           ),
-          const SizedBox(width: 10),
-          const Icon(Icons.arrow_forward_rounded, size: 19),
-        ],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(width: 10),
+            const Icon(Icons.arrow_forward_rounded, size: 19),
+          ],
+        ),
       ),
     );
   }

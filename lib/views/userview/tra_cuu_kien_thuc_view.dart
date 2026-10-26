@@ -1,3 +1,4 @@
+// File: lib/views/userview/tra_cuu_kien_thuc_view.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -11,77 +12,90 @@ class TraCuuKienThucView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<UserViewModel>();
+    final isMobile = MediaQuery.sizeOf(context).width < 768;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 36,
+        vertical: isMobile ? 16 : 28,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Kiến thức sơ cứu',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0D2B6B),
-              letterSpacing: -0.3,
+          if (!isMobile) ...[
+            const Text(
+              'Kiến thức sơ cứu',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0D2B6B),
+                letterSpacing: -0.3,
+              ),
             ),
+            const SizedBox(height: 20),
+          ],
+          _buildKnowledgeSearchBarRow(context, isMobile: isMobile),
+          const SizedBox(height: 14),
+          _buildKnowledgeCategoryFilterRow(
+            context,
+            viewModel,
+            isMobile: isMobile,
           ),
-          const SizedBox(height: 20),
-          _buildKnowledgeSearchBarRow(context),
           const SizedBox(height: 18),
-          _buildKnowledgeCategoryFilterRow(context, viewModel),
-          const SizedBox(height: 22),
           _buildKnowledgeTopicsGrid(context, viewModel),
         ],
       ),
     );
   }
 
-  Widget _buildKnowledgeSearchBarRow(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isCompact = constraints.maxWidth < 480;
-
-        final searchInputBox = Container(
-          height: 48,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFD8E3F2), width: 1.2),
+  Widget _buildKnowledgeSearchBarRow(
+    BuildContext context, {
+    bool isMobile = false,
+  }) {
+    final searchInputBox = Container(
+      height: 46,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD8E3F2), width: 1.2),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      alignment: Alignment.center,
+      child: TextField(
+        onChanged: (value) =>
+            context.read<UserViewModel>().updateKnowledgeSearchQuery(value),
+        onSubmitted: (_) =>
+            context.read<UserViewModel>().onKnowledgeSearchSubmitted(),
+        style: const TextStyle(
+          fontSize: 14,
+          color: Color(0xFF1E293B),
+          fontWeight: FontWeight.w500,
+        ),
+        decoration: const InputDecoration(
+          isDense: true,
+          border: InputBorder.none,
+          icon: Icon(Icons.search_rounded, color: Color(0xFF64748B), size: 20),
+          hintText: 'Tìm kiếm kiến thức, ví dụ: bỏng, vết cắt...',
+          hintStyle: TextStyle(
+            fontSize: 13.5,
+            color: Color(0xFF94A3B8),
+            fontWeight: FontWeight.w400,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          alignment: Alignment.center,
-          child: TextField(
-            onChanged: (value) =>
-                context.read<UserViewModel>().updateKnowledgeSearchQuery(value),
-            onSubmitted: (_) =>
-                context.read<UserViewModel>().onKnowledgeSearchSubmitted(),
-            style: const TextStyle(
-              fontSize: 14.5,
-              color: Color(0xFF1E293B),
-              fontWeight: FontWeight.w500,
-            ),
-            decoration: const InputDecoration(
-              isDense: true,
-              border: InputBorder.none,
-              icon: Icon(
-                Icons.search_rounded,
-                color: Color(0xFF64748B),
-                size: 21,
-              ),
-              hintText: 'Tìm kiếm kiến thức, ví dụ: bỏng, vết cắt...',
-              hintStyle: TextStyle(
-                fontSize: 14.5,
-                color: Color(0xFF94A3B8),
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-        );
+        ),
+      ),
+    );
 
-        final searchButton = SizedBox(
-          height: 48,
+    if (isMobile) {
+      return searchInputBox;
+    }
+
+    return Row(
+      children: [
+        Expanded(child: searchInputBox),
+        const SizedBox(width: 12),
+        SizedBox(
+          height: 46,
           child: ElevatedButton.icon(
             onPressed: () =>
                 context.read<UserViewModel>().onKnowledgeSearchSubmitted(),
@@ -100,41 +114,22 @@ class TraCuuKienThucView extends StatelessWidget {
               style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
             ),
           ),
-        );
-
-        if (isCompact) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              searchInputBox,
-              const SizedBox(height: 10),
-              searchButton,
-            ],
-          );
-        }
-
-        return Row(
-          children: [
-            Expanded(child: searchInputBox),
-            const SizedBox(width: 12),
-            searchButton,
-          ],
-        );
-      },
+        ),
+      ],
     );
   }
 
   Widget _buildKnowledgeCategoryFilterRow(
     BuildContext context,
-    UserViewModel viewModel,
-  ) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: viewModel.knowledgeCategories.map((category) {
-        final isSelected = viewModel.selectedKnowledgeCategoryId == category.id;
+    UserViewModel viewModel, {
+    bool isMobile = false,
+  }) {
+    final chips = viewModel.knowledgeCategories.map((category) {
+      final isSelected = viewModel.selectedKnowledgeCategoryId == category.id;
 
-        return Material(
+      return Padding(
+        padding: EdgeInsets.only(right: isMobile ? 8 : 0),
+        child: Material(
           color: isSelected ? const Color(0xFF2563EB) : Colors.white,
           borderRadius: BorderRadius.circular(8),
           child: InkWell(
@@ -143,7 +138,10 @@ class TraCuuKienThucView extends StatelessWidget {
               category.id,
             ),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 16 : 20,
+                vertical: 9,
+              ),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
@@ -156,16 +154,25 @@ class TraCuuKienThucView extends StatelessWidget {
               child: Text(
                 category.label,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13.5,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                   color: isSelected ? Colors.white : const Color(0xFF334155),
                 ),
               ),
             ),
           ),
-        );
-      }).toList(),
-    );
+        ),
+      );
+    }).toList();
+
+    if (isMobile) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: chips),
+      );
+    }
+
+    return Wrap(spacing: 10, runSpacing: 10, children: chips);
   }
 
   Widget _buildKnowledgeTopicsGrid(
@@ -199,8 +206,8 @@ class TraCuuKienThucView extends StatelessWidget {
       builder: (context, constraints) {
         final maxWidth = constraints.maxWidth;
         final int columns = maxWidth >= 560 ? 2 : 1;
-        const double spacing = 20;
-        const double runSpacing = 18;
+        const double spacing = 16;
+        const double runSpacing = 14;
         final double cardWidth =
             (maxWidth - (spacing * (columns - 1))) / columns;
 
@@ -230,7 +237,7 @@ class TraCuuKienThucView extends StatelessWidget {
         onTap: () =>
             context.read<UserViewModel>().onKnowledgeTopicCardTapped(topic),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
@@ -248,12 +255,12 @@ class TraCuuKienThucView extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: SizedBox(
-                  width: 82,
-                  height: 76,
+                  width: 74,
+                  height: 68,
                   child: _buildSafeKnowledgeThumbnail(topic),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -262,17 +269,17 @@ class TraCuuKienThucView extends StatelessWidget {
                     Text(
                       topic.title,
                       style: const TextStyle(
-                        fontSize: 16.5,
+                        fontSize: 15.5,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF0D2B6B),
                         height: 1.25,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 5),
                     Text(
                       topic.subtitle,
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w400,
                         color: Color(0xFF64748B),
                         height: 1.35,
@@ -280,6 +287,11 @@ class TraCuuKienThucView extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFF94A3B8),
+                size: 22,
               ),
             ],
           ),

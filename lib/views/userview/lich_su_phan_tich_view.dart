@@ -1,3 +1,4 @@
+// File: lib/views/userview/lich_su_phan_tich_view.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -11,29 +12,30 @@ class LichSuPhanTichView extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<UserViewModel>();
     final historyItems = viewModel.filteredAnalysisHistoryItems;
+    final isMobile = MediaQuery.sizeOf(context).width < 768;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 32,
+        vertical: isMobile ? 16 : 28,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. Tiêu đề màn hình "Lịch sử phân tích"
-          const Text(
-            'Lịch sử phân tích',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0D2B6B),
-              letterSpacing: -0.3,
+          if (!isMobile) ...[
+            const Text(
+              'Lịch sử phân tích',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0D2B6B),
+                letterSpacing: -0.3,
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-
-          // 2. Hàng bộ lọc: Ô chọn khoảng ngày ("Từ ngày - Đến ngày") & Dropdown ("Tất cả kết quả")
+            const SizedBox(height: 20),
+          ],
           _buildFilterRow(context, viewModel),
-          const SizedBox(height: 20),
-
-          // 3. Danh sách các thẻ lịch sử phân tích
+          const SizedBox(height: 18),
           if (historyItems.isEmpty)
             _buildEmptyState(context, viewModel)
           else
@@ -42,7 +44,12 @@ class LichSuPhanTichView extends StatelessWidget {
                 final item = historyItems[index];
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildHistoryItemCard(context, viewModel, item),
+                  child: _buildHistoryItemCard(
+                    context,
+                    viewModel,
+                    item,
+                    isMobile: isMobile,
+                  ),
                 );
               }),
             ),
@@ -50,10 +57,6 @@ class LichSuPhanTichView extends StatelessWidget {
       ),
     );
   }
-
-  // ===========================================================================
-  // THANH BỘ LỌC NGÀY & LOẠI KẾT QUẢ
-  // ===========================================================================
 
   Widget _buildFilterRow(BuildContext context, UserViewModel viewModel) {
     return LayoutBuilder(
@@ -68,7 +71,7 @@ class LichSuPhanTichView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               dateFilterBox,
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               resultDropdownBox,
             ],
           );
@@ -135,7 +138,7 @@ class LichSuPhanTichView extends StatelessWidget {
               child: Text(
                 viewModel.formattedDateRangeLabel,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13.5,
                   fontWeight: hasDateFilter ? FontWeight.w600 : FontWeight.w500,
                   color: hasDateFilter
                       ? const Color(0xFF1E293B)
@@ -190,7 +193,7 @@ class LichSuPhanTichView extends StatelessWidget {
                   size: 22,
                 ),
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFF334155),
                 ),
@@ -209,15 +212,12 @@ class LichSuPhanTichView extends StatelessWidget {
     );
   }
 
-  // ===========================================================================
-  // THẺ HIỂN THỊ TỪNG BẢN GHI LỊCH SỬ PHÂN TÍCH
-  // ===========================================================================
-
   Widget _buildHistoryItemCard(
     BuildContext context,
     UserViewModel viewModel,
-    AnalysisHistoryItemModel item,
-  ) {
+    AnalysisHistoryItemModel item, {
+    bool isMobile = false,
+  }) {
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(12),
@@ -225,7 +225,10 @@ class LichSuPhanTichView extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: () => viewModel.onHistoryItemTapped(item),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 12 : 16,
+            vertical: 12,
+          ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFFE8EEF5), width: 1),
@@ -239,28 +242,27 @@ class LichSuPhanTichView extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // Ảnh thu nhỏ (Thumbnail) mô phỏng vùng da tổn thương bo góc
               _buildWoundThumbnail(item),
-              const SizedBox(width: 16),
-
-              // Cột giữa: Tên loại tổn thương (kèm %) và Vị trí tổn thương
+              SizedBox(width: isMobile ? 12 : 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       item.displayTitle,
-                      style: const TextStyle(
-                        fontSize: 15.5,
+                      style: TextStyle(
+                        fontSize: isMobile ? 14 : 15.5,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1E293B),
+                        color: const Color(0xFF1E293B),
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
                     Text(
-                      item.locationLabel,
+                      isMobile
+                          ? '${item.locationLabel} • ${item.timestamp}'
+                          : item.locationLabel,
                       style: const TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF64748B),
                       ),
@@ -268,18 +270,18 @@ class LichSuPhanTichView extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-
-              // Cột phải: Ngày giờ phân tích & Icon mũi tên '>'
-              Text(
-                item.timestamp,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF64748B),
+              if (!isMobile) ...[
+                const SizedBox(width: 12),
+                Text(
+                  item.timestamp,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
+              ],
+              const SizedBox(width: 6),
               const Icon(
                 Icons.chevron_right_rounded,
                 size: 22,
@@ -292,13 +294,12 @@ class LichSuPhanTichView extends StatelessWidget {
     );
   }
 
-  /// Vẽ ảnh thu nhỏ (Thumbnail) bo góc mô phỏng trực quan vùng da và vết thương
   Widget _buildWoundThumbnail(AnalysisHistoryItemModel item) {
     final isClear = item.confidencePercent == null;
 
     return Container(
-      width: 64,
-      height: 58,
+      width: 60,
+      height: 54,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
         gradient: LinearGradient(
@@ -314,10 +315,9 @@ class LichSuPhanTichView extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Vùng tấy đỏ nhẹ quanh tổn thương
           Container(
-            width: isClear ? 14 : 28,
-            height: isClear ? 14 : 22,
+            width: isClear ? 14 : 26,
+            height: isClear ? 14 : 20,
             decoration: BoxDecoration(
               color: item.woundAccentColor.withValues(
                 alpha: isClear ? 0.25 : 0.42,
@@ -325,11 +325,10 @@ class LichSuPhanTichView extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
           ),
-          // Điểm trung tâm vết thương
           if (!isClear)
             Container(
-              width: 14,
-              height: 8,
+              width: 13,
+              height: 7,
               decoration: BoxDecoration(
                 color: item.woundAccentColor.withValues(alpha: 0.85),
                 borderRadius: BorderRadius.circular(6),
@@ -342,7 +341,7 @@ class LichSuPhanTichView extends StatelessWidget {
 
   Widget _buildEmptyState(BuildContext context, UserViewModel viewModel) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
       decoration: BoxDecoration(
         color: const Color(0xFFFAFBFD),
         borderRadius: BorderRadius.circular(12),
@@ -352,19 +351,20 @@ class LichSuPhanTichView extends StatelessWidget {
         children: [
           const Icon(
             Icons.history_toggle_off_outlined,
-            size: 44,
+            size: 42,
             color: Color(0xFF94A3B8),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           const Text(
             'Không tìm thấy bản ghi lịch sử phù hợp với bộ lọc.',
+            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 14.5,
               fontWeight: FontWeight.w600,
               color: Color(0xFF475569),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           TextButton.icon(
             onPressed: () {
               viewModel.clearHistoryDateRange();

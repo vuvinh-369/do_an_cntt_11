@@ -1,3 +1,6 @@
+// File: lib/main.dart
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,6 +11,21 @@ import 'views/user_view.dart';
 
 void main() {
   runApp(const MyApp());
+}
+
+/// Cho phép nhấn giữ và kéo (drag to scroll) bằng cả Chuột máy tính (Mouse),
+/// Cảm ứng (Touch), Trackpad và Bút cảm ứng trên Flutter Web & Desktop.
+class AppCustomScrollBehavior extends MaterialScrollBehavior {
+  const AppCustomScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.unknown,
+  };
 }
 
 /// Kiểm tra xem URL hiện tại trên trình duyệt (hoặc tên route) có phải là '/admin' hay không.
@@ -55,6 +73,8 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Trợ lý Cứu hộ AI',
         debugShowCheckedModeBanner: false,
+        // Kích hoạt kéo cuộn bằng chuột trên toàn bộ ứng dụng Web/PC
+        scrollBehavior: const AppCustomScrollBehavior(),
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
@@ -70,7 +90,6 @@ class MyApp extends StatelessWidget {
           return MaterialPageRoute(
             settings: settings,
             builder: (context) {
-              // Đồng bộ trạng thái nếu người dùng gõ đổi URL trực tiếp trên thanh địa chỉ
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 final adminVm = context.read<AdminViewModel>();
                 if (isRouteAdmin && !adminVm.isAdminPortalActive) {
@@ -99,7 +118,7 @@ class AppRootPortalSwitcher extends StatelessWidget {
       (vm) => vm.isAdminPortalActive,
     );
 
-    if (isAdminActive || forceAdminFromRoute) {
+    if (isAdminActive) {
       return const AdminView();
     }
     return const UserView();

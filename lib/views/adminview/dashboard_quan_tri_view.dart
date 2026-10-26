@@ -1,3 +1,4 @@
+// File: lib/views/adminview/dashboard_quan_tri_view.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -11,39 +12,36 @@ class DashboardQuanTriView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<AdminViewModel>();
+    final isMobile = MediaQuery.sizeOf(context).width < 768;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 26),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 32,
+        vertical: isMobile ? 16 : 26,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. Tiêu đề chính "Dashboard"
-          Text(
-            viewModel.dashboardScreenTitle,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0D2B6B),
-              letterSpacing: -0.3,
+          if (!isMobile) ...[
+            Text(
+              viewModel.dashboardScreenTitle,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0D2B6B),
+                letterSpacing: -0.3,
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-
-          // 2. Hàng trên: 3 Thẻ chỉ số KPI (Tổng lượt phân tích, Tổng tài liệu, Người dùng)
+            const SizedBox(height: 20),
+          ],
           _buildKpiCardsRow(viewModel.kpiCards),
-          const SizedBox(height: 22),
-
-          // 3. Hàng dưới: Thẻ "Thống kê loại tổn thương" (Trái) & "Hoạt động gần đây" (Phải)
+          SizedBox(height: isMobile ? 16 : 22),
           _buildBottomAnalyticsSection(viewModel),
         ],
       ),
     );
   }
-
-  // ===========================================================================
-  // HÀNG TRÊN: 3 THẺ CHỈ SỐ KPI (KPI SUMMARY CARDS)
-  // ===========================================================================
 
   Widget _buildKpiCardsRow(List<AdminKpiCardModel> kpiCards) {
     return LayoutBuilder(
@@ -57,7 +55,7 @@ class DashboardQuanTriView extends StatelessWidget {
             children: kpiCards
                 .map(
                   (card) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.only(bottom: 12),
                     child: _buildSingleKpiCard(card),
                   ),
                 )
@@ -84,7 +82,7 @@ class DashboardQuanTriView extends StatelessWidget {
 
   Widget _buildSingleKpiCard(AdminKpiCardModel card) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -101,7 +99,6 @@ class DashboardQuanTriView extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hàng tiêu đề thẻ + Icon trong khung vuông xanh nhạt
           Row(
             children: [
               Container(
@@ -127,24 +124,20 @@ class DashboardQuanTriView extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-
-          // Con số thống kê chính (1,248 | 85 | 2,341)
+          const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.only(left: 48),
             child: Text(
               card.mainValue,
               style: TextStyle(
-                fontSize: 28,
+                fontSize: 26,
                 fontWeight: FontWeight.w800,
                 color: card.valueColor,
                 letterSpacing: -0.5,
               ),
             ),
           ),
-          const SizedBox(height: 6),
-
-          // Dòng tăng trưởng (+12% so với tuần trước)
+          const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.only(left: 48),
             child: RichText(
@@ -174,17 +167,11 @@ class DashboardQuanTriView extends StatelessWidget {
     );
   }
 
-  // ===========================================================================
-  // HÀNG DƯỚI: THỐNG KÊ LOẠI TỔN THƯƠNG (TRÁI) & HOẠT ĐỘNG GẦN ĐÂY (PHẢI)
-  // ===========================================================================
-
   Widget _buildBottomAnalyticsSection(AdminViewModel viewModel) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 720;
 
-        // Tính toán trước chiều rộng thực tế bên trong thẻ thống kê tổn thương
-        // để không cần dùng LayoutBuilder lồng bên trong gây xung đột RenderBox
         final estimatedLeftCardInnerWidth = isWide
             ? ((constraints.maxWidth - 18) * 0.62) - 48
             : constraints.maxWidth - 48;
@@ -197,7 +184,6 @@ class DashboardQuanTriView extends StatelessWidget {
         final recentActivityCard = _buildRecentActivitiesCard(viewModel);
 
         if (isWide) {
-          // ĐÃ XÓA IntrinsicHeight VÀ ĐỔI CrossAxisAlignment.stretch -> CrossAxisAlignment.start
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -213,7 +199,7 @@ class DashboardQuanTriView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             injuryChartCard,
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             recentActivityCard,
           ],
         );
@@ -226,16 +212,16 @@ class DashboardQuanTriView extends StatelessWidget {
     required bool isNarrowCard,
   }) {
     final donutChartWidget = SizedBox(
-      width: 190,
-      height: 190,
+      width: 180,
+      height: 180,
       child: Stack(
         alignment: Alignment.center,
         children: [
           CustomPaint(
-            size: const Size(190, 190),
+            size: const Size(180, 180),
             painter: AdminInjuryDonutChartPainter(
               segments: viewModel.injuryDistributionStats,
-              strokeWidth: 34,
+              strokeWidth: 32,
             ),
           ),
           Column(
@@ -244,7 +230,7 @@ class DashboardQuanTriView extends StatelessWidget {
               Text(
                 viewModel.donutCenterCountText,
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF0F172A),
                 ),
@@ -253,7 +239,7 @@ class DashboardQuanTriView extends StatelessWidget {
               Text(
                 viewModel.donutCenterUnitText,
                 style: const TextStyle(
-                  fontSize: 13.5,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFF64748B),
                 ),
@@ -269,7 +255,7 @@ class DashboardQuanTriView extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: viewModel.injuryDistributionStats.map((item) {
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 7),
+          padding: const EdgeInsets.symmetric(vertical: 6),
           child: Row(
             children: [
               Container(
@@ -285,7 +271,7 @@ class DashboardQuanTriView extends StatelessWidget {
                 child: Text(
                   item.label,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF334155),
                   ),
@@ -294,7 +280,7 @@ class DashboardQuanTriView extends StatelessWidget {
               Text(
                 item.formattedPercentage,
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF1E293B),
                 ),
@@ -306,8 +292,7 @@ class DashboardQuanTriView extends StatelessWidget {
     );
 
     return Container(
-      constraints: const BoxConstraints(minHeight: 295),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -327,18 +312,18 @@ class DashboardQuanTriView extends StatelessWidget {
           Text(
             viewModel.injuryStatsCardTitle,
             style: const TextStyle(
-              fontSize: 16.5,
+              fontSize: 16,
               fontWeight: FontWeight.w800,
               color: Color(0xFF0F172A),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           if (isNarrowCard)
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 donutChartWidget,
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
                 legendWidget,
               ],
             )
@@ -347,7 +332,7 @@ class DashboardQuanTriView extends StatelessWidget {
               children: [
                 const SizedBox(width: 8),
                 donutChartWidget,
-                const SizedBox(width: 32),
+                const SizedBox(width: 28),
                 Expanded(child: legendWidget),
               ],
             ),
@@ -358,8 +343,7 @@ class DashboardQuanTriView extends StatelessWidget {
 
   Widget _buildRecentActivitiesCard(AdminViewModel viewModel) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 295),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -379,12 +363,12 @@ class DashboardQuanTriView extends StatelessWidget {
           Text(
             viewModel.recentActivitiesCardTitle,
             style: const TextStyle(
-              fontSize: 16.5,
+              fontSize: 16,
               fontWeight: FontWeight.w800,
               color: Color(0xFF0F172A),
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           Column(
             mainAxisSize: MainAxisSize.min,
             children: List.generate(viewModel.recentActivities.length, (index) {
@@ -392,24 +376,24 @@ class DashboardQuanTriView extends StatelessWidget {
               final isLast = index == viewModel.recentActivities.length - 1;
 
               return Padding(
-                padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Container(
-                      width: 38,
-                      height: 38,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
                         color: const Color(0xFFE8F1FF),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
                         activity.icon,
-                        size: 20,
+                        size: 19,
                         color: const Color(0xFF2563EB),
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -418,16 +402,16 @@ class DashboardQuanTriView extends StatelessWidget {
                           Text(
                             activity.title,
                             style: const TextStyle(
-                              fontSize: 14.5,
+                              fontSize: 14,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF1E293B),
                             ),
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 2),
                           Text(
                             activity.relativeTime,
                             style: const TextStyle(
-                              fontSize: 13,
+                              fontSize: 12.5,
                               fontWeight: FontWeight.w500,
                               color: Color(0xFF64748B),
                             ),

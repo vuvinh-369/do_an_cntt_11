@@ -1,3 +1,4 @@
+// File: lib/views/adminview/dang_nhap_quan_tri_view.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -11,10 +12,14 @@ class DangNhapQuanTriView extends StatelessWidget {
   Widget build(BuildContext context) {
     final adminViewModel = context.watch<AdminViewModel>();
     final spec = adminViewModel.loginSpec;
+    final isMobile = MediaQuery.sizeOf(context).width < 768;
 
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 14 : 20,
+          vertical: isMobile ? 16 : 24,
+        ),
         child: Container(
           constraints: const BoxConstraints(maxWidth: 980),
           decoration: BoxDecoration(
@@ -40,34 +45,39 @@ class DangNhapQuanTriView extends StatelessWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Cột trái: Biểu mẫu Đăng nhập quản trị
                         Expanded(
                           flex: 5,
                           child: _buildLeftLoginForm(
                             context,
                             adminViewModel,
                             spec,
+                            isMobile: false,
                           ),
                         ),
-                        // Đường kẻ dọc phân tách nhẹ giữa 2 cột
                         Container(width: 1, color: const Color(0xFFE8EEF7)),
-                        // Cột phải: Minh họa Khiên bảo mật & Khu vực quản trị
                         Expanded(
                           flex: 5,
-                          child: _buildRightIllustrationPanel(spec),
+                          child: _buildRightIllustrationPanel(
+                            spec,
+                            isMobile: false,
+                          ),
                         ),
                       ],
                     ),
                   );
                 }
 
-                // Bố cục xếp dọc trên màn hình nhỏ (Responsive)
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildLeftLoginForm(context, adminViewModel, spec),
+                    _buildLeftLoginForm(
+                      context,
+                      adminViewModel,
+                      spec,
+                      isMobile: true,
+                    ),
                     const Divider(height: 1, color: Color(0xFFE8EEF7)),
-                    _buildRightIllustrationPanel(spec),
+                    _buildRightIllustrationPanel(spec, isMobile: true),
                   ],
                 );
               },
@@ -78,27 +88,26 @@ class DangNhapQuanTriView extends StatelessWidget {
     );
   }
 
-  // ===========================================================================
-  // CỘT TRÁI: BIỂU MẪU ĐĂNG NHẬP QUẢN TRỊ
-  // ===========================================================================
-
   Widget _buildLeftLoginForm(
     BuildContext context,
     AdminViewModel viewModel,
-    dynamic spec,
-  ) {
+    dynamic spec, {
+    required bool isMobile,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 42),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 22 : 44,
+        vertical: isMobile ? 26 : 42,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 1. Cụm Logo trái tim xanh dương có dấu '+' trắng & Tên hệ thống
           Row(
             children: [
               Container(
-                width: 46,
-                height: 46,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color: const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(12),
@@ -106,12 +115,12 @@ class DangNhapQuanTriView extends StatelessWidget {
                 child: Stack(
                   alignment: Alignment.center,
                   children: const [
-                    Icon(Icons.favorite, color: Color(0xFF2563EB), size: 36),
-                    Icon(Icons.add, color: Colors.white, size: 18),
+                    Icon(Icons.favorite, color: Color(0xFF2563EB), size: 32),
+                    Icon(Icons.add, color: Colors.white, size: 16),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,7 +128,7 @@ class DangNhapQuanTriView extends StatelessWidget {
                     Text(
                       spec.brandTitle,
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 17,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF0D2B6B),
                         letterSpacing: -0.2,
@@ -129,7 +138,7 @@ class DangNhapQuanTriView extends StatelessWidget {
                     Text(
                       spec.brandSubtitle,
                       style: const TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF64748B),
                       ),
@@ -137,7 +146,6 @@ class DangNhapQuanTriView extends StatelessWidget {
                   ],
                 ),
               ),
-              // Nút nhỏ giúp quay về giao diện Người dùng bất cứ lúc nào
               TextButton.icon(
                 onPressed: () => viewModel.exitAdminPortalToUserApp(),
                 icon: const Icon(Icons.arrow_back_rounded, size: 16),
@@ -155,21 +163,17 @@ class DangNhapQuanTriView extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 32),
-
-          // 2. Tiêu đề "Đăng nhập quản trị"
+          SizedBox(height: isMobile ? 22 : 32),
           Text(
             spec.formTitle,
-            style: const TextStyle(
-              fontSize: 24,
+            style: TextStyle(
+              fontSize: isMobile ? 21 : 24,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF0F172A),
+              color: const Color(0xFF0F172A),
               letterSpacing: -0.3,
             ),
           ),
-          const SizedBox(height: 24),
-
-          // 3. Nhãn & Ô nhập "Tài khoản"
+          const SizedBox(height: 20),
           Text(
             spec.usernameLabel,
             style: const TextStyle(
@@ -211,9 +215,7 @@ class DangNhapQuanTriView extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 18),
-
-          // 4. Nhãn & Ô nhập "Mật khẩu" (Có icon con mắt ẩn/hiện)
+          const SizedBox(height: 16),
           Text(
             spec.passwordLabel,
             style: const TextStyle(
@@ -249,9 +251,6 @@ class DangNhapQuanTriView extends StatelessWidget {
                   size: 20,
                   color: const Color(0xFF475569),
                 ),
-                tooltip: viewModel.isPasswordObscured
-                    ? 'Hiện mật khẩu'
-                    : 'Ẩn mật khẩu',
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -270,8 +269,6 @@ class DangNhapQuanTriView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-
-          // 5. Checkbox "Ghi nhớ đăng nhập"
           InkWell(
             borderRadius: BorderRadius.circular(6),
             onTap: () => viewModel.toggleRememberMe(!viewModel.rememberMe),
@@ -288,10 +285,6 @@ class DangNhapQuanTriView extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    side: const BorderSide(
-                      color: Color(0xFF94A3B8),
-                      width: 1.4,
-                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -306,8 +299,6 @@ class DangNhapQuanTriView extends StatelessWidget {
               ],
             ),
           ),
-
-          // Hiển thị thông báo lỗi nếu người dùng bấm Đăng nhập khi chưa điền thông tin
           if (viewModel.loginFeedbackMessage != null) ...[
             const SizedBox(height: 12),
             Container(
@@ -351,10 +342,7 @@ class DangNhapQuanTriView extends StatelessWidget {
               ),
             ),
           ],
-
-          const SizedBox(height: 22),
-
-          // 6. Nút bấm "Đăng nhập" màu xanh dương toàn chiều rộng cột
+          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             height: 46,
@@ -382,43 +370,39 @@ class DangNhapQuanTriView extends StatelessWidget {
     );
   }
 
-  // ===========================================================================
-  // CỘT PHẢI: HÌNH MINH HỌA KHIÊN BẢO MẬT & "KHU VỰC QUẢN TRỊ"
-  // ===========================================================================
-
-  Widget _buildRightIllustrationPanel(dynamic spec) {
+  Widget _buildRightIllustrationPanel(dynamic spec, {required bool isMobile}) {
     return Container(
       color: const Color(0xFFF0F5FF).withValues(alpha: 0.75),
-      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 44),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 20 : 36,
+        vertical: isMobile ? 24 : 44,
+      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Hình vẽ Laptop + Khiên bảo mật xanh dương có dấu tích trắng
-          const SizedBox(
-            width: 260,
-            height: 190,
-            child: CustomPaint(painter: AdminSecurityIllustrationPainter()),
+          SizedBox(
+            width: isMobile ? 210 : 260,
+            height: isMobile ? 150 : 190,
+            child: const CustomPaint(
+              painter: AdminSecurityIllustrationPainter(),
+            ),
           ),
-          const SizedBox(height: 18),
-
-          // Tiêu đề "Khu vực quản trị"
+          const SizedBox(height: 14),
           Text(
             spec.rightPanelTitle,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 17,
+              fontSize: 16.5,
               fontWeight: FontWeight.w800,
               color: Color(0xFF0D2B6B),
             ),
           ),
-          const SizedBox(height: 6),
-
-          // Phụ đề "Chỉ dành cho người có thẩm quyền"
+          const SizedBox(height: 4),
           Text(
             spec.rightPanelSubtitle,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 13.5,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
               color: Color(0xFF64748B),
             ),
