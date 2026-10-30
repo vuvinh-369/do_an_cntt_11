@@ -1,32 +1,18 @@
 // File: lib/main.dart
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'viewmodels/admin_viewmodel.dart';
-import 'viewmodels/user_viewmodel.dart';
-import 'views/admin_view.dart';
-import 'views/user_view.dart';
+import 'core/app_scroll_behavior.dart';
+import 'features/admin/viewmodels/admin_viewmodel.dart';
+import 'features/admin/views/admin_shell_view.dart';
+import 'features/user/viewmodels/user_viewmodel.dart';
+
+import 'features/user/views/user_shell_view.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
-/// Cho phép nhấn giữ và kéo (drag to scroll) bằng cả Chuột máy tính (Mouse),
-/// Cảm ứng (Touch), Trackpad và Bút cảm ứng trên Flutter Web & Desktop.
-class AppCustomScrollBehavior extends MaterialScrollBehavior {
-  const AppCustomScrollBehavior();
-
-  @override
-  Set<PointerDeviceKind> get dragDevices => {
-    PointerDeviceKind.touch,
-    PointerDeviceKind.mouse,
-    PointerDeviceKind.trackpad,
-    PointerDeviceKind.stylus,
-    PointerDeviceKind.unknown,
-  };
-}
 
 /// Kiểm tra xem URL hiện tại trên trình duyệt (hoặc tên route) có phải là '/admin' hay không.
 /// Hỗ trợ cả 2 dạng:
@@ -119,8 +105,8 @@ class AppRootPortalSwitcher extends StatelessWidget {
     );
 
     if (isAdminActive) {
-      return const AdminView();
+      return const AdminShellView();
     }
-    return const UserView();
+    return const UserShellView();
   }
 }
