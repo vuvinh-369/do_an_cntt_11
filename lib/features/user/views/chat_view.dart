@@ -34,7 +34,7 @@ class ChatBoxAiView extends StatelessWidget {
                       controller: viewModel.chatScrollController,
                       padding: const EdgeInsets.only(top: 4, bottom: 12),
                       itemCount: viewModel.chatMessages.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
+                      separatorBuilder: (context, index) => const SizedBox(height: 16),
                       itemBuilder: (context, index) {
                         final message = viewModel.chatMessages[index];
                         return message.isUser
@@ -102,7 +102,7 @@ class ChatBoxAiView extends StatelessWidget {
                           right: 8,
                         ),
                         itemCount: viewModel.chatMessages.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 22),
+                        separatorBuilder: (context, index) => const SizedBox(height: 22),
                         itemBuilder: (context, index) {
                           final message = viewModel.chatMessages[index];
                           return message.isUser

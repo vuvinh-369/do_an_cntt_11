@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../models/home_models.dart';
-import '../models/first_aid_models.dart';
 import 'user_navigation_viewmodel.dart';
 import 'first_aid_viewmodel.dart';
 

@@ -202,7 +202,7 @@ class _TrangChuViewState extends State<TrangChuView> {
                     parent: AlwaysScrollableScrollPhysics(),
                   ),
                   itemCount: viewModel.commonSituations.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  separatorBuilder: (context, index) => const SizedBox(width: 12),
                   itemBuilder: (context, index) {
                     final situation = viewModel.commonSituations[index];
                     return SizedBox(

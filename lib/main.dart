@@ -2,14 +2,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'core/ai_server_manager.dart';
 import 'core/app_scroll_behavior.dart';
 import 'features/admin/viewmodels/admin_viewmodel.dart';
 import 'features/admin/views/admin_shell_view.dart';
 import 'features/user/viewmodels/user_viewmodel.dart';
-
 import 'features/user/views/user_shell_view.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Tự động khởi động mô hình AI YOLO ngầm (không cần bật server thủ công)
+  await AiServerManager.ensureServerRunning();
   runApp(const MyApp());
 }
 

@@ -14,9 +14,9 @@ class UserViewModel extends ChangeNotifier
     with
         DieuHuongCoSoViewModel,
         HuongDanSoCuuViewModel,
-        TrangChuViewModel,
-        PhanTichAnhViewModel,
         KetQuaPhanTichViewModel,
+        PhanTichAnhViewModel,
+        TrangChuViewModel,
         TraCuuKienThucViewModel,
         ChatBoxAiViewModel,
         KhoTaiLieuViewModel,
