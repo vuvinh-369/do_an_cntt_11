@@ -46,7 +46,7 @@ mixin TraCuuKienThucViewModel
       id: 'bruise',
       categoryId: 'bruise',
       title: 'Bầm tím phần mềm',
-      subtitle: 'Áp dụng phác đồ R.I.C.E giảm đau, tiêu sưng hiệu quả',
+      subtitle: 'Áp dụng quy trình 4 bước R.I.C.E giảm đau, tiêu sưng hiệu quả',
     ),
     KnowledgeTopicModel(
       id: 'other_wounds',

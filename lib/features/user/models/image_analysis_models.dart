@@ -58,6 +58,52 @@ class ManualInjuryOptionModel {
   });
 }
 
+/// Một tổn thương riêng biệt được YOLO phát hiện trên ảnh (hỗ trợ phát hiện 2-3 vết thương trên 1 ảnh)
+class DetectedWoundItemModel {
+  final String label; // Ví dụ: "Vết cắt / Vết rách", "Trầy xước"
+  final String topicId; // "cut_laceration", "abrasion", "burn", "bruise"
+  final int confidencePercent; // 82
+  final String severity; // "Cần chú ý", "Nhẹ", "Quan trọng"
+  final List<double> box; // [x1, y1, x2, y2]
+  final String classId; // "vet_cat_rach", "tray_xuoc", "bong", "bam_tim"
+
+  const DetectedWoundItemModel({
+    required this.label,
+    required this.topicId,
+    required this.confidencePercent,
+    required this.severity,
+    required this.box,
+    required this.classId,
+  });
+
+  factory DetectedWoundItemModel.fromJson(Map<String, dynamic> json) {
+    return DetectedWoundItemModel(
+      label: json['vn_label'] as String? ?? json['injury_type'] as String? ?? 'Tổn thương da',
+      topicId: json['topic_id'] as String? ?? 'abrasion',
+      confidencePercent: (json['confidence_percent'] as num?)?.toInt() ?? 0,
+      severity: json['severity'] as String? ?? 'Nhẹ',
+      box: json['box'] != null && json['box'] is List
+          ? (json['box'] as List).map((e) => (e as num).toDouble()).toList()
+          : const [],
+      classId: json['class_name_raw'] as String? ?? '',
+    );
+  }
+
+  Color get tagColor {
+    switch (topicId) {
+      case 'cut_laceration':
+        return const Color(0xFFDC2626); // Đỏ
+      case 'burn':
+        return const Color(0xFFEA580C); // Cam
+      case 'bruise':
+        return const Color(0xFF7C3AED); // Tím
+      case 'abrasion':
+      default:
+        return const Color(0xFF0284C7); // Xanh dương
+    }
+  }
+}
+
 /// Mô hình dữ liệu Kết quả phân tích hình ảnh AI (Màn hình 3)
 class AiAnalysisResultModel {
   final String bannerTitle;
@@ -83,6 +129,9 @@ class AiAnalysisResultModel {
   final double? originalImageWidth;
   final double? originalImageHeight;
   final String? detectionMessage;
+
+  // Danh sách TẤT CẢ các vết thương phát hiện trên ảnh (2-3 vết thương)
+  final List<DetectedWoundItemModel> allDetections;
 
   // Trạng thái can thiệp thủ công & độ tương phản
   final bool isManualSelection;
@@ -111,9 +160,23 @@ class AiAnalysisResultModel {
     this.originalImageWidth,
     this.originalImageHeight,
     this.detectionMessage,
+    this.allDetections = const [],
     this.isManualSelection = false,
     this.appliedContrast = 1.0,
   });
+
+  bool get hasMultipleInjuries => allDetections.length > 1;
+
+  List<String> get allUniqueLabels =>
+      allDetections.map((d) => d.label).toSet().toList();
+
+  String get combinedInjurySummary {
+    if (allDetections.isEmpty) return injuryType;
+    if (allDetections.length == 1) {
+      return '${allDetections.first.label} (${allDetections.first.confidencePercent}%)';
+    }
+    return allDetections.map((d) => '${d.label} (${d.confidencePercent}%)').join(', ');
+  }
 
   String get formattedConfidence =>
       isManualSelection ? '100% (Xác nhận thủ công)' : '$confidencePercent%';
@@ -142,6 +205,7 @@ class AiAnalysisResultModel {
     double? originalImageWidth,
     double? originalImageHeight,
     String? detectionMessage,
+    List<DetectedWoundItemModel>? allDetections,
     bool? isManualSelection,
     double? appliedContrast,
   }) {
@@ -167,6 +231,7 @@ class AiAnalysisResultModel {
       originalImageWidth: originalImageWidth ?? this.originalImageWidth,
       originalImageHeight: originalImageHeight ?? this.originalImageHeight,
       detectionMessage: detectionMessage ?? this.detectionMessage,
+      allDetections: allDetections ?? this.allDetections,
       isManualSelection: isManualSelection ?? this.isManualSelection,
       appliedContrast: appliedContrast ?? this.appliedContrast,
     );

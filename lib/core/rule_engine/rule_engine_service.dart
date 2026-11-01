@@ -59,12 +59,13 @@ class RuleEngineService {
         severity: RuleSeverityLevel.emergency,
         targetInjuryTypeId: 'cut_laceration',
         requireBleedingHeavy: true,
+        linkedKnowledgeTopicId: 'cut_laceration',
         condition: (ctx) => ctx.isBleedingHeavy,
         primaryActions: [
           'Dùng gạc vô trùng hoặc khăn sạch ấn ép trực tiếp thật mạnh lên miệng vết thương.',
           'Nâng cao vùng chi bị thương cao hơn tim nếu không nghi ngờ gãy xương.',
           'Nếu máu thấm qua lớp gạc đầu, KHÔNG gỡ ra mà đè thêm lớp gạc mới lên trên và băng chặt.',
-          'Gọi ngay cấp cứu 115 hoặc di chuyển khẩn cấp đến phòng cấp cứu gần nhất.',
+          'Di chuyển khẩn cấp hoặc đưa nạn nhân đến phòng cấp cứu / bệnh viện gần nhất.',
         ],
         contraindications: [
           'Tuyệt đối không đắp thuốc lá, bột cà phê, tro than lên vết thương hở.',
@@ -84,6 +85,7 @@ class RuleEngineService {
         severity: RuleSeverityLevel.emergency,
         targetInjuryTypeId: 'all',
         requireForeignBody: true,
+        linkedKnowledgeTopicId: 'other_wounds',
         condition: (ctx) =>
             ctx.hasDeepWoundOrForeignBody || ctx.injuryTypeId == 'foreign_body',
         primaryActions: [
@@ -109,6 +111,7 @@ class RuleEngineService {
         severity: RuleSeverityLevel.emergency,
         targetInjuryTypeId: 'burn',
         requireLargeBurnOrChemical: true,
+        linkedKnowledgeTopicId: 'burn',
         condition: (ctx) =>
             ctx.injuryTypeId == 'burn' && ctx.isLargeAreaBurnOrChemical,
         primaryActions: [
@@ -137,8 +140,10 @@ class RuleEngineService {
         severity: RuleSeverityLevel.warning,
         targetInjuryTypeId: 'bruise',
         requireSeverePainOrFracture: true,
+        requiredPainLevel: PainLevel.severe,
+        linkedKnowledgeTopicId: 'bruise',
         condition: (ctx) =>
-            ctx.injuryTypeId == 'bruise' && ctx.isSeverePainOrFractureSuspected,
+            ctx.injuryTypeId == 'bruise' && (ctx.isSeverePainOrFractureSuspected || ctx.painLevel == PainLevel.severe),
         primaryActions: [
           'Áp dụng phác đồ R.I.C.E: Nghỉ ngơi (Rest) - Chườm lạnh (Ice) - Băng ép nhẹ (Compression) - Kê cao (Elevation).',
           'Cố định tạm thời chi bị thương bằng nẹp hoặc khăn để tránh xê dịch.',
@@ -162,6 +167,7 @@ class RuleEngineService {
         severity: RuleSeverityLevel.warning,
         targetInjuryTypeId: 'all',
         requireInfection: true,
+        linkedKnowledgeTopicId: 'other_wounds',
         condition: (ctx) => ctx.hasSignsOfInfection,
         primaryActions: [
           'Vệ sinh nhẹ nhàng bằng nước muối sinh lý 0.9%.',
@@ -185,6 +191,7 @@ class RuleEngineService {
             'Áp dụng cho các vết trầy xước biểu bì thông thường không có biến chứng.',
         severity: RuleSeverityLevel.normal,
         targetInjuryTypeId: 'abrasion',
+        linkedKnowledgeTopicId: 'abrasion',
         condition: (ctx) =>
             ctx.injuryTypeId == 'abrasion' &&
             !ctx.isBleedingHeavy &&
@@ -212,6 +219,7 @@ class RuleEngineService {
             'Áp dụng cho vết đứt tay do dao, giấy hoặc vật sắc nhọn đã cầm máu được.',
         severity: RuleSeverityLevel.normal,
         targetInjuryTypeId: 'cut_laceration',
+        linkedKnowledgeTopicId: 'cut_laceration',
         condition: (ctx) =>
             ctx.injuryTypeId == 'cut_laceration' &&
             !ctx.isBleedingHeavy &&
@@ -239,6 +247,7 @@ class RuleEngineService {
             'Áp dụng cho bỏng bô xe, nước sôi nhẹ diện tích nhỏ, da chỉ đỏ rát và chưa phồng rộp.',
         severity: RuleSeverityLevel.normal,
         targetInjuryTypeId: 'burn',
+        linkedKnowledgeTopicId: 'burn',
         condition: (ctx) =>
             ctx.injuryTypeId == 'burn' && !ctx.isLargeAreaBurnOrChemical,
         primaryActions: [
@@ -263,6 +272,7 @@ class RuleEngineService {
             'Áp dụng cho các vết va đập nhẹ, bầm tím dưới da không gãy xương.',
         severity: RuleSeverityLevel.normal,
         targetInjuryTypeId: 'bruise',
+        linkedKnowledgeTopicId: 'bruise',
         condition: (ctx) =>
             ctx.injuryTypeId == 'bruise' &&
             !ctx.isSeverePainOrFractureSuspected,
@@ -276,6 +286,83 @@ class RuleEngineService {
         ],
         emergencyRecommendation:
             'Vết bầm thông thường sẽ tự khỏi sau 1 - 2 tuần chuyển màu từ tím sang xanh vàng.',
+      ),
+
+      // LUẬT 10: Cảm giác đau dữ dội (Đau nặng) -> CẢNH BÁO / KHÁM CHUYÊN SÂU
+      FirstAidRule(
+        id: 'rule_pain_severe',
+        code: 'RULE-PAIN-SEVERE-10',
+        name: 'Cảm giác đau dữ dội (Đau nặng)',
+        description:
+            'Áp dụng khi người dùng đánh giá mức độ đau nặng (7-10/10), cảnh báo chấn thương mô sâu, chèn ép thần kinh hoặc gãy xương ngầm.',
+        severity: RuleSeverityLevel.warning,
+        targetInjuryTypeId: 'all',
+        requireSeverePainOrFracture: true,
+        requiredPainLevel: PainLevel.severe,
+        linkedKnowledgeTopicId: 'other_wounds',
+        condition: (ctx) => ctx.painLevel == PainLevel.severe,
+        primaryActions: [
+          'Bất động vùng chi bị đau, đặt ở tư thế thoải mái nhất và hạn chế tối đa cử động.',
+          'Kê cao chi hơn mức tim để giảm ứ trệ tuần hoàn và giảm áp lực sưng nhức.',
+          'Nếu không có vết thương hở rách da: Chườm lạnh ngắt quãng 15 phút bằng khăn bọc đá để tê liệt tạm thời thụ thể đau.',
+          'Có thể dùng thuốc giảm đau thông thường (như Paracetamol) theo đúng liều lượng chỉ dẫn nếu không có tiền sử dị ứng hoặc bệnh gan.',
+        ],
+        contraindications: [
+          'TUYỆT ĐỐI KHÔNG xoa dầu nóng, cạo gió hoặc nắn bóp mạnh khi đang đau dữ dội.',
+          'Không dùng Aspirin hoặc Ibuprofen nếu vết thương đang chảy máu chưa cầm (gây tăng nguy cơ xuất huyết).',
+        ],
+        emergencyRecommendation:
+            'Đau dữ dội kèm sưng to hoặc khó cử động là dấu hiệu cần đến bệnh viện chụp X-quang hoặc siêu âm kiểm tra gãy xương/đứt dây chằng.',
+      ),
+
+      // LUẬT 11: Bỏng không đau / Mất cảm giác đau (Nghi ngờ bỏng sâu độ 3) -> KHẨN CẤP
+      FirstAidRule(
+        id: 'rule_burn_deep_numb',
+        code: 'RULE-BURN-NUMB-11',
+        name: 'Bỏng không đau / Mất cảm giác (Nghi ngờ bỏng sâu độ 3)',
+        description:
+            'Cảnh báo đặc biệt: Vết bỏng sâu độ 3 làm tổn thương hết lớp hạ bì và đầu mút dây thần kinh khiến nạn nhân không thấy đau rát.',
+        severity: RuleSeverityLevel.emergency,
+        targetInjuryTypeId: 'burn',
+        linkedKnowledgeTopicId: 'burn',
+        condition: (ctx) =>
+            ctx.injuryTypeId == 'burn' && ctx.painLevel == PainLevel.none,
+        primaryActions: [
+          'Che phủ nhẹ nhàng vết bỏng bằng gạc vô trùng ẩm hoặc màng bọc thực phẩm sạch.',
+          'Giữ ấm cho cơ thể nạn nhân, bù nước điện giải bằng oresol hoặc nước ấm.',
+          'Đưa nạn nhân đến chuyên khoa bỏng hoặc phòng cấp cứu bệnh viện ngay lập tức.',
+        ],
+        contraindications: [
+          'Không chủ quan vì thấy không đau - đây là dấu hiệu tổn thương sâu phá hủy thụ thể thần kinh.',
+          'Tuyệt đối không chườm đá lạnh buốt, không bôi thuốc mỡ hoặc chất lạ lên vết bỏng sâu.',
+        ],
+        emergencyRecommendation:
+            'CẦN ĐẾN BỆNH VIỆN NGAY: Bỏng không đau thường là bỏng toàn phần (Độ 3) phá hủy thần kinh bì, cần can thiệp ngoại khoa.',
+      ),
+
+      // LUẬT 12: Đa tổn thương kết hợp trên 1 ảnh (2-3 vết thương) -> CẦN CHÚ Ý
+      FirstAidRule(
+        id: 'rule_multi_wound_combined',
+        code: 'RULE-MULTI-WOUND-12',
+        name: 'Tổn thương kết hợp nhiều dạng vết thương',
+        description:
+            'Áp dụng khi trên ảnh nhận diện đồng thời từ 2-3 dạng tổn thương (ví dụ vừa vết cắt vừa trầy xước, hoặc vừa bỏng vừa vết rách).',
+        severity: RuleSeverityLevel.warning,
+        targetInjuryTypeId: 'all',
+        requireMultipleInjuries: true,
+        linkedKnowledgeTopicId: 'other_wounds',
+        condition: (ctx) => ctx.hasMultipleInjuries,
+        primaryActions: [
+          'Thực hiện theo nguyên tắc phân loại ưu tiên Triage: 1. CẦM MÁU vết cắt/rách trước bằng ấn ép gạc vô trùng 10-15 phút.',
+          'Sau khi đã kiểm soát chảy máu: Rửa sạch và sát trùng vùng trầy xước lân cận bằng nước muối sinh lý 0.9% và Povidone-Iodine.',
+          'Nếu có bầm tím sưng nề kèm theo: Chườm lạnh xung quanh, nhưng tránh để hơi lạnh hoặc túi nước đè trực tiếp lên miệng vết thương hở.',
+          'Băng bảo vệ riêng biệt: Dán băng khép miệng vết cắt và che gạc thoáng cho vùng trầy xước.',
+        ],
+        contraindications: [
+          'Không dùng chung miếng gạc bẩn đã lau vết thương này để chà xát sang vết thương khác (gây lây nhiễm chéo).',
+        ],
+        emergencyRecommendation:
+            'Đa tổn thương kết hợp có nguy cơ nhiễm trùng và biến chứng cao hơn, nên đến cơ sở y tế gần nhất để nhân viên y tế sát trùng và băng bó chuyên nghiệp.',
       ),
     ]);
   }
@@ -339,6 +426,36 @@ class RuleEngineService {
       );
     }
 
+    // Bổ sung khuyến nghị theo mức độ cảm giác đau 3 nấc
+    if (context.painLevel == PainLevel.severe) {
+      if (highestSeverity == RuleSeverityLevel.normal) {
+        highestSeverity = RuleSeverityLevel.warning;
+      }
+      if (!warnings.any((w) => w.contains('đau nặng') || w.contains('đau dữ dội'))) {
+        warnings.insert(
+          0,
+          'Mức độ đau nặng (7-10/10): Nạn nhân đang đau dữ dội. Hãy cố định bất động chi và đưa đến cơ sở y tế để chụp X-quang/siêu âm loại trừ tổn thương mô sâu, đứt gân hoặc gãy xương.',
+        );
+      }
+    } else if (context.painLevel == PainLevel.none && context.injuryTypeId == 'burn') {
+      highestSeverity = RuleSeverityLevel.emergency;
+      if (!warnings.any((w) => w.contains('bỏng sâu'))) {
+        warnings.insert(
+          0,
+          'CẢNH BÁO BỎNG SÂU: Vết bỏng không đau là dấu hiệu tổn thương sâu phá hủy đầu mút thần kinh cảm giác (Bỏng độ 3). Cần đi khám viện ngay!',
+        );
+      }
+    }
+
+    // Bổ sung ghi chú nếu phát hiện 2-3 vết thương kết hợp trên ảnh
+    if (context.hasMultipleInjuries) {
+      if (highestSeverity == RuleSeverityLevel.normal) {
+        highestSeverity = RuleSeverityLevel.warning;
+      }
+      final multiList = [context.injuryTypeName, ...context.secondaryInjuryTypeNames].join(', ');
+      warnings.add('Ảnh có đa tổn thương kết hợp ($multiList): Luôn ưu tiên cầm máu vết thương hở trước, sau đó mới vệ sinh sát khuẩn vùng trầy xước.');
+    }
+
     // 4. Tạo tóm tắt & tiêu đề kết quả
     String summaryTitle;
     String statusDescription;
@@ -348,7 +465,7 @@ class RuleEngineService {
       case RuleSeverityLevel.emergency:
         summaryTitle = 'CẢNH BÁO NGUY HIỂM: CẦN CAN THIỆP Y TẾ KHẨN CẤP';
         statusDescription =
-            'Ứng dụng phát hiện các dấu hiệu nguy kịch (chảy máu nhiều, tổn thương sâu hoặc bỏng nặng). Hãy gọi ngay 115 hoặc đưa nạn nhân đến cấp cứu!';
+            'Ứng dụng phát hiện các dấu hiệu nguy kịch (chảy máu nhiều, tổn thương sâu hoặc bỏng nặng). Hãy đưa ngay nạn nhân đến cơ sở y tế cấp cứu gần nhất!';
         shouldCall115 = true;
         break;
       case RuleSeverityLevel.warning:
@@ -388,7 +505,7 @@ class RuleEngineService {
               'Không cầm được máu sau 15 phút băng ép.',
             ],
       emergencyHospitalAdvice: shouldCall115
-          ? 'GỌI NGAY CẤP CỨU 115 HOẶC BỆNH VIỆN GẦN NHẤT!'
+          ? 'ĐƯA NẠN NHÂN ĐẾN CƠ SỞ Y TẾ HOẶC PHÒNG CẤP CỨU GẦN NHẤT NGAY!'
           : 'Đến cơ sở y tế nếu có bất kỳ dấu hiệu nhiễm trùng hoặc diễn biến bất thường.',
       sourceLinks: standardMedicalSources,
       shouldCallEmergency115: shouldCall115,

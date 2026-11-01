@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../models/first_aid_models.dart';
 import '../models/navigation_model.dart';
+import '../models/user_account_model.dart';
 
 mixin DieuHuongCoSoViewModel on ChangeNotifier {
   // Chỉ số màn hình hiện tại:
@@ -87,21 +88,110 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     }
   }
 
+  // Danh sách tài khoản người dùng đã đăng ký trong hệ thống (Hỗ trợ lưu trữ dữ liệu cá nhân khi đổi thiết bị)
+  final List<UserAccountModel> _registeredAccounts = [
+    UserAccountModel(
+      username: 'user123',
+      password: '123456',
+      fullName: 'Nguyễn Văn A',
+      createdAt: DateTime(2026, 1, 1),
+    ),
+  ];
+  List<UserAccountModel> get registeredAccounts => List.unmodifiable(_registeredAccounts);
+
+  // Tài khoản người dùng đang đăng nhập (null = Khách vãng lai)
+  UserAccountModel? _currentUser;
+  UserAccountModel? get currentUser => _currentUser;
+
   // Trạng thái tài khoản người dùng: Khách vãng lai (không bắt buộc đăng nhập) hoặc Đã đăng nhập
-  bool _isUserLoggedIn = false;
-  bool get isUserLoggedIn => _isUserLoggedIn;
+  bool get isUserLoggedIn => _currentUser != null;
 
   // Tên người dùng hiển thị trên góc phải Header
-  String get currentUserName =>
-      _isUserLoggedIn ? 'Nguyễn Văn A' : 'Khách';
+  String get currentUserName => _currentUser?.fullName ?? 'Khách';
 
-  void loginUser([String name = 'Nguyễn Văn A']) {
-    _isUserLoggedIn = true;
+  // Tên tài khoản (username) đang đăng nhập
+  String? get currentUsername => _currentUser?.username;
+
+  /// Đăng ký tài khoản người dùng mới (username + password + họ tên)
+  /// Không bắt buộc đăng ký. Người dùng chỉ cần đăng ký nếu muốn lưu dữ liệu cá nhân khi đổi thiết bị.
+  /// Trả về null nếu thành công, hoặc chuỗi thông báo lỗi nếu thất bại.
+  String? registerUser({
+    required String username,
+    required String password,
+    required String fullName,
+    String? emailOrPhone,
+  }) {
+    final cleanUsername = username.trim();
+    final cleanFullName = fullName.trim();
+    final cleanPassword = password.trim();
+
+    if (cleanFullName.isEmpty) {
+      return 'Vui lòng nhập họ và tên của bạn.';
+    }
+    if (cleanUsername.length < 3) {
+      return 'Tên tài khoản phải có ít nhất 3 ký tự.';
+    }
+    if (cleanPassword.length < 6) {
+      return 'Mật khẩu phải có ít nhất 6 ký tự.';
+    }
+    final isExisting = _registeredAccounts.any(
+      (a) => a.username.toLowerCase() == cleanUsername.toLowerCase(),
+    );
+    if (isExisting) {
+      return 'Tên tài khoản "$cleanUsername" đã tồn tại. Vui lòng chọn tên khác.';
+    }
+
+    final newAccount = UserAccountModel(
+      username: cleanUsername,
+      password: cleanPassword,
+      fullName: cleanFullName,
+      createdAt: DateTime.now(),
+      emailOrPhone: emailOrPhone?.trim(),
+    );
+    _registeredAccounts.add(newAccount);
+    _currentUser = newAccount;
+    notifyListeners();
+    return null;
+  }
+
+  /// Đăng nhập tài khoản bằng username và password
+  /// Trả về null nếu thành công, hoặc chuỗi thông báo lỗi nếu thất bại.
+  String? loginWithCredentials({
+    required String username,
+    required String password,
+  }) {
+    final cleanUsername = username.trim().toLowerCase();
+    final cleanPassword = password.trim();
+
+    try {
+      final account = _registeredAccounts.firstWhere(
+        (a) => a.username.toLowerCase() == cleanUsername,
+      );
+      if (account.password != cleanPassword) {
+        return 'Mật khẩu không chính xác. Vui lòng kiểm tra lại.';
+      }
+      _currentUser = account;
+      notifyListeners();
+      return null;
+    } catch (_) {
+      return 'Tài khoản "$username" không tồn tại trong hệ thống.';
+    }
+  }
+
+  /// Đăng xuất tài khoản người dùng về chế độ Khách (Guest)
+  void logoutUser() {
+    _currentUser = null;
     notifyListeners();
   }
 
-  void logoutUser() {
-    _isUserLoggedIn = false;
+  /// Đăng nhập nhanh tương thích ngược
+  void loginUser([String name = 'Nguyễn Văn A']) {
+    _currentUser = UserAccountModel(
+      username: 'user_${DateTime.now().millisecondsSinceEpoch}',
+      password: '',
+      fullName: name,
+      createdAt: DateTime.now(),
+    );
     notifyListeners();
   }
 

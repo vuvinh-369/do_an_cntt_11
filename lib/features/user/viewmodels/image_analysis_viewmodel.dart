@@ -10,12 +10,14 @@ import 'package:image_picker/image_picker.dart';
 import 'package:pasteboard/pasteboard.dart';
 
 import '../../../core/ai_server_manager.dart';
+import '../../../core/rule_engine/rule_models.dart';
 import '../models/image_analysis_models.dart';
 import 'analysis_result_viewmodel.dart';
+import 'first_aid_viewmodel.dart';
 import 'user_navigation_viewmodel.dart';
 
 mixin PhanTichAnhViewModel
-    on DieuHuongCoSoViewModel, KetQuaPhanTichViewModel {
+    on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel, KetQuaPhanTichViewModel {
   // Cấu hình văn bản chuẩn theo giao diện
   final AiUploadSpecModel uploadSpec = const AiUploadSpecModel(
     screenTitle: 'Phân tích hình ảnh tổn thương',
@@ -54,6 +56,32 @@ mixin PhanTichAnhViewModel
   double _appliedContrast = 1.0;
   double get appliedContrast => _appliedContrast;
 
+  // Cảm giác đau (3 mức: Không đau, Đau nhẹ, Đau nặng)
+  PainLevel _painLevel = PainLevel.mild;
+  PainLevel get painLevel => _painLevel;
+
+  void setPainLevel(PainLevel level) {
+    if (_painLevel != level) {
+      _painLevel = level;
+      toggleWarningSymptom(painLevel: level);
+      notifyListeners();
+    }
+  }
+
+  void setPainLevelFromIndex(int index) {
+    switch (index) {
+      case 0:
+        setPainLevel(PainLevel.none);
+        break;
+      case 1:
+        setPainLevel(PainLevel.mild);
+        break;
+      case 2:
+        setPainLevel(PainLevel.severe);
+        break;
+    }
+  }
+
   // 3 Checkbox tình trạng quan sát kèm theo khi quét vết thương:
   bool _hasForeignBody = false; // Có dị vật cắm vào vết thương
   bool get hasForeignBody => _hasForeignBody;
@@ -83,6 +111,7 @@ mixin PhanTichAnhViewModel
     _hasForeignBody = false;
     _isBleeding = false;
     _hasPusOrInfection = false;
+    _painLevel = PainLevel.mild;
     notifyListeners();
   }
 
@@ -432,7 +461,7 @@ mixin PhanTichAnhViewModel
         _analysisStatusMessage = 'Phân tích hoàn tất!';
         notifyListeners();
 
-        // 4. Phân tích kết quả thực tế từ model YOLO trả về
+        // 4. Phân tích kết quả thực tế từ model YOLO trả về (hỗ trợ phát hiện 2-3 vết thương)
         final Map<String, dynamic> data = jsonDecode(responseBody);
         final bool isDetected = data['detected'] as bool? ?? false;
         final String injuryType = data['injury_type'] as String? ?? 'Chưa xác định';
@@ -445,23 +474,44 @@ mixin PhanTichAnhViewModel
           boxCoords = (data['box'] as List).map((e) => (e as num).toDouble()).toList();
         }
 
+        // Đọc danh sách tất cả các tổn thương phát hiện trên ảnh
+        final List<DetectedWoundItemModel> allDetections = [];
+        if (data['all_detections'] != null && data['all_detections'] is List) {
+          for (final item in data['all_detections'] as List) {
+            if (item is Map<String, dynamic>) {
+              allDetections.add(DetectedWoundItemModel.fromJson(item));
+            }
+          }
+        }
+
         final double? imgW = (data['image_width'] as num?)?.toDouble();
         final double? imgH = (data['image_height'] as num?)?.toDouble();
 
+        final bool hasMulti = allDetections.length > 1;
+        final String bannerTitle = isDetected
+            ? (hasMulti
+                ? 'Phát hiện kết hợp ${allDetections.length} vết thương trên ảnh'
+                : (contrast != 1.0
+                    ? 'Kết quả quét lại (Tương phản x${contrast.toStringAsFixed(1)})'
+                    : 'Kết quả phân tích AI'))
+            : 'Không tìm thấy tổn thương rõ ràng';
+
         // 5. Cập nhật Model Kết quả phân tích thật
         final realResult = AiAnalysisResultModel(
-          bannerTitle: isDetected
-              ? (contrast != 1.0 ? 'Kết quả quét lại (Tương phản x${contrast.toStringAsFixed(1)})' : 'Kết quả phân tích AI')
-              : 'Không tìm thấy tổn thương rõ ràng',
+          bannerTitle: bannerTitle,
           confidencePercent: confidence,
           injuryType: injuryType,
           boundingBoxLabel: isDetected ? '$injuryType $confidence%' : 'Không có vết thương',
-          infoCardTitle: 'Thông tin nhận diện AI',
+          infoCardTitle: hasMulti
+              ? 'Thông tin nhận diện AI (${allDetections.length} tổn thương)'
+              : 'Thông tin nhận diện AI',
           injuryTypeLabel: 'Loại tổn thương:',
           confidenceRowLabel: 'Độ tin cậy:',
           locationRowLabel: 'Vị trí:',
           bottomNoticeText: isDetected
-              ? 'Mô hình YOLO đã nhận diện thành công vết thương trên ảnh. Bạn có thể chọn vị trí cơ thể và xem hướng dẫn sơ cứu.'
+              ? (hasMulti
+                  ? 'Mô hình YOLO phát hiện ${allDetections.length} vết thương khác nhau. Hệ thống đã tự động sắp xếp thứ tự ưu tiên sơ cứu theo chuẩn y tế.'
+                  : 'Mô hình YOLO đã nhận diện thành công vết thương trên ảnh. Bạn có thể chọn vị trí cơ thể và xem hướng dẫn sơ cứu.')
               : 'Mô hình YOLO không phát hiện thấy vết thương ngoài da rõ ràng. Nếu bạn đang đau, hãy xem các mục sơ cứu khẩn cấp hoặc chọn thủ công bên dưới.',
           primaryActionLabel: isDetected ? 'Xem hướng dẫn sơ cứu' : 'Tra cứu sơ cứu chung',
           rawImageBytes: imageBytes,
@@ -472,6 +522,7 @@ mixin PhanTichAnhViewModel
           originalImageWidth: imgW,
           originalImageHeight: imgH,
           detectionMessage: message,
+          allDetections: allDetections,
           appliedContrast: contrast,
         );
 
@@ -487,24 +538,37 @@ mixin PhanTichAnhViewModel
         // Ghi lại lịch sử phân tích trong RAM
         onNewAnalysisRecorded(
           imageSourceName: fileName,
-          injuryType: isDetected ? injuryType : 'Không phát hiện tổn thương rõ ràng',
+          injuryType: isDetected
+              ? (hasMulti ? realResult.combinedInjurySummary : injuryType)
+              : 'Không phát hiện tổn thương rõ ràng',
           confidencePercent: isDetected ? confidence : null,
           locationLabel: 'Cánh tay',
           topicId: topicId,
           rawImageBytes: imageBytes,
         );
 
-        // Đồng bộ 3 checkbox lâm sàng sang Rule Engine
+        // Đồng bộ các vết thương phát hiện, mức độ đau và 3 checkbox lâm sàng sang Rule Engine
+        final List<String> secIds = allDetections.length > 1
+            ? allDetections.skip(1).map((d) => d.topicId).toList()
+            : const [];
+        final List<String> secNames = allDetections.length > 1
+            ? allDetections.skip(1).map((d) => d.label).toList()
+            : const [];
+
         updateInjuryContext(
           topicId: topicId,
           injuryTypeName: injuryType,
           locationId: 'arm',
           confidencePercent: confidence,
+          painLevel: _painLevel,
+          secondaryInjuryTypeIds: secIds,
+          secondaryInjuryTypeNames: secNames,
         );
         toggleWarningSymptom(
           hasDeepWoundOrForeignBody: _hasForeignBody,
           isBleedingHeavy: _isBleeding,
           hasSignsOfInfection: _hasPusOrInfection,
+          painLevel: _painLevel,
         );
 
         // Chuyển sang màn hình Kết quả phân tích

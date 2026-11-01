@@ -105,7 +105,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
         '1. Đảm bảo an toàn cho bản thân và nạn nhân trước khi tiếp cận hiện trường.',
         '2. Kiểm tra sự tỉnh táo, đường thở và nhịp thở của người bị nạn.',
         '3. Rửa tay sạch hoặc đeo găng tay y tế trước khi tiếp xúc với vết thương hở.',
-        '4. Gọi cấp cứu 115 ngay nếu nạn nhân bất tỉnh, khó thở hoặc chảy máu không cầm.',
+        '4. Chuyển cấp cứu ngay nếu nạn nhân bất tỉnh, khó thở hoặc chảy máu không cầm.',
       ],
       relatedGuideTopicId: 'abrasion',
       externalUrl: 'https://redcross.org.vn/so-cap-cuu',

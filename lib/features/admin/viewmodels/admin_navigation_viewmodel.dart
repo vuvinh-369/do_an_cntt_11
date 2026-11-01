@@ -50,11 +50,6 @@ mixin DieuHuongQuanTriViewModel on ChangeNotifier {
       icon: Icons.tune_outlined,
     ),
     AdminSidebarItemModel(
-      id: 'medical_documents',
-      title: 'Tài liệu y tế',
-      icon: Icons.description_outlined,
-    ),
-    AdminSidebarItemModel(
       id: 'history_analytics',
       title: 'Lịch sử & Thống kê',
       icon: Icons.analytics_outlined,

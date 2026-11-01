@@ -213,32 +213,6 @@ class HuongDanSoCuuView extends StatelessWidget {
               height: 1.45,
             ),
           ),
-          if (result.shouldCallEmergency115) ...[
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFDC2626),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    'GỌI NGAY CẤP CỨU 115',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );

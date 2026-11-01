@@ -1,3 +1,5 @@
+import '../../../core/gemini/gemini_config_model.dart';
+import '../../../core/gemini/gemini_service.dart';
 import '../../../core/rule_engine/rule_engine_service.dart';
 import '../../../core/rule_engine/rule_models.dart';
 import '../models/admin_management_models.dart';
@@ -12,7 +14,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
   final List<KnowledgeArticleModel> _knowledgeArticles = [
     const KnowledgeArticleModel(
       id: 'kb_1',
-      title: 'Phác đồ sơ cứu vết trầy xước ngoài da',
+      title: 'Quy trình sơ cứu vết trầy xước ngoài da',
       categoryId: 'wound',
       categoryName: 'Vết thương',
       summary:
@@ -55,7 +57,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
         'Băng ép cố định khép sát hai mép vết rách',
       ],
       warnings: [
-        'Chảy máu phun tia hoặc không cầm sau 15 phút cần gọi ngay 115',
+        'Chảy máu phun tia hoặc không cầm sau 15 phút cần đến viện ngay',
         'Vết cắt sâu quá 0.5cm cần đến bệnh viện khâu trong 6 giờ đầu',
       ],
       contraindications: [
@@ -98,7 +100,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
     ),
     const KnowledgeArticleModel(
       id: 'kb_4',
-      title: 'Chăm sóc tổn thương bầm tím phần mềm (Phác đồ R.I.C.E)',
+      title: 'Chăm sóc tổn thương bầm tím phần mềm (Quy trình 4 bước R.I.C.E)',
       categoryId: 'musculoskeletal',
       categoryName: 'Xương khớp',
       summary:
@@ -138,7 +140,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
         'Giữ bình tĩnh, không lay chuyển hoặc cố rút dị vật cắm sâu',
         'Dùng gạc hoặc cuộn băng dày chèn hai bên để cố định dị vật',
         'Băng vòng xung quanh để giữ gạc cố định, không ép lên đầu dị vật',
-        'Nhanh chóng gọi 115 hoặc chuyển nạn nhân đến bệnh viện cấp cứu',
+        'Nhanh chóng chuyển nạn nhân đến bệnh viện cấp cứu',
       ],
       warnings: [
         'Dị vật cắm ở mắt, cổ, ngực, bụng có nguy cơ tổn thương mạch máu lớn',
@@ -194,6 +196,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
 
   void setKbSearchQuery(String query) {
     _kbSearchQuery = query;
+    _currentKbPage = 1;
     notifyListeners();
   }
 
@@ -203,6 +206,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
 
   void setSelectedInjuryTopicFilter(String topicId) {
     _selectedInjuryTopicFilter = topicId;
+    _currentKbPage = 1;
     notifyListeners();
   }
 
@@ -221,8 +225,50 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
     }).toList();
   }
 
+  // Phân trang Knowledge Base (Khớp giao diện phân trang Kho tài liệu)
+  int _currentKbPage = 1;
+  int get currentKbPage => _currentKbPage;
+  static const int kbPageSize = 4;
+
+  int get totalKbPages {
+    final total = (filteredKnowledgeArticles.length / kbPageSize).ceil();
+    return total < 1 ? 1 : total;
+  }
+
+  List<KnowledgeArticleModel> get paginatedKnowledgeArticles {
+    final all = filteredKnowledgeArticles;
+    final startIndex = (_currentKbPage - 1) * kbPageSize;
+    if (startIndex >= all.length) return [];
+    final endIndex = (startIndex + kbPageSize > all.length)
+        ? all.length
+        : startIndex + kbPageSize;
+    return all.sublist(startIndex, endIndex);
+  }
+
+  void selectKbPage(int page) {
+    if (page < 1 || page > totalKbPages) return;
+    if (_currentKbPage == page) return;
+    _currentKbPage = page;
+    notifyListeners();
+  }
+
+  void goToPreviousKbPage() {
+    if (_currentKbPage > 1) {
+      _currentKbPage--;
+      notifyListeners();
+    }
+  }
+
+  void goToNextKbPage() {
+    if (_currentKbPage < totalKbPages) {
+      _currentKbPage++;
+      notifyListeners();
+    }
+  }
+
   void addKnowledgeArticle(KnowledgeArticleModel article) {
     _knowledgeArticles.insert(0, article);
+    _currentKbPage = 1;
     notifyListeners();
   }
 
@@ -236,6 +282,9 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
 
   void deleteKnowledgeArticle(String id) {
     _knowledgeArticles.removeWhere((a) => a.id == id);
+    if (_currentKbPage > totalKbPages) {
+      _currentKbPage = totalKbPages;
+    }
     notifyListeners();
   }
 
@@ -364,6 +413,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
 
   void selectRuleCategoryFilter(String categoryId) {
     _selectedRuleCategoryFilter = categoryId;
+    _currentRulePage = 1;
     notifyListeners();
   }
 
@@ -378,6 +428,47 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
         .toList();
   }
 
+  // Phân trang Rule Engine (Khớp giao diện phân trang Kho tài liệu)
+  int _currentRulePage = 1;
+  int get currentRulePage => _currentRulePage;
+  static const int rulePageSize = 4;
+
+  int get totalRulePages {
+    final total = (filteredAdminRules.length / rulePageSize).ceil();
+    return total < 1 ? 1 : total;
+  }
+
+  List<FirstAidRule> get paginatedAdminRules {
+    final all = filteredAdminRules;
+    final startIndex = (_currentRulePage - 1) * rulePageSize;
+    if (startIndex >= all.length) return [];
+    final endIndex = (startIndex + rulePageSize > all.length)
+        ? all.length
+        : startIndex + rulePageSize;
+    return all.sublist(startIndex, endIndex);
+  }
+
+  void selectRulePage(int page) {
+    if (page < 1 || page > totalRulePages) return;
+    if (_currentRulePage == page) return;
+    _currentRulePage = page;
+    notifyListeners();
+  }
+
+  void goToPreviousRulePage() {
+    if (_currentRulePage > 1) {
+      _currentRulePage--;
+      notifyListeners();
+    }
+  }
+
+  void goToNextRulePage() {
+    if (_currentRulePage < totalRulePages) {
+      _currentRulePage++;
+      notifyListeners();
+    }
+  }
+
   void toggleAdminRule(String ruleId) {
     _ruleEngineService.toggleRuleStatus(ruleId);
     notifyListeners();
@@ -385,6 +476,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
 
   void addAdminRule(FirstAidRule rule) {
     _ruleEngineService.addRule(rule);
+    _currentRulePage = 1;
     notifyListeners();
   }
 
@@ -395,11 +487,15 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
 
   void deleteAdminRule(String ruleId) {
     _ruleEngineService.removeRule(ruleId);
+    if (_currentRulePage > totalRulePages) {
+      _currentRulePage = totalRulePages;
+    }
     notifyListeners();
   }
 
   void resetRulesToDefault() {
     _ruleEngineService.resetToDefaults();
+    _currentRulePage = 1;
     notifyListeners();
   }
 
@@ -433,5 +529,22 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
       isEmergency115AlertEnabled: enabled,
     );
     notifyListeners();
+  }
+
+  // ===========================================================================
+  // 5. CẤU HÌNH GOOGLE GEMINI AI (ChatBox & Prompt Tư Vấn Y Tế)
+  // ===========================================================================
+  GeminiConfigModel get geminiConfig => GeminiService.instance.config;
+
+  void updateGeminiConfig(GeminiConfigModel config) {
+    GeminiService.instance.updateConfig(config);
+    notifyListeners();
+  }
+
+  Future<GeminiTestResult> testGeminiConnection({
+    required String apiKey,
+    required String model,
+  }) async {
+    return await GeminiService.instance.testApiKey(apiKey: apiKey, model: model);
   }
 }

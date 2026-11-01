@@ -25,26 +25,39 @@ mixin HuongDanSoCuuViewModel on DieuHuongCoSoViewModel {
     String? injuryTypeName,
     String? locationId,
     int? confidencePercent,
+    PainLevel? painLevel,
+    List<String>? secondaryInjuryTypeIds,
+    List<String>? secondaryInjuryTypeNames,
   }) {
     _injuryContext = _injuryContext.copyWith(
       injuryTypeId: topicId,
-      injuryTypeName: injuryTypeName ?? _getTopicDisplayName(topicId),
+      injuryTypeName: injuryTypeName ?? getTopicDisplayName(topicId),
       locationId: locationId,
       confidencePercent: confidencePercent,
+      painLevel: painLevel,
+      secondaryInjuryTypeIds: secondaryInjuryTypeIds,
+      secondaryInjuryTypeNames: secondaryInjuryTypeNames,
     );
     _reEvaluateRuleEngine();
   }
 
-  // Bật/tắt các dấu hiệu cảnh báo nhanh từ người dùng
+  // Bật/tắt các dấu hiệu cảnh báo nhanh từ người dùng và mức độ đau
   void toggleWarningSymptom({
+    String? injuryTypeId,
+    String? injuryTypeName,
     bool? isBleedingHeavy,
     bool? hasDeepWoundOrForeignBody,
     bool? isLargeAreaBurnOrChemical,
     bool? isSeverePainOrFractureSuspected,
     bool? hasSignsOfInfection,
     bool? isChildOrElderly,
+    PainLevel? painLevel,
+    List<String>? secondaryInjuryTypeIds,
+    List<String>? secondaryInjuryTypeNames,
   }) {
     _injuryContext = _injuryContext.copyWith(
+      injuryTypeId: injuryTypeId ?? _injuryContext.injuryTypeId,
+      injuryTypeName: injuryTypeName ?? _injuryContext.injuryTypeName,
       isBleedingHeavy: isBleedingHeavy ?? _injuryContext.isBleedingHeavy,
       hasDeepWoundOrForeignBody: hasDeepWoundOrForeignBody ??
           _injuryContext.hasDeepWoundOrForeignBody,
@@ -55,6 +68,11 @@ mixin HuongDanSoCuuViewModel on DieuHuongCoSoViewModel {
       hasSignsOfInfection:
           hasSignsOfInfection ?? _injuryContext.hasSignsOfInfection,
       isChildOrElderly: isChildOrElderly ?? _injuryContext.isChildOrElderly,
+      painLevel: painLevel ?? _injuryContext.painLevel,
+      secondaryInjuryTypeIds:
+          secondaryInjuryTypeIds ?? _injuryContext.secondaryInjuryTypeIds,
+      secondaryInjuryTypeNames:
+          secondaryInjuryTypeNames ?? _injuryContext.secondaryInjuryTypeNames,
     );
     _reEvaluateRuleEngine();
   }
@@ -63,7 +81,7 @@ mixin HuongDanSoCuuViewModel on DieuHuongCoSoViewModel {
   void resetWarningSymptoms() {
     _injuryContext = InjuryContext(
       injuryTypeId: selectedGuideTopicId,
-      injuryTypeName: _getTopicDisplayName(selectedGuideTopicId),
+      injuryTypeName: getTopicDisplayName(selectedGuideTopicId),
     );
     _reEvaluateRuleEngine();
   }
@@ -74,7 +92,7 @@ mixin HuongDanSoCuuViewModel on DieuHuongCoSoViewModel {
     notifyListeners();
   }
 
-  String _getTopicDisplayName(String topicId) {
+  String getTopicDisplayName(String topicId) {
     switch (topicId) {
       case 'abrasion':
         return 'Trầy xước ngoài da';
@@ -354,7 +372,7 @@ mixin HuongDanSoCuuViewModel on DieuHuongCoSoViewModel {
           fallbackIcon: Icons.local_hospital_outlined,
         ),
       ],
-      redWarningTitle: 'Dấu hiệu báo động đỏ (Cần cấp cứu 115 ngay):',
+      redWarningTitle: 'Dấu hiệu báo động đỏ (Cần đến viện cấp cứu ngay):',
       redWarningBullets: const [
         'Dị vật cắm vào vùng mắt, cổ, ngực, bụng hoặc mạch máu lớn.',
         'Chảy máu ồ ạt, phun thành tia hoặc không cầm sau 10 - 15 phút băng ép.',

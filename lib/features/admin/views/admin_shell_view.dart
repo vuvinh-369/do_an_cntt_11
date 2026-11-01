@@ -536,8 +536,6 @@ class _AdminShellViewState extends State<AdminShellView> {
         return const AdminInjuryTypesView();
       case 'rule_engine':
         return const AdminRuleEngineView();
-      case 'medical_documents':
-        return const AdminDocumentsView();
       case 'history_analytics':
         return const AdminHistoryAnalyticsView();
       case 'settings':

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/rule_engine/rule_models.dart';
 import '../models/image_analysis_models.dart';
 import '../viewmodels/user_viewmodel.dart';
 import 'widgets/user_painters.dart';
@@ -297,7 +298,215 @@ class PhanTichAnhView extends StatelessWidget {
     );
   }
 
-  /// Khung 3 Checkbox tình trạng vết thương: Dị vật cắm vào, Đang chảy máu, Chảy mủ (nhiễm trùng)
+  /// Nút gạt 3 mức cảm giác đau: Không đau -> Đau nhẹ -> Đau nặng
+  Widget _buildPainLevelSelector(
+    BuildContext context,
+    UserViewModel viewModel, {
+    bool isMobile = false,
+  }) {
+    final currentLevel = viewModel.painLevel;
+    final int activeIndex = currentLevel == PainLevel.none ? 0 : (currentLevel == PainLevel.mild ? 1 : 2);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.speed_rounded, color: Color(0xFF2563EB), size: 19),
+              const SizedBox(width: 8),
+              const Text(
+                'Cảm giác đau hiện tại:',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: currentLevel.color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: currentLevel.color.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(currentLevel.icon, size: 14, color: currentLevel.color),
+                    const SizedBox(width: 4),
+                    Text(
+                      currentLevel.label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: currentLevel.color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Nút gạt 3 nấc: Không đau (0) -> Đau nhẹ (1) -> Đau nặng (2)
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 6,
+              activeTrackColor: currentLevel.color,
+              inactiveTrackColor: const Color(0xFFE2E8F0),
+              thumbColor: currentLevel.color,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+              overlayColor: currentLevel.color.withValues(alpha: 0.15),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
+              tickMarkShape: const RoundSliderTickMarkShape(tickMarkRadius: 3),
+              activeTickMarkColor: Colors.white,
+              inactiveTickMarkColor: const Color(0xFF94A3B8),
+            ),
+            child: Slider(
+              value: activeIndex.toDouble(),
+              min: 0,
+              max: 2,
+              divisions: 2,
+              onChanged: (val) {
+                viewModel.setPainLevelFromIndex(val.round());
+              },
+            ),
+          ),
+
+          // 3 nhãn tương tác có thể bấm trực tiếp
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () => viewModel.setPainLevel(PainLevel.none),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      color: activeIndex == 0 ? const Color(0xFFDCFCE7) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: activeIndex == 0 ? const Color(0xFF86EFAC) : Colors.transparent,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Không đau',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: activeIndex == 0 ? FontWeight.w800 : FontWeight.w600,
+                            color: activeIndex == 0 ? const Color(0xFF15803D) : const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          '0/10',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: activeIndex == 0 ? const Color(0xFF15803D) : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () => viewModel.setPainLevel(PainLevel.mild),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      color: activeIndex == 1 ? const Color(0xFFFEF3C7) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: activeIndex == 1 ? const Color(0xFFFCD34D) : Colors.transparent,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Đau nhẹ',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: activeIndex == 1 ? FontWeight.w800 : FontWeight.w600,
+                            color: activeIndex == 1 ? const Color(0xFFB45309) : const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          '1 - 4/10',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: activeIndex == 1 ? const Color(0xFFB45309) : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () => viewModel.setPainLevel(PainLevel.severe),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      color: activeIndex == 2 ? const Color(0xFFFEE2E2) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: activeIndex == 2 ? const Color(0xFFFCA5A5) : Colors.transparent,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Đau nặng',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: activeIndex == 2 ? FontWeight.w800 : FontWeight.w600,
+                            color: activeIndex == 2 ? const Color(0xFFB91C1C) : const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          '7 - 10/10',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: activeIndex == 2 ? const Color(0xFFB91C1C) : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            currentLevel.description,
+            style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Khung Cảm giác đau 3 nấc + 3 Checkbox tình trạng vết thương
   Widget _buildClinicalCheckboxesCard(
     BuildContext context,
     UserViewModel viewModel, {
@@ -313,6 +522,9 @@ class PhanTichAnhView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 1. Nút gạt 3 mức cảm giác đau (Không đau - Đau nhẹ - Đau nặng)
+          _buildPainLevelSelector(context, viewModel, isMobile: isMobile),
+
           Row(
             children: const [
               Icon(Icons.checklist_rtl_rounded, color: Color(0xFF2563EB), size: 20),

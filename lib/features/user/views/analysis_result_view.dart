@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/rule_engine/rule_models.dart';
 import '../models/image_analysis_models.dart';
 import '../viewmodels/user_viewmodel.dart';
 import 'widgets/user_painters.dart';
@@ -291,9 +292,9 @@ class KetQuaPhanTichView extends StatelessWidget {
               ),
             ),
 
-          // 2. Bounding Box thật của YOLO đè lên ảnh
-          if (imageBytes != null && result.boundingBox != null && result.boundingBox!.length == 4)
-            _buildRealBoundingBox(result),
+          // 2. Bounding Box thật của YOLO đè lên ảnh (hỗ trợ hiển thị đồng thời 2-3 vết thương)
+          if (imageBytes != null && (result.allDetections.isNotEmpty || (result.boundingBox != null && result.boundingBox!.length == 4)))
+            _buildRealBoundingBoxes(result),
 
           // 3. Tên file ảnh hiển thị góc dưới
           if (result.imageFileName != null && result.imageFileName!.isNotEmpty)
@@ -324,11 +325,27 @@ class KetQuaPhanTichView extends StatelessWidget {
     );
   }
 
-  /// Vẽ khung Bounding Box theo toạ độ YOLO [x1, y1, x2, y2]
-  Widget _buildRealBoundingBox(AiAnalysisResultModel result) {
-    final box = result.boundingBox!;
+  /// Vẽ các khung Bounding Box theo toạ độ YOLO [x1, y1, x2, y2] (hỗ trợ nhiều vết thương)
+  Widget _buildRealBoundingBoxes(AiAnalysisResultModel result) {
     final double? origW = result.originalImageWidth;
     final double? origH = result.originalImageHeight;
+
+    final List<DetectedWoundItemModel> detections = result.allDetections.isNotEmpty
+        ? result.allDetections
+        : (result.boundingBox != null && result.boundingBox!.length == 4
+            ? [
+                DetectedWoundItemModel(
+                  label: result.injuryType,
+                  topicId: result.detectedTopicId,
+                  confidencePercent: result.confidencePercent,
+                  severity: 'Nhẹ',
+                  box: result.boundingBox!,
+                  classId: '',
+                )
+              ]
+            : []);
+
+    if (detections.isEmpty) return const SizedBox.shrink();
 
     if (origW == null || origH == null || origW <= 0 || origH <= 0) {
       return Center(
@@ -352,12 +369,6 @@ class KetQuaPhanTichView extends StatelessWidget {
       );
     }
 
-    // Tính toán toạ độ tương đối (%) so với ảnh gốc
-    final double leftRatio = (box[0] / origW).clamp(0.0, 1.0);
-    final double topRatio = (box[1] / origH).clamp(0.0, 1.0);
-    final double rightRatio = (box[2] / origW).clamp(0.0, 1.0);
-    final double bottomRatio = (box[3] / origH).clamp(0.0, 1.0);
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final double containerW = constraints.maxWidth;
@@ -379,36 +390,45 @@ class KetQuaPhanTichView extends StatelessWidget {
           offsetY = 0;
         }
 
-        final double boxLeft = offsetX + (leftRatio * renderW);
-        final double boxTop = offsetY + (topRatio * renderH);
-        final double boxW = (rightRatio - leftRatio) * renderW;
-        final double boxH = (bottomRatio - topRatio) * renderH;
-
         return Stack(
-          children: [
-            Positioned(
+          children: detections.map((det) {
+            final box = det.box;
+            if (box.length < 4) return const SizedBox.shrink();
+
+            final double leftRatio = (box[0] / origW).clamp(0.0, 1.0);
+            final double topRatio = (box[1] / origH).clamp(0.0, 1.0);
+            final double rightRatio = (box[2] / origW).clamp(0.0, 1.0);
+            final double bottomRatio = (box[3] / origH).clamp(0.0, 1.0);
+
+            final double boxLeft = offsetX + (leftRatio * renderW);
+            final double boxTop = offsetY + (topRatio * renderH);
+            final double boxW = (rightRatio - leftRatio) * renderW;
+            final double boxH = (bottomRatio - topRatio) * renderH;
+            final boxColor = det.tagColor;
+
+            return Positioned(
               left: boxLeft,
               top: boxTop,
               width: boxW.clamp(20.0, containerW),
               height: boxH.clamp(20.0, containerH),
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFEF4444), width: 2.5),
+                  border: Border.all(color: boxColor, width: 2.5),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Align(
                   alignment: Alignment.topLeft,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEF4444),
-                      borderRadius: BorderRadius.only(
+                    decoration: BoxDecoration(
+                      color: boxColor,
+                      borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(2),
                         bottomRight: Radius.circular(4),
                       ),
                     ),
                     child: Text(
-                      result.boundingBoxLabel,
+                      '${det.label} ${det.confidencePercent}%',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,
@@ -418,8 +438,8 @@ class KetQuaPhanTichView extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          ],
+            );
+          }).toList(),
         );
       },
     );
@@ -515,10 +535,73 @@ class KetQuaPhanTichView extends StatelessWidget {
                   value: result.detectionMessage!,
                 ),
               ],
+
+              // Danh sách các tổn thương phát hiện đồng thời trên ảnh
+              if (result.hasMultipleInjuries) ...[
+                const SizedBox(height: 14),
+                const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.hub_rounded, size: 16, color: Color(0xFF2563EB)),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Tổn thương kết hợp phát hiện (${result.allDetections.length}):',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0D2B6B),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: result.allDetections.map((det) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: det.tagColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: det.tagColor.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(shape: BoxShape.circle, color: det.tagColor),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${det.label} (${det.confidencePercent}%)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: det.tagColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
             ],
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
+
+        // Khung điều chỉnh Cảm giác đau (3 mức: Không đau, Đau nhẹ, Đau nặng)
+        _buildPainLevelSelector(context, viewModel, isMobile: isMobile),
+        const SizedBox(height: 14),
+
+        // 3 Checkbox bổ sung tình trạng lâm sàng (để nếu người dùng quên chọn ở bước trước có thể tích chọn lại)
+        _buildClinicalCheckboxesCard(context, viewModel, isMobile: isMobile),
+        const SizedBox(height: 14),
 
         // NÚT: "Kết quả quét không phù hợp" (cho phép chọn thủ công)
         OutlinedButton.icon(
@@ -559,6 +642,360 @@ class KetQuaPhanTichView extends StatelessWidget {
         const SizedBox(height: 12),
         _buildLocationSelectorRow(context, viewModel),
       ],
+    );
+  }
+
+  /// Nút gạt 3 mức cảm giác đau trên Màn hình kết quả: Không đau -> Đau nhẹ -> Đau nặng
+  Widget _buildPainLevelSelector(
+    BuildContext context,
+    UserViewModel viewModel, {
+    bool isMobile = false,
+  }) {
+    final currentLevel = viewModel.painLevel;
+    final int activeIndex = currentLevel == PainLevel.none ? 0 : (currentLevel == PainLevel.mild ? 1 : 2);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060D2B6B),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.speed_rounded, color: Color(0xFF2563EB), size: 19),
+              const SizedBox(width: 8),
+              const Text(
+                'Cảm giác đau hiện tại:',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0D2B6B),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: currentLevel.color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: currentLevel.color.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(currentLevel.icon, size: 14, color: currentLevel.color),
+                    const SizedBox(width: 4),
+                    Text(
+                      currentLevel.label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: currentLevel.color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Nút gạt 3 nấc: Không đau (0) -> Đau nhẹ (1) -> Đau nặng (2)
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 6,
+              activeTrackColor: currentLevel.color,
+              inactiveTrackColor: const Color(0xFFE2E8F0),
+              thumbColor: currentLevel.color,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+              overlayColor: currentLevel.color.withValues(alpha: 0.15),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
+              tickMarkShape: const RoundSliderTickMarkShape(tickMarkRadius: 3),
+              activeTickMarkColor: Colors.white,
+              inactiveTickMarkColor: const Color(0xFF94A3B8),
+            ),
+            child: Slider(
+              value: activeIndex.toDouble(),
+              min: 0,
+              max: 2,
+              divisions: 2,
+              onChanged: (val) {
+                viewModel.setPainLevelFromIndex(val.round());
+              },
+            ),
+          ),
+
+          // 3 nhãn tương tác có thể bấm trực tiếp
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () => viewModel.setPainLevel(PainLevel.none),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    decoration: BoxDecoration(
+                      color: activeIndex == 0 ? const Color(0xFFDCFCE7) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: activeIndex == 0 ? const Color(0xFF86EFAC) : Colors.transparent,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Không đau',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: activeIndex == 0 ? FontWeight.w800 : FontWeight.w600,
+                            color: activeIndex == 0 ? const Color(0xFF15803D) : const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          '0/10',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: activeIndex == 0 ? const Color(0xFF15803D) : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () => viewModel.setPainLevel(PainLevel.mild),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    decoration: BoxDecoration(
+                      color: activeIndex == 1 ? const Color(0xFFFEF3C7) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: activeIndex == 1 ? const Color(0xFFFCD34D) : Colors.transparent,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Đau nhẹ',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: activeIndex == 1 ? FontWeight.w800 : FontWeight.w600,
+                            color: activeIndex == 1 ? const Color(0xFFB45309) : const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          '1 - 4/10',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: activeIndex == 1 ? const Color(0xFFB45309) : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () => viewModel.setPainLevel(PainLevel.severe),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    decoration: BoxDecoration(
+                      color: activeIndex == 2 ? const Color(0xFFFEE2E2) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: activeIndex == 2 ? const Color(0xFFFCA5A5) : Colors.transparent,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Đau nặng',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: activeIndex == 2 ? FontWeight.w800 : FontWeight.w600,
+                            color: activeIndex == 2 ? const Color(0xFFB91C1C) : const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          '7 - 10/10',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: activeIndex == 2 ? const Color(0xFFB91C1C) : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            currentLevel.description,
+            style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Khung 3 Checkbox tình trạng vết thương (bổ sung nếu người dùng quên chọn trước đó)
+  Widget _buildClinicalCheckboxesCard(
+    BuildContext context,
+    UserViewModel viewModel, {
+    bool isMobile = false,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(isMobile ? 12 : 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060D2B6B),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.checklist_rtl_rounded, color: Color(0xFF2563EB), size: 19),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Tình trạng quan sát kèm theo (chọn lại nếu cần):',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0D2B6B),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildSingleCheckboxTile(
+            title: 'Dị vật cắm vào vết thương (kim loại, dằm, thủy tinh...)',
+            subtitle: 'Rule Engine sẽ cảnh báo KHÔNG được tự ý rút dị vật ra',
+            icon: Icons.warning_amber_rounded,
+            iconColor: const Color(0xFFEA580C),
+            value: viewModel.hasForeignBody,
+            onChanged: (val) {
+              viewModel.toggleHasForeignBody(val);
+              viewModel.toggleWarningSymptom(hasDeepWoundOrForeignBody: val ?? false);
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSingleCheckboxTile(
+            title: 'Vết thương đang chảy máu (chảy nhiều hoặc liên tục)',
+            subtitle: 'Hệ thống sẽ ưu tiên các bước cầm máu khẩn cấp',
+            icon: Icons.water_drop_rounded,
+            iconColor: const Color(0xFFDC2626),
+            value: viewModel.isBleeding,
+            onChanged: (val) {
+              viewModel.toggleIsBleeding(val);
+              viewModel.toggleWarningSymptom(isBleedingHeavy: val ?? false);
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSingleCheckboxTile(
+            title: 'Vết thương chảy mủ / Sưng đỏ tấy (dấu hiệu nhiễm trùng)',
+            subtitle: 'Hướng dẫn sát trùng chuyên sâu và khuyến cáo khám y tế',
+            icon: Icons.healing_outlined,
+            iconColor: const Color(0xFFD97706),
+            value: viewModel.hasPusOrInfection,
+            onChanged: (val) {
+              viewModel.toggleHasPusOrInfection(val);
+              viewModel.toggleWarningSymptom(hasSignsOfInfection: val ?? false);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSingleCheckboxTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color iconColor,
+    required bool value,
+    required ValueChanged<bool?> onChanged,
+  }) {
+    return Material(
+      color: value ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => onChanged(!value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: value ? const Color(0xFF93C5FD) : const Color(0xFFE2E8F0),
+              width: value ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Checkbox(
+                value: value,
+                onChanged: onChanged,
+                activeColor: const Color(0xFF2563EB),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+              Icon(icon, color: iconColor, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: value ? FontWeight.w700 : FontWeight.w600,
+                        color: value ? const Color(0xFF1E40AF) : const Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -882,7 +1319,7 @@ class KetQuaPhanTichView extends StatelessWidget {
     );
   }
 
-  /// Hàng nút hành động dưới cùng: Quét ảnh khác + Quét lại (Tăng tương phản) + Xem hướng dẫn sơ cứu
+  /// Hàng nút hành động dưới cùng: Quét ảnh khác + Quét lại + Xem kết quả sơ cứu nhanh (Rule Engine) + Xem kết quả với AI
   Widget _buildBottomActionButtons(
     BuildContext context,
     UserViewModel viewModel,
@@ -890,7 +1327,7 @@ class KetQuaPhanTichView extends StatelessWidget {
     bool isMobile = false,
   }) {
     return Wrap(
-      alignment: WrapAlignment.end,
+      alignment: isMobile ? WrapAlignment.center : WrapAlignment.end,
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 12,
       runSpacing: 12,
@@ -904,8 +1341,8 @@ class KetQuaPhanTichView extends StatelessWidget {
             foregroundColor: const Color(0xFF0D2B6B),
             side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.3),
             padding: EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: isMobile ? 14 : 16,
+              horizontal: 14,
+              vertical: isMobile ? 13 : 15,
             ),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
@@ -929,68 +1366,71 @@ class KetQuaPhanTichView extends StatelessWidget {
           icon: const Icon(Icons.contrast_rounded, size: 18, color: Color(0xFF2563EB)),
           label: Text(
             result.appliedContrast != 1.0
-                ? 'Quét lại (Tương phản x${result.appliedContrast == 1.35 ? 1.6 : 1.35})'
-                : 'Quét lại (Tăng tương phản)',
+                ? 'Quét lại (x${result.appliedContrast == 1.35 ? 1.6 : 1.35})'
+                : 'Quét lại (Tương phản)',
             style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF2563EB)),
           ),
           style: OutlinedButton.styleFrom(
             backgroundColor: const Color(0xFFEFF6FF),
             side: const BorderSide(color: Color(0xFF93C5FD), width: 1.3),
             padding: EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: isMobile ? 14 : 16,
+              horizontal: 14,
+              vertical: isMobile ? 13 : 15,
             ),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         ),
 
-        // 3. Nút XEM HƯỚNG DẪN SƠ CỨU
-        _buildViewFirstAidGuideButton(
-          context,
-          result.primaryActionLabel,
-          isMobile: isMobile,
+        // 3. Nút XEM KẾT QUẢ SƠ CỨU NHANH (SỬ DỤNG RULE ENGINE & KNOWLEDGE BASE)
+        ElevatedButton.icon(
+          onPressed: () => context.read<UserViewModel>().onViewFirstAidGuidePressed(),
+          icon: const Icon(Icons.verified_rounded, size: 18),
+          label: const Text(
+            'Xem kết quả sơ cứu nhanh',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1E40AF),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: isMobile ? 14 : 16,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+
+        // 4. Nút XEM KẾT QUẢ VỚI AI (CHUYỂN PROMPT SANG CHATBOX AI)
+        ElevatedButton.icon(
+          onPressed: () => context.read<UserViewModel>().consultAiWithCurrentAnalysis(),
+          icon: const Icon(Icons.auto_awesome, size: 18),
+          label: const Text(
+            'Xem kết quả với AI',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF7C3AED),
+            foregroundColor: Colors.white,
+            elevation: 1,
+            padding: EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: isMobile ? 14 : 16,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
         ),
       ],
-    );
-  }
-
-  Widget _buildViewFirstAidGuideButton(
-    BuildContext context,
-    String label, {
-    bool isMobile = false,
-  }) {
-    return SizedBox(
-      width: isMobile ? double.infinity : null,
-      child: ElevatedButton(
-        onPressed: () => context.read<UserViewModel>().onViewFirstAidGuidePressed(),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2563EB),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          padding: EdgeInsets.symmetric(
-            horizontal: 26,
-            vertical: isMobile ? 15 : 18,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward_rounded, size: 18),
-          ],
-        ),
-      ),
     );
   }
 

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 enum RuleSeverityLevel {
   normal, // Nhẹ - Có thể tự sơ cứu và theo dõi tại nhà
   warning, // Cần chú ý - Cần sơ cứu cẩn thận, theo dõi sát hoặc khám bác sĩ
-  emergency, // Khẩn cấp / Nguy kịch - Gọi 115 hoặc đến ngay bệnh viện cấp cứu
+  emergency, // Khẩn cấp / Nguy kịch - Cần đến ngay cơ sở y tế / bệnh viện cấp cứu
 }
 
 extension RuleSeverityLevelExt on RuleSeverityLevel {
@@ -15,7 +15,7 @@ extension RuleSeverityLevelExt on RuleSeverityLevel {
       case RuleSeverityLevel.warning:
         return 'Cần chú ý - Theo dõi sát';
       case RuleSeverityLevel.emergency:
-        return 'Cấp cứu khẩn cấp (115)';
+        return 'Khẩn cấp - Cần đến cơ sở y tế ngay';
     }
   }
 
@@ -64,6 +64,59 @@ extension RuleSeverityLevelExt on RuleSeverityLevel {
   }
 }
 
+/// Mức độ cảm giác đau do người dùng cung cấp qua nút gạt 3 mức
+enum PainLevel {
+  none, // Không đau (0/10)
+  mild, // Đau nhẹ (1-4/10)
+  severe, // Đau nặng (7-10/10)
+}
+
+extension PainLevelExt on PainLevel {
+  String get label {
+    switch (this) {
+      case PainLevel.none:
+        return 'Không đau';
+      case PainLevel.mild:
+        return 'Đau nhẹ';
+      case PainLevel.severe:
+        return 'Đau nặng';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case PainLevel.none:
+        return 'Không có cảm giác đau rát rõ rệt hoặc tê nhẹ';
+      case PainLevel.mild:
+        return 'Đau rát nhẹ bề mặt, châm chích, vẫn cử động bình thường';
+      case PainLevel.severe:
+        return 'Đau nhức dữ dội, đau buốt theo nhịp mạch hoặc khó cử động';
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case PainLevel.none:
+        return const Color(0xFF10B981); // Xanh lá
+      case PainLevel.mild:
+        return const Color(0xFFF59E0B); // Vàng hổ phách
+      case PainLevel.severe:
+        return const Color(0xFFDC2626); // Đỏ khẩn cấp
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case PainLevel.none:
+        return Icons.sentiment_satisfied_alt_rounded;
+      case PainLevel.mild:
+        return Icons.sentiment_neutral_rounded;
+      case PainLevel.severe:
+        return Icons.sentiment_very_dissatisfied_rounded;
+    }
+  }
+}
+
 /// Nguồn trích xuất y khoa có link tham chiếu chi tiết
 class MedicalSourceLink {
   final String title;
@@ -86,6 +139,13 @@ class InjuryContext {
   final String locationId; // 'head', 'arm', 'leg', 'back', 'other'
   final int confidencePercent;
 
+  // Cảm giác đau (3 mức: Không đau, Đau nhẹ, Đau nặng)
+  final PainLevel painLevel;
+
+  // Danh sách các tổn thương phụ đi kèm khi ảnh phát hiện 2-3 vết thương khác nhau
+  final List<String> secondaryInjuryTypeIds;
+  final List<String> secondaryInjuryTypeNames;
+
   // Các dấu hiệu cảnh báo do người dùng cung cấp hoặc chọn trực tiếp
   final bool isBleedingHeavy; // Chảy máu nhiều / không cầm sau 10-15 phút
   final bool hasDeepWoundOrForeignBody; // Vết thương sâu, hở miệng lớn hoặc có dị vật đâm vào
@@ -99,6 +159,9 @@ class InjuryContext {
     required this.injuryTypeName,
     this.locationId = 'arm',
     this.confidencePercent = 100,
+    this.painLevel = PainLevel.mild,
+    this.secondaryInjuryTypeIds = const [],
+    this.secondaryInjuryTypeNames = const [],
     this.isBleedingHeavy = false,
     this.hasDeepWoundOrForeignBody = false,
     this.isLargeAreaBurnOrChemical = false,
@@ -107,11 +170,16 @@ class InjuryContext {
     this.isChildOrElderly = false,
   });
 
+  bool get hasMultipleInjuries => secondaryInjuryTypeIds.isNotEmpty;
+
   InjuryContext copyWith({
     String? injuryTypeId,
     String? injuryTypeName,
     String? locationId,
     int? confidencePercent,
+    PainLevel? painLevel,
+    List<String>? secondaryInjuryTypeIds,
+    List<String>? secondaryInjuryTypeNames,
     bool? isBleedingHeavy,
     bool? hasDeepWoundOrForeignBody,
     bool? isLargeAreaBurnOrChemical,
@@ -124,6 +192,11 @@ class InjuryContext {
       injuryTypeName: injuryTypeName ?? this.injuryTypeName,
       locationId: locationId ?? this.locationId,
       confidencePercent: confidencePercent ?? this.confidencePercent,
+      painLevel: painLevel ?? this.painLevel,
+      secondaryInjuryTypeIds:
+          secondaryInjuryTypeIds ?? this.secondaryInjuryTypeIds,
+      secondaryInjuryTypeNames:
+          secondaryInjuryTypeNames ?? this.secondaryInjuryTypeNames,
       isBleedingHeavy: isBleedingHeavy ?? this.isBleedingHeavy,
       hasDeepWoundOrForeignBody:
           hasDeepWoundOrForeignBody ?? this.hasDeepWoundOrForeignBody,
@@ -147,12 +220,17 @@ class FirstAidRule {
   final String targetInjuryTypeId; // 'abrasion', 'cut_laceration', 'burn', 'bruise', 'all'
   final bool isEnabled;
 
-  // Cờ điều kiện lâm sàng kích hoạt (để Admin tùy biến sâu trực tiếp bằng Checkbox trên UI)
-  final bool requireBleedingHeavy; // Chảy máu nhiều / khó cầm
-  final bool requireForeignBody; // Dị vật đâm vào / vết thương sâu
+  // Cờ điều kiện lâm sàng kích hoạt (Khớp 100% với giao diện quét ảnh & kết quả)
+  final bool requireBleedingHeavy; // Khớp Checkbox: Vết thương đang chảy máu (chảy nhiều/liên tục)
+  final bool requireForeignBody; // Khớp Checkbox: Dị vật cắm vào vết thương (kim loại, dằm, thủy tinh...)
+  final bool requireInfection; // Khớp Checkbox: Vết thương chảy mủ / Sưng đỏ tấy
+  final PainLevel? requiredPainLevel; // Khớp Nút gạt 3 mức đau: null = Bất kỳ, mild = Từ đau nhẹ, severe = Đau nặng
+  final bool requireMultipleInjuries; // Khớp trường hợp ảnh phát hiện 2-3 vết thương cùng lúc (Đa tổn thương)
   final bool requireLargeBurnOrChemical; // Bỏng diện rộng / hóa chất / bọng nước lớn
-  final bool requireSeverePainOrFracture; // Đau nhức dữ dội / nghi ngờ biến dạng, gãy xương
-  final bool requireInfection; // Dấu hiệu sưng đỏ, chảy mủ, sốt
+  final bool requireSeverePainOrFracture; // Đau nhức dữ dội / nghi ngờ biến dạng
+
+  // Liên kết phác đồ y khoa trong Knowledge Base
+  final String? linkedKnowledgeTopicId;
 
   // Điều kiện kích hoạt luật (hàm logic)
   final bool Function(InjuryContext context) condition;
@@ -172,9 +250,12 @@ class FirstAidRule {
     this.isEnabled = true,
     this.requireBleedingHeavy = false,
     this.requireForeignBody = false,
+    this.requireInfection = false,
+    this.requiredPainLevel,
+    this.requireMultipleInjuries = false,
     this.requireLargeBurnOrChemical = false,
     this.requireSeverePainOrFracture = false,
-    this.requireInfection = false,
+    this.linkedKnowledgeTopicId,
     required this.condition,
     required this.primaryActions,
     required this.contraindications,
@@ -191,21 +272,44 @@ class FirstAidRule {
 
     final bool hasSpecificFlag = requireBleedingHeavy ||
         requireForeignBody ||
+        requireInfection ||
+        requireMultipleInjuries ||
+        requiredPainLevel != null ||
         requireLargeBurnOrChemical ||
-        requireSeverePainOrFracture ||
-        requireInfection;
+        requireSeverePainOrFracture;
 
     if (hasSpecificFlag) {
+      // 1. Khớp 3 Checkbox quan sát lâm sàng giao diện
       if (requireBleedingHeavy && !context.isBleedingHeavy) return false;
       if (requireForeignBody && !context.hasDeepWoundOrForeignBody) return false;
+      if (requireInfection && !context.hasSignsOfInfection) return false;
+
+      // 2. Khớp điều kiện Mức độ đau
+      if (requiredPainLevel != null) {
+        if (requiredPainLevel == PainLevel.severe &&
+            context.painLevel != PainLevel.severe) {
+          return false;
+        }
+        if (requiredPainLevel == PainLevel.mild &&
+            context.painLevel == PainLevel.none) {
+          return false;
+        }
+      }
+
+      // 3. Khớp điều kiện Đa tổn thương (2-3 vết thương cùng lúc)
+      if (requireMultipleInjuries && !context.hasMultipleInjuries) {
+        return false;
+      }
+
+      // Tương thích ngược các cờ bổ trợ cũ
       if (requireLargeBurnOrChemical && !context.isLargeAreaBurnOrChemical) {
         return false;
       }
       if (requireSeverePainOrFracture &&
-          !context.isSeverePainOrFractureSuspected) {
+          !context.isSeverePainOrFractureSuspected &&
+          context.painLevel != PainLevel.severe) {
         return false;
       }
-      if (requireInfection && !context.hasSignsOfInfection) return false;
       return true;
     }
 
@@ -222,9 +326,12 @@ class FirstAidRule {
     bool? isEnabled,
     bool? requireBleedingHeavy,
     bool? requireForeignBody,
+    bool? requireInfection,
+    PainLevel? requiredPainLevel,
+    bool? requireMultipleInjuries,
     bool? requireLargeBurnOrChemical,
     bool? requireSeverePainOrFracture,
-    bool? requireInfection,
+    String? linkedKnowledgeTopicId,
     bool Function(InjuryContext context)? condition,
     List<String>? primaryActions,
     List<String>? contraindications,
@@ -240,11 +347,16 @@ class FirstAidRule {
       isEnabled: isEnabled ?? this.isEnabled,
       requireBleedingHeavy: requireBleedingHeavy ?? this.requireBleedingHeavy,
       requireForeignBody: requireForeignBody ?? this.requireForeignBody,
+      requireInfection: requireInfection ?? this.requireInfection,
+      requiredPainLevel: requiredPainLevel ?? this.requiredPainLevel,
+      requireMultipleInjuries:
+          requireMultipleInjuries ?? this.requireMultipleInjuries,
       requireLargeBurnOrChemical:
           requireLargeBurnOrChemical ?? this.requireLargeBurnOrChemical,
       requireSeverePainOrFracture:
           requireSeverePainOrFracture ?? this.requireSeverePainOrFracture,
-      requireInfection: requireInfection ?? this.requireInfection,
+      linkedKnowledgeTopicId:
+          linkedKnowledgeTopicId ?? this.linkedKnowledgeTopicId,
       condition: condition ?? this.condition,
       primaryActions: primaryActions ?? this.primaryActions,
       contraindications: contraindications ?? this.contraindications,

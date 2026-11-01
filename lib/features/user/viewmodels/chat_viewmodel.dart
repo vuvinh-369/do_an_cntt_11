@@ -1,34 +1,125 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/gemini/gemini_service.dart';
+import '../../../core/rule_engine/rule_models.dart';
 import '../models/chat_models.dart';
-import 'user_navigation_viewmodel.dart';
+import 'analysis_result_viewmodel.dart';
 import 'first_aid_viewmodel.dart';
+import 'image_analysis_viewmodel.dart';
+import 'user_navigation_viewmodel.dart';
 
-mixin ChatBoxAiViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
+mixin ChatBoxAiViewModel
+    on
+        DieuHuongCoSoViewModel,
+        HuongDanSoCuuViewModel,
+        KetQuaPhanTichViewModel,
+        PhanTichAnhViewModel {
   // Bộ điều khiển nhập liệu và cuộn danh sách tin nhắn trên Màn hình 6: ChatBox AI
   final TextEditingController chatInputController = TextEditingController();
   final ScrollController chatScrollController = ScrollController();
   String _currentChatInput = '';
   String get currentChatInput => _currentChatInput;
 
-  // Lịch sử tin nhắn hội thoại trên Màn hình 6: Khởi tạo RỖNG khi mới vào
+  // Trạng thái AI đang suy nghĩ / chờ phản hồi từ API
+  bool _isAiThinking = false;
+  bool get isAiThinking => _isAiThinking;
+
+  // Lựa chọn Mô hình AI hiện tại (mặc định: 'gemini', tùy chọn: 'medgemma')
+  String _selectedChatModelId = 'gemini';
+  String get selectedChatModelId => _selectedChatModelId;
+
+  List<ChatModelInfo> get availableChatModels => kDefaultChatModels;
+
+  ChatModelInfo get currentChatModel => kDefaultChatModels.firstWhere(
+        (m) => m.id == _selectedChatModelId,
+        orElse: () => kDefaultChatModels.first,
+      );
+
+  /// Chuyển đổi mô hình AI (Google Gemini hoặc MedGemma)
+  void switchChatModel(String modelId) {
+    if (_selectedChatModelId != modelId) {
+      _selectedChatModelId = modelId;
+      notifyListeners();
+    }
+  }
+
+  // Lịch sử tin nhắn hội thoại trên Màn hình 6
   final List<ChatMessageModel> _chatMessages = [];
   List<ChatMessageModel> get chatMessages => List.unmodifiable(_chatMessages);
 
-  // Danh sách các câu hỏi gợi ý nhanh khi khung chat đang trống
+  // Danh sách câu hỏi gợi ý nhanh tập trung vào 4 nhóm tổn thương chính & tình huống khẩn cấp
   final List<String> quickSuggestedQuestions = const [
-    'Làm sao để xử lý khi bị bỏng nhẹ?',
-    'Cách sơ cứu khi bị trầy xước ngoài da?',
-    'Xử lý vết cắt chảy máu như thế nào?',
-    'Làm gì khi bị bầm tím phần mềm?',
+    'Cách làm sạch và băng vết trầy xước té xe?',
+    'Vết cắt sâu chảy máu nhiều thì cầm máu thế nào?',
+    'Sơ cứu vết bỏng nước sôi / bỏng nhiệt đúng cách?',
+    'Bầm tím phần mềm sưng to, nên chườm đá hay bôi dầu?',
+    'Có dị vật thủy tinh đâm sâu vào da, xử lý sao?',
+    'Dấu hiệu nào cho thấy vết thương bị nhiễm trùng?',
   ];
 
   // =========================================================================
-  // LOGIC TƯƠNG TÁC CHATBOX AI & TỰ ĐỘNG CUỘN TIN NHẮN LÊN TRÊN (MÀN HÌNH 6)
+  // LOGIC TƯƠNG TÁC CHATBOX AI (GEMINI & MEDGEMMA)
   // =========================================================================
 
   void updateChatInput(String value) {
     _currentChatInput = value;
+  }
+
+  /// Xóa toàn bộ lịch sử trò chuyện
+  void clearChatHistory() {
+    _chatMessages.clear();
+    _isAiThinking = false;
+    notifyListeners();
+  }
+
+  /// Chuyển prompt kết quả phân tích ảnh sang ChatBox AI để AI tự động tư vấn
+  void consultAiWithCurrentAnalysis() {
+    final location = selectedLocationLabel;
+
+    // 1. Tóm tắt các tổn thương phát hiện (hỗ trợ trường hợp phát hiện 2-3 vết thương kết hợp trên ảnh)
+    final String woundSummary = analysisResult.hasMultipleInjuries
+        ? analysisResult.combinedInjurySummary
+        : '${analysisResult.injuryType} (${analysisResult.confidencePercent}%)';
+
+    final String multiWoundNotice = analysisResult.hasMultipleInjuries
+        ? '\n- Ảnh có ${analysisResult.allDetections.length} tổn thương kết hợp: Hãy phân tích tương quan và hướng dẫn thứ tự ưu tiên xử lý từng vết thương theo chuẩn cấp cứu Triage (cầm máu vết thương hở trước, sau đó sát trùng vết trầy, che phủ vết bỏng).'
+        : '';
+
+    // 2. Mức độ cảm giác đau do người dùng gạt chọn (3 nấc)
+    final String painLabel = painLevel.label;
+    final String painNote = painLevel == PainLevel.severe
+        ? ' (Bệnh nhân đang rất đau đớn dữ dội 7-10/10, cần ưu tiên hướng dẫn tư thế giảm đau an toàn và cảnh báo tổn thương mô sâu/gãy xương ngầm)'
+        : (painLevel == PainLevel.none
+            ? ' (Không đau hoặc mất cảm giác đau - lưu ý nếu là vết bỏng có thể đã tổn thương sâu làm chết ngọn dây thần kinh bì)'
+            : ' (Đau nhẹ rát bề mặt thông thường)');
+
+    // 3. Tổng hợp các tình trạng quan sát kèm theo từ checkbox của người dùng
+    final List<String> observedSymptoms = [];
+    if (isBleeding) {
+      observedSymptoms.add('Vết thương đang chảy máu (chảy nhiều hoặc liên tục)');
+    }
+    if (hasForeignBody) {
+      observedSymptoms.add('Có dị vật cắm sâu vào vết thương (kim loại, dằm, thủy tinh...)');
+    }
+    if (hasPusOrInfection) {
+      observedSymptoms.add('Vết thương chảy mủ / Sưng đỏ tấy (dấu hiệu nhiễm trùng)');
+    }
+
+    final String symptomsText = observedSymptoms.isNotEmpty
+        ? '\n- Dấu hiệu quan sát kèm theo: ${observedSymptoms.join('; ')}.'
+        : '';
+
+    final prompt =
+        'Tôi vừa quét ảnh phát hiện tổn thương: $woundSummary ở vị trí $location.$multiWoundNotice\n'
+        '- Cảm giác đau hiện tại: $painLabel$painNote.$symptomsText\n'
+        'Hãy phân tích tình trạng vết thương, hướng dẫn quy trình sơ cứu từng bước rõ ràng theo thứ tự ưu tiên, '
+        'cách giảm đau an toàn, những điều cấm kỵ tuyệt đối không được làm và dấu hiệu nguy hiểm cần đến bệnh viện ngay?';
+
+    // 1. Chuyển sang màn hình ChatBox AI (Màn hình 5)
+    navigateToChatBoxAi();
+
+    // 2. Tự động gửi câu hỏi sang AI để phản hồi tức thì
+    sendChatMessage(prompt);
   }
 
   void _scrollToLatestMessage() {
@@ -43,14 +134,16 @@ mixin ChatBoxAiViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
     });
   }
 
-  void sendChatMessage([String? submittedText]) {
+  /// Gửi tin nhắn tới Mô hình AI được chọn (Gemini API hoặc MedGemma Server)
+  Future<void> sendChatMessage([String? submittedText]) async {
     final rawText = (submittedText ?? chatInputController.text).trim();
-    if (rawText.isEmpty) return;
+    if (rawText.isEmpty || _isAiThinking) return;
 
     final now = DateTime.now();
     final formattedTime =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
+    // Thêm tin nhắn của người dùng vào giao diện
     _chatMessages.add(
       ChatMessageModel(
         id: 'user_${now.microsecondsSinceEpoch}',
@@ -62,134 +155,95 @@ mixin ChatBoxAiViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
 
     chatInputController.clear();
     _currentChatInput = '';
-
-    final aiReply = _generateGroundedAiReply(rawText, formattedTime);
-    _chatMessages.add(aiReply);
-
+    _isAiThinking = true;
     notifyListeners();
     _scrollToLatestMessage();
-  }
 
-  ChatMessageModel _generateGroundedAiReply(
-    String userQuestion,
-    String timestamp,
-  ) {
-    final normalized = userQuestion.toLowerCase().trim();
+    try {
+      // Chuẩn bị ngữ cảnh vết thương (nếu bệnh nhân vừa thực hiện quét ảnh AI trước đó)
+      String? woundContext;
+      if (analysisResult.isDetected) {
+        final List<String> symptoms = [];
+        symptoms.add('Cảm giác đau: ${painLevel.label}');
+        if (isBleeding) symptoms.add('đang chảy máu nhiều/liên tục');
+        if (hasForeignBody) symptoms.add('có dị vật cắm sâu vào vết thương');
+        if (hasPusOrInfection) symptoms.add('chảy mủ hoặc sưng đỏ tấy (dấu hiệu nhiễm trùng)');
+        final symptomsInfo = ' [${symptoms.join(', ')}]';
 
-    if (normalized == 'hi' ||
-        normalized == 'hello' ||
-        normalized == 'chào' ||
-        normalized == 'alo' ||
-        normalized.startsWith('xin chào') ||
-        normalized.startsWith('chào ai')) {
-      return ChatMessageModel(
-        id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
-        isUser: false,
-        messageText: 'Xin chào! Tôi là Trợ lý Cứu hộ AI. Bạn có thể đặt câu hỏi trực tiếp về các tình huống sơ cứu sau:',
-        numberedSteps: const [
-          'Cách xử lý khi bị bỏng nhẹ (bỏng nước sôi, bỏng nhiệt).',
-          'Cách làm sạch và băng bó vết trầy xước ngoài da.',
-          'Cách cầm máu và sát trùng vết cắt / vết rách.',
-          'Cách chườm lạnh giảm sưng khi bị bầm tím, dị vật hoặc ngộ độc.',
-        ],
-        timestamp: timestamp,
+        final woundDesc = analysisResult.hasMultipleInjuries
+            ? analysisResult.combinedInjurySummary
+            : '${analysisResult.injuryType} (${analysisResult.confidencePercent}%)';
+
+        woundContext =
+            'Bệnh nhân vừa quét ảnh phát hiện: $woundDesc tại vị trí $selectedLocationLabel.$symptomsInfo';
+      }
+
+      // Chuẩn bị danh sách lịch sử hội thoại
+      final conversationHistory = _chatMessages
+          .map((m) => {
+                'role': m.isUser ? 'user' : 'model',
+                'text': m.messageText,
+              })
+          .toList();
+
+      String replyText;
+
+      // Xử lý theo model được chọn
+      if (_selectedChatModelId == 'medgemma') {
+        // MedGemma: Mô hình chạy Server riêng. Vì chưa kết nối endpoint máy chủ vật lý,
+        // hệ thống định tuyến thông qua phác đồ MedGemma y khoa
+        final String medGemmaContext = woundContext != null
+            ? '$woundContext\n[Yêu cầu: Trả lời theo chuẩn phân loại lâm sàng MedGemma Medical]'
+            : '[Yêu cầu: Trả lời theo chuẩn phân loại lâm sàng MedGemma Medical]';
+
+        final rawReply = await GeminiService.instance.sendChatMessage(
+          conversationHistory: conversationHistory,
+          userMessage: rawText,
+          woundContext: medGemmaContext,
+        );
+
+        replyText =
+            '*(Phản hồi định tuyến qua MedGemma Medical AI - Kênh máy chủ y sinh)*\n\n$rawReply';
+      } else {
+        // Google Gemini Cloud API
+        replyText = await GeminiService.instance.sendChatMessage(
+          conversationHistory: conversationHistory,
+          userMessage: rawText,
+          woundContext: woundContext,
+        );
+      }
+
+      final replyNow = DateTime.now();
+      final replyTime =
+          '${replyNow.hour.toString().padLeft(2, '0')}:${replyNow.minute.toString().padLeft(2, '0')}';
+
+      _chatMessages.add(
+        ChatMessageModel(
+          id: 'ai_${replyNow.microsecondsSinceEpoch}',
+          isUser: false,
+          messageText: replyText,
+          timestamp: replyTime,
+          modelSource: _selectedChatModelId,
+        ),
       );
-    }
+    } catch (e) {
+      final replyNow = DateTime.now();
+      final replyTime =
+          '${replyNow.hour.toString().padLeft(2, '0')}:${replyNow.minute.toString().padLeft(2, '0')}';
 
-    if (normalized.contains('bỏng') || normalized.contains('phỏng')) {
-      return ChatMessageModel(
-        id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
-        isUser: false,
-        messageText:
-            'Với vết bỏng nhẹ (độ 1), bạn có thể làm theo các bước sau:',
-        numberedSteps: const [
-          'Làm mát vùng bỏng bằng nước sạch mát trong 10–20 phút.',
-          'Không chọc vỡ bóng nước (nếu có).',
-          'Bôi thuốc mỡ kháng sinh và băng gạc sạch.',
-          'Theo dõi, nếu có dấu hiệu nhiễm trùng hoặc đau tăng, hãy đi khám bác sĩ.',
-        ],
-        timestamp: timestamp,
-        relatedTopicId: 'burn',
+      _chatMessages.add(
+        ChatMessageModel(
+          id: 'ai_${replyNow.microsecondsSinceEpoch}',
+          isUser: false,
+          messageText:
+              '⚠️ Đã xảy ra lỗi khi kết nối với mô hình AI: $e\n\nVui lòng kiểm tra lại kết nối mạng hoặc thử lại sau ít phút.',
+          timestamp: replyTime,
+        ),
       );
+    } finally {
+      _isAiThinking = false;
+      notifyListeners();
+      _scrollToLatestMessage();
     }
-
-    if (normalized.contains('trầy') || normalized.contains('xước')) {
-      final guide = firstAidGuidesByTopic['abrasion']!;
-      return ChatMessageModel(
-        id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
-        isUser: false,
-        messageText:
-            'Đối với tình huống ${guide.severityText.toLowerCase()}, bạn hãy thực hiện theo các bước sơ cứu đã kiểm chứng sau:',
-        numberedSteps: guide.steps
-            .map((step) => '${step.title}: ${step.description}')
-            .toList(),
-        timestamp: timestamp,
-        relatedTopicId: 'abrasion',
-      );
-    }
-
-    if (normalized.contains('cắt') ||
-        normalized.contains('rách') ||
-        normalized.contains('đứt tay') ||
-        normalized.contains('chảy máu')) {
-      final guide = firstAidGuidesByTopic['cut_laceration']!;
-      return ChatMessageModel(
-        id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
-        isUser: false,
-        messageText:
-            'Khi gặp ${guide.severityText.toLowerCase()}, bạn cần thực hiện các bước sơ cứu sau:',
-        numberedSteps: guide.steps
-            .map((step) => '${step.title}: ${step.description}')
-            .toList(),
-        timestamp: timestamp,
-        relatedTopicId: 'cut_laceration',
-      );
-    }
-
-    if (normalized.contains('bầm') || normalized.contains('tím')) {
-      final guide = firstAidGuidesByTopic['bruise']!;
-      return ChatMessageModel(
-        id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
-        isUser: false,
-        messageText:
-            'Với tình trạng ${guide.severityText.toLowerCase()}, bạn có thể xử lý theo các bước sau:',
-        numberedSteps: guide.steps
-            .map((step) => '${step.title}: ${step.description}')
-            .toList(),
-        timestamp: timestamp,
-        relatedTopicId: 'bruise',
-      );
-    }
-
-    if (normalized.contains('dị vật') ||
-        normalized.contains('dằm') ||
-        normalized.contains('mảnh vỡ')) {
-      return ChatMessageModel(
-        id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
-        isUser: false,
-        messageText:
-            'Đối với vết thương có dị vật cắm sâu (mảnh thủy tinh, kim loại, que nhọn): Tuyệt đối KHÔNG tự ý rút ra. Hãy dùng gạc sạch chèn cố định hai bên dị vật và đưa nạn nhân đến cơ sở y tế gần nhất!',
-        numberedSteps: const [
-          'Bước 1: Rửa sạch tay, không lay chuyển hoặc cố rút dị vật đâm sâu',
-          'Bước 2: Dùng cuộn băng/gạc sạch đặt hai bên để cố định dị vật',
-          'Bước 3: Băng nhẹ nhàng xung quanh giữ dị vật không bị xê dịch khi di chuyển',
-          'Bước 4: Đến phòng cấp cứu bệnh viện để bác sĩ gắp dị vật và tiêm phòng uốn ván',
-        ],
-        timestamp: timestamp,
-        relatedTopicId: 'cut_laceration',
-      );
-    }
-
-    return ChatMessageModel(
-      id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
-      isUser: false,
-      messageText:
-          'Hệ thống AI chuyên biệt hỗ trợ nhận diện và sơ cứu 4 nhóm thương tổn ngoài da chính: Trầy xước, Vết cắt / Vết rách, Bỏng nhiệt, Bầm tím phần mềm (và phân biệt ảnh da lành bình thường).',
-      numberedSteps: const [
-        'Vui lòng mô tả rõ một trong các tình trạng trên hoặc mở mục "Hướng dẫn sơ cứu" / "Kiến thức" ở thanh menu bên trái.',
-        'Nếu nạn nhân có dấu hiệu nguy cấp hoặc chảy máu nhiều, hãy liên hệ ngay cơ sở y tế gần nhất hoặc gọi cấp cứu 115.',
-      ],
-      timestamp: timestamp,
-    );
   }
 }
