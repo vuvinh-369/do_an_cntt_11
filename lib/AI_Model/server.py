@@ -2,7 +2,18 @@
 import io
 import os
 import sys
+import traceback
 from typing import Dict, Any, List
+
+# Thêm thư mục hiện tại vào sys.path
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
+LOG_FILE = os.path.join(CURRENT_DIR, "server.log")
+log_f = open(LOG_FILE, "a", encoding="utf-8")
+sys.stdout = log_f
+sys.stderr = log_f
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -96,10 +107,38 @@ async def predict_wound(
     """
     try:
         contents = await file.read()
+        if not contents or len(contents) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Tập tin tải lên bị rỗng (0 bytes). Vui lòng chọn lại ảnh."
+            )
+
+        image = None
+        # 1. Thử giải mã bằng thư viện Pillow
         try:
             image = Image.open(io.BytesIO(contents)).convert("RGB")
         except Exception:
-            raise HTTPException(status_code=400, detail="Tập tin tải lên không thể giải mã thành hình ảnh hợp lệ.")
+            pass
+
+        # 2. Dự phòng giải mã bằng OpenCV nếu Pillow không đọc được (ví dụ BMP, định dạng đặc thù)
+        if image is None:
+            try:
+                import numpy as np
+                import cv2
+                np_buf = np.frombuffer(contents, dtype=np.uint8)
+                cv_img = cv2.imdecode(np_buf, cv2.IMREAD_COLOR)
+                if cv_img is not None:
+                    rgb_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+                    image = Image.fromarray(rgb_img)
+            except Exception:
+                pass
+
+        # 3. Nếu cả hai cách đều không mở được ảnh
+        if image is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Tập tin tải lên không phải là ảnh hợp lệ hoặc định dạng không được hỗ trợ (chỉ hỗ trợ JPG, PNG, WEBP, BMP)."
+            )
 
         # Nếu người dùng chọn quét lại với tăng/giảm tương phản
         if contrast != 1.0:
@@ -194,5 +233,4 @@ async def predict_wound(
 
 
 if __name__ == "__main__":
-    print("[*] Đang khởi chạy Wound AI Server tại http://127.0.0.1:8000 ...")
-    uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=False)
+    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")

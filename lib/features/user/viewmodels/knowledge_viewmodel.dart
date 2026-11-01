@@ -12,52 +12,47 @@ mixin TraCuuKienThucViewModel
   String _knowledgeSearchQuery = '';
   String get knowledgeSearchQuery => _knowledgeSearchQuery;
 
-  // Danh sách 5 danh mục lọc trên Màn hình 5: "5. Tra cứu kiến thức (Người dùng)"
+  // Danh sách các danh mục lọc trên Màn hình 5: 4 nhóm tổn thương AI + Vết thương khác
   final List<KnowledgeCategoryModel> knowledgeCategories = const [
     KnowledgeCategoryModel(id: 'all', label: 'Tất cả'),
-    KnowledgeCategoryModel(id: 'wound', label: 'Vết thương'),
+    KnowledgeCategoryModel(id: 'abrasion', label: 'Trầy xước'),
+    KnowledgeCategoryModel(id: 'cut_laceration', label: 'Vết cắt / rách'),
     KnowledgeCategoryModel(id: 'burn', label: 'Bỏng'),
-    KnowledgeCategoryModel(id: 'musculoskeletal', label: 'Xương khớp'),
-    KnowledgeCategoryModel(id: 'other', label: 'Khác'),
+    KnowledgeCategoryModel(id: 'bruise', label: 'Bầm tím'),
+    KnowledgeCategoryModel(id: 'other_wounds', label: 'Vết thương khác'),
   ];
 
-  // Danh sách 6 thẻ kiến thức sơ cứu chuẩn theo ảnh thiết kế Màn hình 5
+  // Danh sách các thẻ kiến thức sơ cứu trọng tâm và mở rộng của hệ thống
   final List<KnowledgeTopicModel> knowledgeTopics = const [
     KnowledgeTopicModel(
       id: 'abrasion',
-      categoryId: 'wound',
-      title: 'Trầy xước',
-      subtitle: 'Cách xử lý và chăm sóc',
+      categoryId: 'abrasion',
+      title: 'Trầy xước ngoài da',
+      subtitle: 'Cách làm sạch, sát trùng và chăm sóc tổn thương nông',
     ),
     KnowledgeTopicModel(
       id: 'cut_laceration',
-      categoryId: 'wound',
-      title: 'Vết cắt / Vết rách',
-      subtitle: 'Cầm máu và sát trùng',
+      categoryId: 'cut_laceration',
+      title: 'Vết cắt / Vết rách da',
+      subtitle: 'Kỹ thuật cầm máu, xử lý dị vật & băng ép miệng vết thương',
     ),
     KnowledgeTopicModel(
       id: 'burn',
       categoryId: 'burn',
-      title: 'Bỏng',
-      subtitle: 'Xử lý bỏng đúng cách',
+      title: 'Bỏng nhiệt ngoài da',
+      subtitle: 'Làm mát tức thì dưới vòi nước và bảo vệ bọng nước',
     ),
     KnowledgeTopicModel(
       id: 'bruise',
-      categoryId: 'musculoskeletal',
-      title: 'Bầm',
-      subtitle: 'Giảm sưng và đau',
+      categoryId: 'bruise',
+      title: 'Bầm tím phần mềm',
+      subtitle: 'Áp dụng phác đồ R.I.C.E giảm đau, tiêu sưng hiệu quả',
     ),
     KnowledgeTopicModel(
-      id: 'foreign_body',
-      categoryId: 'other',
-      title: 'Dị vật',
-      subtitle: 'Xử lý khi có dị vật',
-    ),
-    KnowledgeTopicModel(
-      id: 'poisoning',
-      categoryId: 'other',
-      title: 'Ngộ độc',
-      subtitle: 'Nhận biết và xử lý',
+      id: 'other_wounds',
+      categoryId: 'other_wounds',
+      title: 'Vết thương khác & Dị vật cắm sâu',
+      subtitle: 'Nguyên tắc cố định dị vật, bất động chi và phòng uốn ván',
     ),
   ];
 

@@ -8,22 +8,23 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
     brandSubtitle: 'Quản trị hệ thống',
     formTitle: 'Đăng nhập quản trị',
     usernameLabel: 'Tài khoản',
-    usernameHint: 'Nhập tài khoản',
+    usernameHint: 'Nhập tài khoản (test: 1)',
     passwordLabel: 'Mật khẩu',
-    passwordHint: 'Nhập mật khẩu',
+    passwordHint: 'Nhập mật khẩu (test: 1)',
     rememberMeLabel: 'Ghi nhớ đăng nhập',
     loginButtonLabel: 'Đăng nhập',
     rightPanelTitle: 'Khu vực quản trị',
     rightPanelSubtitle: 'Chỉ dành cho người có thẩm quyền',
   );
 
-  String _usernameInput = '';
+  // Khởi tạo sẵn giá trị '1' cho cả tài khoản và mật khẩu để test nhanh
+  String _usernameInput = '1';
   String get usernameInput => _usernameInput;
 
-  String _passwordInput = '';
+  String _passwordInput = '1';
   String get passwordInput => _passwordInput;
 
-  // Mặc định tích chọn "Ghi nhớ đăng nhập" đúng như ảnh thiết kế Màn hình 9
+  // Mặc định tích chọn "Ghi nhớ đăng nhập"
   bool _rememberMe = true;
   bool get rememberMe => _rememberMe;
 
@@ -71,6 +72,7 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
   }
 
   /// Xử lý khi bấm nút "Đăng nhập" trên Màn hình 9
+  /// Đã code cứng tài khoản và mật khẩu là 1 và 1 để test chức năng
   bool submitAdminLogin() {
     final trimmedUser = _usernameInput.trim();
     final trimmedPass = _passwordInput.trim();
@@ -78,15 +80,22 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
     if (trimmedUser.isEmpty || trimmedPass.isEmpty) {
       _isLoginError = true;
       _loginFeedbackMessage =
-          'Vui lòng nhập đầy đủ Tài khoản và Mật khẩu quản trị.';
+          'Vui lòng nhập đầy đủ Tài khoản và Mật khẩu';
       notifyListeners();
       return false;
     }
 
-    // Chấp nhận tài khoản demo (ví dụ: admin / 123456 hoặc bất kỳ tài khoản hợp lệ >= 3 ký tự)
-    if (trimmedPass.length < 3) {
+    // Code cứng tài khoản admin và mật khẩu là 1 và 1 (hỗ trợ thêm admin / 1 / 123456)
+    final bool isAuthorized = (trimmedUser == '1' && trimmedPass == '1') ||
+        (trimmedUser == 'admin' &&
+            (trimmedPass == '1' ||
+                trimmedPass == 'admin' ||
+                trimmedPass == '123456'));
+
+    if (!isAuthorized) {
       _isLoginError = true;
-      _loginFeedbackMessage = 'Mật khẩu quản trị phải có ít nhất 3 ký tự.';
+      _loginFeedbackMessage =
+          'Tài khoản hoặc mật khẩu không chính xác!';
       notifyListeners();
       return false;
     }
@@ -95,7 +104,7 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
     _loginFeedbackMessage = 'Đăng nhập quản trị thành công!';
     _currentAdminSession = AdminSessionModel(
       username: trimmedUser,
-      displayName: trimmedUser == 'admin' ? 'Quản trị viên AI' : trimmedUser,
+      displayName: 'Quản trị viên AI',
       loginTime: DateTime.now(),
     );
     completeAdminAuthentication();

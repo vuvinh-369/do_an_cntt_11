@@ -23,9 +23,17 @@ class AiServerManager {
         return;
       }
 
-      // 2. Tìm file server.py trong thư mục dự án
-      final currentDir = Directory.current.path;
-      final serverPath = '$currentDir/lib/AI_Model/server.py';
+      // 2. Tìm file server.py trong thư mục dự án (xử lý cả trường hợp chạy từ thư mục con build/windows)
+      String currentDir = Directory.current.path;
+      String serverPath = '$currentDir/lib/AI_Model/server.py';
+
+      if (!File(serverPath).existsSync()) {
+        final parent1 = Directory(currentDir).parent.path;
+        if (File('$parent1/lib/AI_Model/server.py').existsSync()) {
+          currentDir = parent1;
+          serverPath = '$currentDir/lib/AI_Model/server.py';
+        }
+      }
 
       if (!File(serverPath).existsSync()) {
         debugPrint('[AiServerManager] Không tìm thấy file $serverPath');

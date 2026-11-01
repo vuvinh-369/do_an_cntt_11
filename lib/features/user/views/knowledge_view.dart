@@ -24,14 +24,36 @@ class TraCuuKienThucView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (!isMobile) ...[
-            const Text(
-              'Kiến thức sơ cứu',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0D2B6B),
-                letterSpacing: -0.3,
-              ),
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () =>
+                      context.read<UserViewModel>().navigateBack(),
+                  icon: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Color(0xFF0D2B6B),
+                    size: 22,
+                  ),
+                  tooltip: 'Quay lại',
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFFF1F5F9),
+                    hoverColor: const Color(0xFFE2E8F0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Kiến thức sơ cứu',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0D2B6B),
+                    letterSpacing: -0.3,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
           ],

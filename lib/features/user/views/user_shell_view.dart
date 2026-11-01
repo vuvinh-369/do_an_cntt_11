@@ -192,7 +192,7 @@ class UserShellView extends StatelessWidget {
           child: Row(
             children: [
               IconButton(
-                onPressed: () => viewModel.navigateToHome(),
+                onPressed: () => viewModel.navigateBack(),
                 icon: const Icon(
                   Icons.arrow_back_ios_new_rounded,
                   size: 19,
@@ -245,7 +245,7 @@ class UserShellView extends StatelessWidget {
       case 2:
         return 'Kết quả phân tích';
       case 3:
-        return 'Hướng dẫn sơ cứu';
+        return 'Chi tiết sơ cứu';
       case 4:
         return 'Kiến thức sơ cứu';
       case 5:
@@ -288,7 +288,7 @@ class UserShellView extends StatelessWidget {
     UserViewModel viewModel,
   ) {
     int activeTab = 0;
-    if (viewModel.currentScreenIndex == 4) {
+    if (viewModel.currentScreenIndex == 4 || viewModel.currentScreenIndex == 3) {
       activeTab = 1;
     } else if (viewModel.currentScreenIndex == 6) {
       activeTab = 2;
@@ -577,39 +577,65 @@ class UserShellView extends StatelessWidget {
             spacing: 16,
             runSpacing: 12,
             children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => context.read<UserViewModel>().navigateToHome(),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 38,
-                      height: 38,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: const [
-                          Icon(
-                            Icons.favorite,
-                            color: Color(0xFF2563EB),
-                            size: 38,
-                          ),
-                          Icon(Icons.add, color: Colors.white, size: 20),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'Trợ lý Cứu hộ AI',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!isHomeScreen) ...[
+                    IconButton(
+                      onPressed: () =>
+                          context.read<UserViewModel>().navigateBack(),
+                      icon: const Icon(
+                        Icons.arrow_back_rounded,
                         color: Color(0xFF0D2B6B),
-                        letterSpacing: -0.2,
+                        size: 21,
+                      ),
+                      tooltip: 'Quay lại',
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFFF1F5F9),
+                        hoverColor: const Color(0xFFE2E8F0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.all(8),
                       ),
                     ),
+                    const SizedBox(width: 12),
                   ],
-                ),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => context.read<UserViewModel>().navigateToHome(),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 38,
+                          height: 38,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: const [
+                              Icon(
+                                Icons.favorite,
+                                color: Color(0xFF2563EB),
+                                size: 38,
+                              ),
+                              Icon(Icons.add, color: Colors.white, size: 20),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Trợ lý Cứu hộ AI',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0D2B6B),
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               if (isHomeScreen)
                 SingleChildScrollView(
@@ -668,10 +694,7 @@ class UserShellView extends StatelessWidget {
                   ],
                   InkWell(
                     borderRadius: BorderRadius.circular(24),
-                    onTap: () {
-                      context.read<UserViewModel>().onProfileAvatarPressed();
-                      context.read<AdminViewModel>().openAdminPortal();
-                    },
+                    onTap: () => _showUserAccountMenu(context, viewModel),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 6,
@@ -680,12 +703,18 @@ class UserShellView extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const CircleAvatar(
+                          CircleAvatar(
                             radius: 18,
-                            backgroundColor: Color(0xFFE2E8F0),
+                            backgroundColor: viewModel.isUserLoggedIn
+                                ? const Color(0xFFDBEAFE)
+                                : const Color(0xFFE2E8F0),
                             child: Icon(
-                              Icons.person,
-                              color: Color(0xFF0F2942),
+                              viewModel.isUserLoggedIn
+                                  ? Icons.person
+                                  : Icons.person_outline,
+                              color: viewModel.isUserLoggedIn
+                                  ? const Color(0xFF2563EB)
+                                  : const Color(0xFF64748B),
                               size: 22,
                             ),
                           ),
@@ -843,6 +872,168 @@ class UserShellView extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Menu quản lý tài khoản người dùng và điều hướng cổng Quản trị riêng biệt
+  void _showUserAccountMenu(BuildContext context, UserViewModel viewModel) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: viewModel.isUserLoggedIn
+                          ? const Color(0xFFDBEAFE)
+                          : const Color(0xFFF1F5F9),
+                      child: Icon(
+                        viewModel.isUserLoggedIn
+                            ? Icons.person
+                            : Icons.person_outline,
+                        color: viewModel.isUserLoggedIn
+                            ? const Color(0xFF2563EB)
+                            : const Color(0xFF64748B),
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            viewModel.currentUserName,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF0D2B6B),
+                            ),
+                          ),
+                          Text(
+                            viewModel.isUserLoggedIn
+                                ? 'Dữ liệu được lưu trữ theo tài khoản'
+                                : 'Chế độ khách:',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                if (!viewModel.isUserLoggedIn)
+                  ListTile(
+                    leading: const Icon(Icons.login_rounded, color: Color(0xFF2563EB)),
+                    title: const Text('Đăng nhập để giữ dữ liệu cá nhân'),
+                    subtitle: const Text('Không bắt buộc, đăng nhập nếu muốn đồng bộ lâu dài'),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showLoginModal(context, viewModel);
+                    },
+                  )
+                else
+                  ListTile(
+                    leading: const Icon(Icons.logout_rounded, color: Color(0xFFEF4444)),
+                    title: const Text('Đăng xuất tài khoản'),
+                    onTap: () {
+                      viewModel.logoutUser();
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.history_rounded, color: Color(0xFF0D2B6B)),
+                  title: const Text('Lịch sử phân tích'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    viewModel.navigateToAnalysisHistory();
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.admin_panel_settings_outlined, color: Color(0xFFD97706)),
+                  title: const Text('Cổng Quản trị hệ thống'),
+                  subtitle: const Text('Trang dành cho quản trị viên'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.read<AdminViewModel>().openAdminPortal();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showLoginModal(BuildContext context, UserViewModel viewModel) {
+    final nameController = TextEditingController(text: 'Nguyễn Văn A');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.person_add_alt_1, color: Color(0xFF2563EB)),
+            SizedBox(width: 10),
+            Text('Đăng nhập cá nhân'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Đăng nhập nếu bạn lưu dữ liệu cá nhân',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Họ và tên của bạn',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Tiếp tục với tài khoản Khách'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              viewModel.loginUser(nameController.text.trim().isNotEmpty
+                  ? nameController.text.trim()
+                  : 'Nguyễn Văn A');
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Đăng nhập'),
+          ),
+        ],
       ),
     );
   }

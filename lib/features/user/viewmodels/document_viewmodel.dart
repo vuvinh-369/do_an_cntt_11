@@ -108,6 +108,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
         '4. Gọi cấp cứu 115 ngay nếu nạn nhân bất tỉnh, khó thở hoặc chảy máu không cầm.',
       ],
       relatedGuideTopicId: 'abrasion',
+      externalUrl: 'https://redcross.org.vn/so-cap-cuu',
     ),
     const MedicalDocumentModel(
       id: 'doc_2',
@@ -128,6 +129,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
         '4. Che phủ bằng băng gạc vô trùng và thay băng hàng ngày hoặc khi bị ướt.',
       ],
       relatedGuideTopicId: 'cut_laceration',
+      externalUrl: 'https://kcb.vn/huong-dan-so-cuu',
     ),
     const MedicalDocumentModel(
       id: 'doc_3',
@@ -149,6 +151,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
         '4. Che phủ nhẹ nhàng bằng gạc vô trùng không dính và theo dõi dấu hiệu nhiễm trùng.',
       ],
       relatedGuideTopicId: 'burn',
+      externalUrl: 'https://www.who.int/emergencies/first-aid',
     ),
     const MedicalDocumentModel(
       id: 'doc_4',
@@ -188,7 +191,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
         '3. Nạn nhân có biểu hiện hoa mắt, chóng mặt, vã mồ hôi lạnh, thở gấp hoặc lơ mơ.',
         '4. Bỏng diện rộng, bỏng vùng mặt/cổ/bàn tay hoặc nghi ngờ ngộ độc hóa chất.',
       ],
-      relatedGuideTopicId: 'poisoning',
+      relatedGuideTopicId: 'cut_laceration',
     ),
 
     // --- TRANG 2 ---
@@ -233,22 +236,22 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
     ),
     const MedicalDocumentModel(
       id: 'doc_8',
-      title: 'Sơ cứu ngộ độc thực phẩm tại nhà',
-      categoryId: 'other',
-      categoryLabel: 'Khác',
+      title: 'Vệ sinh và thay băng vết thương trầy xước hàng ngày',
+      categoryId: 'wound',
+      categoryLabel: 'Vết thương',
       dateAdded: '25/09/2025',
       pageGroup: 2,
-      fileName: 'so_cuu_ngo_doc_thuc_pham.pdf',
+      fileName: 've_sinh_thay_bang_vet_tray_xuoc.pdf',
       fileExtension: 'PDF',
       fileSize: '1.6 MB',
-      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/so_cuu_ngo_doc_thuc_pham.pdf',
-      summary: 'Cách bù nước điện giải Oresol và theo dõi dấu hiệu mất nước khi nghi ngờ ngộ độc thức ăn.',
+      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/ve_sinh_thay_bang_vet_tray_xuoc.pdf',
+      summary: 'Quy trình rửa sạch vết xước bằng nước muối sinh lý và bôi thuốc mỡ kháng sinh thúc đẩy lành da.',
       contentPoints: [
-        '1. Ngừng ngay việc sử dụng thực phẩm nghi ngờ gây ngộ độc.',
-        '2. Cho người bệnh uống từng ngụm nhỏ dung dịch Oresol pha đúng tỷ lệ.',
-        '3. Đưa đi khám ngay nếu nôn ói liên tục, sốt cao hoặc li bì.',
+        '1. Rửa tay thật sạch bằng xà phòng trước khi chạm vào vết thương.',
+        '2. Làm sạch nhẹ nhàng bằng dung dịch nước muối sinh lý 0.9%, tránh chà xát mạnh.',
+        '3. Thoa một lớp mỏng thuốc mỡ giữ ẩm vết thương và băng gạc thoáng khí.',
       ],
-      relatedGuideTopicId: 'poisoning',
+      relatedGuideTopicId: 'abrasion',
     ),
 
     // --- TRANG 3 ---
@@ -382,7 +385,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
     } else if (categoryId == 'foreign_body') {
       mappedGuideTopicId = 'foreign_body';
     } else if (categoryId == 'other') {
-      mappedGuideTopicId = 'poisoning';
+      mappedGuideTopicId = 'abrasion';
     } else {
       mappedGuideTopicId = 'abrasion';
     }

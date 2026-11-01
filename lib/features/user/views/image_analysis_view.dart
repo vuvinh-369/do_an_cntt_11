@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -37,14 +38,36 @@ class PhanTichAnhView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (!isMobile) ...[
-                    Text(
-                      spec.screenTitle,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0D2B6B),
-                        letterSpacing: -0.3,
-                      ),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () =>
+                              context.read<UserViewModel>().navigateBack(),
+                          icon: const Icon(
+                            Icons.arrow_back_rounded,
+                            color: Color(0xFF0D2B6B),
+                            size: 22,
+                          ),
+                          tooltip: 'Quay lại',
+                          style: IconButton.styleFrom(
+                            backgroundColor: const Color(0xFFF1F5F9),
+                            hoverColor: const Color(0xFFE2E8F0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          spec.screenTitle,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0D2B6B),
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -52,16 +75,19 @@ class PhanTichAnhView extends StatelessWidget {
                   // Nếu đã nạp ảnh vào (Staged): Hiển thị khung xem trước và nút Bắt đầu quét
                   if (viewModel.hasStagedImage)
                     _buildStagedImagePreviewArea(context, viewModel, isMobile: isMobile)
-                  else
+                  else ...[
                     // Chưa có ảnh: Hiển thị khung kéo thả / chọn tệp
                     _buildDashedUploadArea(context, viewModel, spec, isMobile: isMobile),
+                    const SizedBox(height: 18),
+                    _buildClinicalCheckboxesCard(context, viewModel, isMobile: isMobile),
+                  ],
 
                   SizedBox(height: isMobile ? 20 : 28),
                   _buildOrCaptureDivider(spec.dividerText),
                   SizedBox(height: isMobile ? 18 : 24),
 
                   if (isMobile)
-                    _buildPasteImageButton(
+                    _buildCameraButton(
                       context,
                       viewModel,
                       spec.cameraButtonLabel,
@@ -69,7 +95,7 @@ class PhanTichAnhView extends StatelessWidget {
                     )
                   else
                     Center(
-                      child: _buildPasteImageButton(
+                      child: _buildCameraButton(
                         context,
                         viewModel,
                         spec.cameraButtonLabel,
@@ -82,15 +108,18 @@ class PhanTichAnhView extends StatelessWidget {
             ),
 
             // Lớp phủ hiển thị trạng thái khi AI đang quét ảnh kèm Progress Bar
+            // DÙNG Positioned.fill ĐỂ PHỦ KÍN 100% TOÀN MÀN HÌNH KHÔNG BỊ TRÔI HOẶC LỖI GIAO DIỆN
             if (viewModel.isAnalyzing)
-              _buildAnalyzingLoadingOverlay(context, viewModel),
+              Positioned.fill(
+                child: _buildAnalyzingLoadingOverlay(context, viewModel),
+              ),
           ],
         ),
       ),
     );
   }
 
-  /// Khung hiển thị ảnh xem trước khi người dùng vừa chọn/dán xong, kèm nút "Bắt đầu quét AI"
+  /// Khung hiển thị ảnh xem trước khi người dùng vừa chọn/dán xong, kèm 3 checkbox và nút "Bắt đầu quét AI"
   Widget _buildStagedImagePreviewArea(
     BuildContext context,
     UserViewModel viewModel, {
@@ -161,23 +190,32 @@ class PhanTichAnhView extends StatelessWidget {
           ),
           const SizedBox(height: 18),
 
-          // Khung ảnh xem trước
+          // Khung ảnh xem trước (Đã đổi nền sáng trung tính, loại bỏ hoàn toàn khung đen)
           Container(
             height: isMobile ? 240 : 340,
             decoration: BoxDecoration(
-              color: const Color(0xFF0F172A),
+              color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
             clipBehavior: Clip.antiAlias,
             child: imageBytes != null
-                ? Image.memory(
-                    imageBytes,
-                    fit: BoxFit.contain,
+                ? Center(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.memory(
+                        imageBytes,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   )
                 : const SizedBox.shrink(),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
+
+          // 3 CHECKBOX QUAN SÁT TÌNH TRẠNG VẾT THƯƠNG (Dị vật cắm vào, chảy máu, chảy mủ)
+          _buildClinicalCheckboxesCard(context, viewModel, isMobile: isMobile),
+          const SizedBox(height: 18),
 
           // Hàng nút hành động: Nút QUÉT AI + Nút đổi ảnh khác
           Wrap(
@@ -190,27 +228,44 @@ class PhanTichAnhView extends StatelessWidget {
                 spacing: 10,
                 runSpacing: 10,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: () => viewModel.onSelectImageFromFilePressed(context),
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: const Text('Đổi ảnh khác'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF334155),
-                      side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => viewModel.onPasteImagePressed(context),
-                    icon: const Icon(Icons.content_paste_rounded, size: 18),
-                    label: const Text('Dán ảnh khác (Ctrl+V)'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF334155),
-                      side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => viewModel.onSelectImageFromFilePressed(context),
+                        icon: const Icon(Icons.folder_open_rounded, size: 18),
+                        label: const Text('Chọn ảnh khác'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF334155),
+                          side: const BorderSide(color: Color(0xFFCBD5E1)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => viewModel.onCaptureFromCameraPressed(context),
+                        icon: const Icon(Icons.photo_camera_rounded, size: 18),
+                        label: const Text('Chụp lại bằng Camera'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF2563EB),
+                          side: const BorderSide(color: Color(0xFF93C5FD)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => viewModel.onPasteImagePressed(context),
+                        icon: const Icon(Icons.content_paste_rounded, size: 18),
+                        label: const Text('Dán ảnh khác (Ctrl+V)'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF334155),
+                          side: const BorderSide(color: Color(0xFFCBD5E1)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -238,6 +293,129 @@ class PhanTichAnhView extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  /// Khung 3 Checkbox tình trạng vết thương: Dị vật cắm vào, Đang chảy máu, Chảy mủ (nhiễm trùng)
+  Widget _buildClinicalCheckboxesCard(
+    BuildContext context,
+    UserViewModel viewModel, {
+    bool isMobile = false,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(isMobile ? 12 : 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.checklist_rtl_rounded, color: Color(0xFF2563EB), size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Tình trạng quan sát kèm theo tại vết thương (nếu có):',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0D2B6B),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildSingleCheckboxTile(
+            title: 'Dị vật cắm vào vết thương (kim loại, dằm, thủy tinh...)',
+            subtitle: 'Rule Engine sẽ cảnh báo KHÔNG được tự ý rút dị vật ra',
+            icon: Icons.warning_amber_rounded,
+            iconColor: const Color(0xFFEA580C),
+            value: viewModel.hasForeignBody,
+            onChanged: (val) => viewModel.toggleHasForeignBody(val),
+          ),
+          const SizedBox(height: 8),
+          _buildSingleCheckboxTile(
+            title: 'Vết thương đang chảy máu (chảy nhiều hoặc liên tục)',
+            subtitle: 'Hệ thống sẽ ưu tiên các bước cầm máu khẩn cấp',
+            icon: Icons.water_drop_rounded,
+            iconColor: const Color(0xFFDC2626),
+            value: viewModel.isBleeding,
+            onChanged: (val) => viewModel.toggleIsBleeding(val),
+          ),
+          const SizedBox(height: 8),
+          _buildSingleCheckboxTile(
+            title: 'Vết thương chảy mủ / Sưng đỏ tấy (dấu hiệu nhiễm trùng)',
+            subtitle: 'Hướng dẫn sát trùng chuyên sâu và khuyến cáo khám y tế',
+            icon: Icons.healing_outlined,
+            iconColor: const Color(0xFFD97706),
+            value: viewModel.hasPusOrInfection,
+            onChanged: (val) => viewModel.toggleHasPusOrInfection(val),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSingleCheckboxTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color iconColor,
+    required bool value,
+    required ValueChanged<bool?> onChanged,
+  }) {
+    return Material(
+      color: value ? const Color(0xFFEFF6FF) : Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => onChanged(!value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: value ? const Color(0xFF93C5FD) : const Color(0xFFE2E8F0),
+              width: value ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Checkbox(
+                value: value,
+                onChanged: onChanged,
+                activeColor: const Color(0xFF2563EB),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+              Icon(icon, color: iconColor, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: value ? FontWeight.w700 : FontWeight.w600,
+                        color: value ? const Color(0xFF1E40AF) : const Color(0xFF1E293B),
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -312,12 +490,12 @@ class PhanTichAnhView extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  spec.supportedFormatsText,
+                  'Hỗ trợ: Trầy xước, Vết cắt, Bỏng, Bầm tím và Ảnh da bình thường',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: isMobile ? 12.5 : 13.5,
-                    color: const Color(0xFF64748B),
-                    fontWeight: FontWeight.w400,
+                    color: const Color(0xFF2563EB),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -398,14 +576,14 @@ class PhanTichAnhView extends StatelessWidget {
     );
   }
 
-  Widget _buildPasteImageButton(
+  Widget _buildCameraButton(
     BuildContext context,
     UserViewModel viewModel,
     String label, {
     bool isMobile = false,
   }) {
     return OutlinedButton(
-      onPressed: () => viewModel.onPasteImagePressed(context),
+      onPressed: () => viewModel.onCaptureFromCameraPressed(context),
       style: OutlinedButton.styleFrom(
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF0D2B6B),
@@ -428,7 +606,7 @@ class PhanTichAnhView extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(
-              Icons.content_paste_go_rounded,
+              Icons.photo_camera_rounded,
               color: Color(0xFF2563EB),
               size: 20,
             ),
@@ -476,23 +654,23 @@ class PhanTichAnhView extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              children: const [
                 Text(
-                  spec.noticeBoldText,
+                  'Phạm vi nhận diện AI:',
                   style: TextStyle(
-                    fontSize: isMobile ? 13.5 : 14.5,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0D2B6B),
+                    color: Color(0xFF0D2B6B),
                     height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
-                  spec.noticeDetailText,
+                  'Hệ thống tập trung nhận diện 4 nhóm thương tổn ngoài da: Trầy xước, Vết cắt/rách, Bỏng, Bầm tím và ảnh da bình thường (tránh ảnh không liên quan).',
                   style: TextStyle(
-                    fontSize: isMobile ? 13 : 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w400,
-                    color: const Color(0xFF334155),
+                    color: Color(0xFF334155),
                     height: 1.45,
                   ),
                 ),
@@ -504,100 +682,143 @@ class PhanTichAnhView extends StatelessWidget {
     );
   }
 
-  /// Lớp overlay loading hiển thị khi AI đang quét hình ảnh, có PROGRESS BAR và % tiến trình thực tế
+  /// THIẾT KẾ LẠI TOÀN BỘ GIAO DIỆN PROGRESS BAR QUÉT AI:
+  /// Phủ kín toàn màn hình với BackdropFilter blur mờ, không bao giờ bị lệch hay trôi giao diện
   Widget _buildAnalyzingLoadingOverlay(
     BuildContext context,
     UserViewModel viewModel,
   ) {
     final int percent = (viewModel.analysisProgress * 100).clamp(0, 100).toInt();
+    final stagedBytes = viewModel.stagedImageBytes;
 
     return Container(
-      color: Colors.black.withValues(alpha: 0.55),
-      child: Center(
-        child: Container(
-          width: 360,
-          margin: const EdgeInsets.symmetric(horizontal: 24),
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x330D2B6B),
-                blurRadius: 30,
-                offset: Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFEFF6FF),
-                  shape: BoxShape.circle,
+      color: Colors.white.withValues(alpha: 0.85),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+        child: Center(
+          child: Container(
+            width: 380,
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 30),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: const Color(0xFFDBEAFE), width: 1.5),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x380D2B6B),
+                  blurRadius: 36,
+                  offset: Offset(0, 14),
                 ),
-                child: const Icon(
-                  Icons.auto_awesome,
-                  color: Color(0xFF2563EB),
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'AI Đang Phân Tích Hình Ảnh',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0D2B6B),
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // THANH TIẾN TRÌNH PROGRESS BAR
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: viewModel.analysisProgress,
-                  minHeight: 10,
-                  backgroundColor: const Color(0xFFE2E8F0),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Tiến độ phân tích:',
-                    style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
-                  ),
-                  Text(
-                    '$percent%',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF2563EB),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Vòng tròn quét AI với ảnh thumbnail thu nhỏ
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFF93C5FD), width: 2.5),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: stagedBytes != null
+                          ? Image.memory(stagedBytes, fit: BoxFit.cover)
+                          : const Icon(Icons.center_focus_strong, color: Color(0xFF2563EB), size: 36),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-
-              Text(
-                viewModel.analysisStatusMessage,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  color: Color(0xFF334155),
-                  height: 1.4,
-                  fontWeight: FontWeight.w500,
+                    const SizedBox(
+                      width: 88,
+                      height: 88,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+
+                const Text(
+                  'AI Đang Quét Hình Ảnh...',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0D2B6B),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Phân loại: Trầy xước, Vết cắt, Bỏng, Bầm tím, Da lành',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                ),
+                const SizedBox(height: 18),
+
+                // THANH TIẾN TRÌNH PROGRESS BAR THIẾT KẾ MỚI
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: viewModel.analysisProgress,
+                    minHeight: 12,
+                    backgroundColor: const Color(0xFFE2E8F0),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Tiến độ phân tích:',
+                      style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                    ),
+                    Text(
+                      '$percent%',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Thông báo trạng thái theo thời gian thực
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.sync, size: 16, color: Color(0xFF2563EB)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          viewModel.analysisStatusMessage,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: Color(0xFF334155),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

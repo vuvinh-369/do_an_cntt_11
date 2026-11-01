@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../viewmodels/admin_viewmodel.dart';
 import 'admin_login_view.dart';
 import 'admin_dashboard_view.dart';
+import 'admin_management_views.dart';
 
 class AdminShellView extends StatefulWidget {
   const AdminShellView({super.key});
@@ -526,37 +527,23 @@ class _AdminShellViewState extends State<AdminShellView> {
     final safeIndex = selectedIndex.clamp(0, items.length - 1);
     final selectedItem = items[safeIndex];
 
-    if (safeIndex == 0 ||
-        selectedItem.title.toLowerCase().contains('dashboard')) {
-      return const DashboardQuanTriView();
+    switch (selectedItem.id) {
+      case 'dashboard':
+        return const DashboardQuanTriView();
+      case 'knowledge_base':
+        return const AdminKnowledgeBaseView();
+      case 'injury_types':
+        return const AdminInjuryTypesView();
+      case 'rule_engine':
+        return const AdminRuleEngineView();
+      case 'medical_documents':
+        return const AdminDocumentsView();
+      case 'history_analytics':
+        return const AdminHistoryAnalyticsView();
+      case 'settings':
+        return const AdminSettingsView();
+      default:
+        return const DashboardQuanTriView();
     }
-
-    return Padding(
-      padding: const EdgeInsets.all(36),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(selectedItem.icon, size: 48, color: const Color(0xFF94A3B8)),
-            const SizedBox(height: 14),
-            Text(
-              'Màn hình "${selectedItem.title}" đang chờ tích hợp thiết kế tiếp theo.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 15.5,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF475569),
-              ),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: () => viewModel.selectAdminSidebarIndex(1),
-              icon: const Icon(Icons.dashboard_outlined, size: 18),
-              label: const Text('Quay lại Dashboard (Màn hình 10)'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

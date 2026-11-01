@@ -21,7 +21,7 @@ mixin DieuHuongQuanTriViewModel on ChangeNotifier {
   int _selectedAdminSidebarIndex = 1;
   int get selectedAdminSidebarIndex => _selectedAdminSidebarIndex;
 
-  // Danh sách 7 mục menu dọc trên Sidebar Quản trị đúng theo ảnh thiết kế Màn hình 10
+  // Danh sách các mục menu dọc trên Sidebar Quản trị
   final List<AdminSidebarItemModel> adminSidebarItems = const [
     AdminSidebarItemModel(
       id: 'admin_root',
@@ -53,6 +53,11 @@ mixin DieuHuongQuanTriViewModel on ChangeNotifier {
       id: 'medical_documents',
       title: 'Tài liệu y tế',
       icon: Icons.description_outlined,
+    ),
+    AdminSidebarItemModel(
+      id: 'history_analytics',
+      title: 'Lịch sử & Thống kê',
+      icon: Icons.analytics_outlined,
     ),
     AdminSidebarItemModel(
       id: 'settings',

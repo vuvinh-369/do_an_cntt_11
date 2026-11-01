@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/url_launcher_helper.dart';
 import '../models/document_models.dart';
 import '../viewmodels/user_viewmodel.dart';
 import 'widgets/user_painters.dart';
@@ -28,16 +29,43 @@ class KhoTaiLieuView extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(
-                  isMobile ? 'Tài liệu lưu trữ' : 'Kho tài liệu y tế',
-                  style: TextStyle(
-                    fontSize: isMobile ? 18 : 24,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF0D2B6B),
-                    letterSpacing: -0.3,
-                  ),
+                child: Row(
+                  children: [
+                    if (!isMobile) ...[
+                      IconButton(
+                        onPressed: () =>
+                            context.read<UserViewModel>().navigateBack(),
+                        icon: const Icon(
+                          Icons.arrow_back_rounded,
+                          color: Color(0xFF0D2B6B),
+                          size: 22,
+                        ),
+                        tooltip: 'Quay lại',
+                        style: IconButton.styleFrom(
+                          backgroundColor: const Color(0xFFF1F5F9),
+                          hoverColor: const Color(0xFFE2E8F0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                    Expanded(
+                      child: Text(
+                        isMobile ? 'Tài liệu lưu trữ' : 'Kho tài liệu y tế',
+                        style: TextStyle(
+                          fontSize: isMobile ? 18 : 24,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF0D2B6B),
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: 12),
               ElevatedButton.icon(
                 onPressed: () =>
                     _showAddLocalDocumentDialog(context, viewModel),
@@ -1128,12 +1156,66 @@ class KhoTaiLieuView extends StatelessWidget {
                           ),
                         ),
                       ],
+                      if (doc.externalUrl != null && doc.externalUrl!.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        InkWell(
+                          onTap: () => UrlLauncherHelper.launchWebUrl(context, doc.externalUrl),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.link_rounded, color: Color(0xFF2563EB), size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Tài liệu tham chiếu trực tuyến (Click để mở web):',
+                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF1E40AF)),
+                                      ),
+                                      Text(
+                                        doc.externalUrl!,
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          color: Color(0xFF2563EB),
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.open_in_new_rounded, color: Color(0xFF2563EB), size: 16),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 20),
                       Wrap(
                         alignment: WrapAlignment.spaceBetween,
                         spacing: 8,
                         runSpacing: 8,
                         children: [
+                          if (doc.externalUrl != null && doc.externalUrl!.isNotEmpty)
+                            ElevatedButton.icon(
+                              onPressed: () => UrlLauncherHelper.launchWebUrl(context, doc.externalUrl),
+                              icon: const Icon(Icons.open_in_browser_rounded, size: 17),
+                              label: const Text('Mở trên Web'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2563EB),
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
                           TextButton.icon(
                             onPressed: () {
                               viewModel.deleteMedicalDocument(doc.id);

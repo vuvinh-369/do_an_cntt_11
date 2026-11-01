@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -26,6 +27,40 @@ class KetQuaPhanTichView extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (!isMobile) ...[
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () =>
+                          context.read<UserViewModel>().navigateBack(),
+                      icon: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: Color(0xFF0D2B6B),
+                        size: 22,
+                      ),
+                      tooltip: 'Quay lại',
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFFF1F5F9),
+                        hoverColor: const Color(0xFFE2E8F0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Kết quả phân tích hình ảnh',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0D2B6B),
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+              ],
               _buildTopConfidenceBanner(result, isMobile: isMobile),
               SizedBox(height: isMobile ? 16 : 24),
               LayoutBuilder(
@@ -87,7 +122,9 @@ class KetQuaPhanTichView extends StatelessWidget {
 
         // Lớp overlay loading hiển thị khi đang Quét lại
         if (viewModel.isAnalyzing)
-          _buildReAnalyzingLoadingOverlay(context, viewModel),
+          Positioned.fill(
+            child: _buildReAnalyzingLoadingOverlay(context, viewModel),
+          ),
       ],
     );
   }
@@ -97,21 +134,31 @@ class KetQuaPhanTichView extends StatelessWidget {
     AiAnalysisResultModel result, {
     bool isMobile = false,
   }) {
-    final bool isSuccess = result.isDetected && result.confidencePercent > 0;
+    final bool isSuccess = result.isDetected && result.confidencePercent >= 50;
+    final bool isLowConfidence = !result.isManualSelection &&
+        (result.isDetected && result.confidencePercent < 50);
     final bool isManual = result.isManualSelection;
 
     final Color bgColor = isManual
         ? const Color(0xFFF0FDF4)
-        : (isSuccess ? const Color(0xFFECFDF5) : const Color(0xFFFFFBEB));
+        : (isSuccess
+            ? const Color(0xFFECFDF5)
+            : (isLowConfidence ? const Color(0xFFFFF7ED) : const Color(0xFFFFFBEB)));
     final Color borderColor = isManual
         ? const Color(0xFF86EFAC)
-        : (isSuccess ? const Color(0xFFA7F3D0) : const Color(0xFFFDE68A));
+        : (isSuccess
+            ? const Color(0xFFA7F3D0)
+            : (isLowConfidence ? const Color(0xFFFED7AA) : const Color(0xFFFDE68A)));
     final Color iconColor = isManual
         ? const Color(0xFF16A34A)
-        : (isSuccess ? const Color(0xFF059669) : const Color(0xFFD97706));
+        : (isSuccess
+            ? const Color(0xFF059669)
+            : (isLowConfidence ? const Color(0xFFEA580C) : const Color(0xFFD97706)));
     final Color titleColor = isManual
         ? const Color(0xFF15803D)
-        : (isSuccess ? const Color(0xFF15803D) : const Color(0xFFB45309));
+        : (isSuccess
+            ? const Color(0xFF15803D)
+            : (isLowConfidence ? const Color(0xFFC2410C) : const Color(0xFFB45309)));
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -157,9 +204,11 @@ class KetQuaPhanTichView extends StatelessWidget {
                 Text(
                   isManual
                       ? 'Người dùng đã xác nhận thủ công: ${result.injuryType}'
-                      : (isSuccess
-                          ? '${result.confidenceLabelPrefix} ${result.formattedConfidence}'
-                          : (result.detectionMessage ?? 'Chưa xác định độ tin cậy')),
+                      : (isLowConfidence
+                          ? 'Độ tin cậy: ${result.confidencePercent}% (Không đủ chắc chắn <50%)'
+                          : (isSuccess
+                              ? '${result.confidenceLabelPrefix} ${result.formattedConfidence}'
+                              : (result.detectionMessage ?? 'Chưa xác định độ tin cậy'))),
                   style: TextStyle(
                     fontSize: isMobile ? 15.5 : 17,
                     fontWeight: FontWeight.w800,
@@ -204,7 +253,7 @@ class KetQuaPhanTichView extends StatelessWidget {
     return Container(
       height: isMobile ? 280 : 360,
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
+        color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
         boxShadow: const [
@@ -232,11 +281,11 @@ class KetQuaPhanTichView extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.image_not_supported_outlined, size: 48, color: Colors.white54),
+                  Icon(Icons.image_not_supported_outlined, size: 48, color: Color(0xFF94A3B8)),
                   SizedBox(height: 10),
                   Text(
                     'Chưa có dữ liệu ảnh',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                    style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
                   ),
                 ],
               ),
@@ -953,92 +1002,101 @@ class KetQuaPhanTichView extends StatelessWidget {
     final int percent = (viewModel.analysisProgress * 100).clamp(0, 100).toInt();
 
     return Container(
-      color: Colors.black.withValues(alpha: 0.55),
-      child: Center(
-        child: Container(
-          width: 360,
-          margin: const EdgeInsets.symmetric(horizontal: 24),
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x330D2B6B),
-                blurRadius: 30,
-                offset: Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFEFF6FF),
-                  shape: BoxShape.circle,
+      color: Colors.black.withValues(alpha: 0.65),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+        child: Center(
+          child: Container(
+            width: 380,
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 30),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: const Color(0xFFDBEAFE), width: 1.5),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x380D2B6B),
+                  blurRadius: 36,
+                  offset: Offset(0, 14),
                 ),
-                child: const Icon(
-                  Icons.auto_awesome,
-                  color: Color(0xFF2563EB),
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Đang Quét Lại AI...',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0D2B6B),
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // THANH TIẾN TRÌNH PROGRESS BAR
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: viewModel.analysisProgress,
-                  minHeight: 10,
-                  backgroundColor: const Color(0xFFE2E8F0),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Tiến độ phân tích:',
-                    style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 68,
+                  height: 68,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEFF6FF),
+                    shape: BoxShape.circle,
                   ),
-                  Text(
-                    '$percent%',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF2563EB),
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    color: Color(0xFF2563EB),
+                    size: 34,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Đang Quét Lại AI...',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0D2B6B),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Áp dụng độ tương phản x${viewModel.appliedContrast.toStringAsFixed(1)}',
+                  style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 16),
+
+                // THANH TIẾN TRÌNH PROGRESS BAR
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: viewModel.analysisProgress,
+                    minHeight: 12,
+                    backgroundColor: const Color(0xFFE2E8F0),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Tiến độ phân tích:',
+                      style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-
-              Text(
-                viewModel.analysisStatusMessage,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  color: Color(0xFF334155),
-                  height: 1.4,
-                  fontWeight: FontWeight.w500,
+                    Text(
+                      '$percent%',
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 14),
+
+                Text(
+                  viewModel.analysisStatusMessage,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF334155),
+                    height: 1.4,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

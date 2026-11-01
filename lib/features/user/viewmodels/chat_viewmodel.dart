@@ -164,42 +164,30 @@ mixin ChatBoxAiViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
     if (normalized.contains('dị vật') ||
         normalized.contains('dằm') ||
         normalized.contains('mảnh vỡ')) {
-      final guide = firstAidGuidesByTopic['foreign_body']!;
       return ChatMessageModel(
         id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
         isUser: false,
         messageText:
-            'Khi xử lý ${guide.severityText.toLowerCase()}, bạn hãy tuân thủ các bước an toàn sau:',
-        numberedSteps: guide.steps
-            .map((step) => '${step.title}: ${step.description}')
-            .toList(),
+            'Đối với vết thương có dị vật cắm sâu (mảnh thủy tinh, kim loại, que nhọn): Tuyệt đối KHÔNG tự ý rút ra. Hãy dùng gạc sạch chèn cố định hai bên dị vật và đưa nạn nhân đến cơ sở y tế gần nhất!',
+        numberedSteps: const [
+          'Bước 1: Rửa sạch tay, không lay chuyển hoặc cố rút dị vật đâm sâu',
+          'Bước 2: Dùng cuộn băng/gạc sạch đặt hai bên để cố định dị vật',
+          'Bước 3: Băng nhẹ nhàng xung quanh giữ dị vật không bị xê dịch khi di chuyển',
+          'Bước 4: Đến phòng cấp cứu bệnh viện để bác sĩ gắp dị vật và tiêm phòng uốn ván',
+        ],
         timestamp: timestamp,
-        relatedTopicId: 'foreign_body',
-      );
-    }
-
-    if (normalized.contains('ngộ độc') || normalized.contains('nhiễm độc')) {
-      final guide = firstAidGuidesByTopic['poisoning']!;
-      return ChatMessageModel(
-        id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
-        isUser: false,
-        messageText:
-            'Trong trường hợp ${guide.severityText.toLowerCase()}, bạn cần thực hiện ngay các bước sau:',
-        numberedSteps: guide.steps
-            .map((step) => '${step.title}: ${step.description}')
-            .toList(),
-        timestamp: timestamp,
-        relatedTopicId: 'poisoning',
+        relatedTopicId: 'cut_laceration',
       );
     }
 
     return ChatMessageModel(
       id: 'ai_${DateTime.now().microsecondsSinceEpoch}',
       isUser: false,
-      messageText: 'Hiện tại hệ thống chỉ cung cấp hướng dẫn đã kiểm chứng cho 6 tình huống sơ cứu cơ bản (Bỏng, Trầy xước, Vết cắt/Vết rách, Bầm, Dị vật, Ngộ độc) và chưa có đủ cơ sở dữ liệu y khoa đã xác thực cho câu hỏi của bạn.',
+      messageText:
+          'Hệ thống AI chuyên biệt hỗ trợ nhận diện và sơ cứu 4 nhóm thương tổn ngoài da chính: Trầy xước, Vết cắt / Vết rách, Bỏng nhiệt, Bầm tím phần mềm (và phân biệt ảnh da lành bình thường).',
       numberedSteps: const [
         'Vui lòng mô tả rõ một trong các tình trạng trên hoặc mở mục "Hướng dẫn sơ cứu" / "Kiến thức" ở thanh menu bên trái.',
-        'Nếu nạn nhân có dấu hiệu nguy cấp, hãy liên hệ ngay cơ sở y tế gần nhất hoặc gọi cấp cứu 115.',
+        'Nếu nạn nhân có dấu hiệu nguy cấp hoặc chảy máu nhiều, hãy liên hệ ngay cơ sở y tế gần nhất hoặc gọi cấp cứu 115.',
       ],
       timestamp: timestamp,
     );

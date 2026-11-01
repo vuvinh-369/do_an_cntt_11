@@ -5,36 +5,36 @@ import 'user_navigation_viewmodel.dart';
 import 'first_aid_viewmodel.dart';
 
 mixin TrangChuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
-  // Danh sách dữ liệu cho 4 Thẻ Tính năng (Feature Cards) trên Trang chủ
+  // Danh sách dữ liệu cho 4 Thẻ Tính năng (Feature Cards) trên Trang chủ (Đã loại bỏ Hướng dẫn sơ cứu trùng lặp)
   final List<FeatureCardModel> featureCards = const [
     FeatureCardModel(
       id: 'ai_image_analysis',
       title: 'Phân tích ảnh AI',
-      description: 'Nhận diện tổn thương và phân loại',
+      description: 'Nhận diện tổn thương và phân loại vết thương',
       icon: Icons.camera_enhance_outlined,
       iconColor: Color(0xFF0D9488), // Xanh ngọc (Teal)
       iconBackgroundColor: Color(0xFFE6F4F1),
     ),
     FeatureCardModel(
-      id: 'first_aid_guide',
-      title: 'Hướng dẫn sơ cứu',
-      description: 'Các bước xử lý chi tiết dễ hiểu',
-      icon: Icons.fact_check_outlined,
-      iconColor: Color(0xFF16A34A), // Xanh lá (Green)
-      iconBackgroundColor: Color(0xFFE8F7EE),
-    ),
-    FeatureCardModel(
       id: 'knowledge_lookup',
-      title: 'Tra cứu kiến thức',
-      description: 'Tìm hiểu các tình trạng thường gặp',
+      title: 'Kiến thức sơ cứu',
+      description: 'Quy trình và cẩm nang sơ cứu chuẩn y tế',
       icon: Icons.menu_book_outlined,
       iconColor: Color(0xFF2563EB), // Xanh dương (Blue)
       iconBackgroundColor: Color(0xFFEBF2FE),
     ),
     FeatureCardModel(
+      id: 'medical_documents',
+      title: 'Kho tài liệu y tế',
+      description: 'Sổ tay & cẩm nang lưu trữ trên máy',
+      icon: Icons.description_outlined,
+      iconColor: Color(0xFF16A34A), // Xanh lá (Green)
+      iconBackgroundColor: Color(0xFFE8F7EE),
+    ),
+    FeatureCardModel(
       id: 'ai_chatbox',
       title: 'ChatBox AI',
-      description: 'Hỏi đáp nhanh với AI về sơ cứu',
+      description: 'Hỏi đáp nhanh với trợ lý sơ cứu 24/7',
       icon: Icons.smart_toy_outlined,
       iconColor: Color(0xFF7C3AED), // Tím (Purple)
       iconBackgroundColor: Color(0xFFF2EBFE),
@@ -72,11 +72,11 @@ mixin TrangChuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       medicalIcon: Icons.blur_circular,
     ),
     CommonSituationModel(
-      id: 'no_clear_injury',
-      title: 'Không phát hiện tổn thương rõ ràng',
-      baseSkinColor: Color(0xFFE6C3AD),
-      woundAccentColor: Color(0xFF9E7B6B),
-      medicalIcon: Icons.check_circle_outline,
+      id: 'other_wounds',
+      title: 'Vết thương khác',
+      baseSkinColor: Color(0xFFD6C2B4),
+      woundAccentColor: Color(0xFF2563EB),
+      medicalIcon: Icons.menu_book_rounded,
     ),
   ];
 
@@ -95,20 +95,25 @@ mixin TrangChuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
   void onFeatureCardTapped(FeatureCardModel card) {
     if (card.id == 'ai_image_analysis') {
       navigateToAiAnalysis();
-    } else if (card.id == 'first_aid_guide') {
-      navigateToFirstAidGuide(topicId: 'abrasion');
-    } else if (card.id == 'knowledge_lookup') {
+    } else if (card.id == 'knowledge_lookup' || card.id == 'first_aid_guide') {
       navigateToKnowledgeLookup();
+    } else if (card.id == 'medical_documents') {
+      navigateToMedicalDocuments();
     } else if (card.id == 'ai_chatbox') {
       navigateToChatBoxAi();
     }
   }
 
   void onSituationCardTapped(CommonSituationModel situation) {
+    if (situation.id == 'other_wounds' || situation.id == 'no_clear_injury') {
+      // Khi nhấn vào "Vết thương khác" -> chuyển ngay sang màn hình Tra cứu kiến thức sơ cứu
+      navigateToKnowledgeLookup();
+      return;
+    }
     if (firstAidGuidesByTopic.containsKey(situation.id)) {
       navigateToFirstAidGuide(topicId: situation.id);
     } else {
-      navigateToFirstAidGuide(topicId: 'abrasion');
+      navigateToKnowledgeLookup();
     }
   }
 }

@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:pasteboard/pasteboard.dart';
 
 import '../../../core/ai_server_manager.dart';
@@ -21,8 +23,8 @@ mixin PhanTichAnhViewModel
     dropzoneActionText: 'chọn ảnh hoặc dán ảnh (Ctrl+V)',
     supportedFormatsText: 'Hỗ trợ: JPG, PNG, WEBP (tối đa 10MB)',
     selectButtonLabel: 'Chọn ảnh từ máy',
-    dividerText: 'Hoặc quét nhanh',
-    cameraButtonLabel: 'Dán ảnh từ Clipboard (Ctrl + V)',
+    dividerText: 'Hoặc chụp ảnh trực tiếp',
+    cameraButtonLabel: 'Chụp ảnh bằng Camera',
     noticeBoldText:
         'Lưu ý: Hệ thống chỉ hỗ trợ phân tích các vết thương ngoài da.',
     noticeDetailText:
@@ -52,6 +54,38 @@ mixin PhanTichAnhViewModel
   double _appliedContrast = 1.0;
   double get appliedContrast => _appliedContrast;
 
+  // 3 Checkbox tình trạng quan sát kèm theo khi quét vết thương:
+  bool _hasForeignBody = false; // Có dị vật cắm vào vết thương
+  bool get hasForeignBody => _hasForeignBody;
+
+  bool _isBleeding = false; // Đang chảy máu nhiều / liên tục
+  bool get isBleeding => _isBleeding;
+
+  bool _hasPusOrInfection = false; // Chảy mủ / Sưng đỏ tấy (nhiễm trùng)
+  bool get hasPusOrInfection => _hasPusOrInfection;
+
+  void toggleHasForeignBody(bool? val) {
+    _hasForeignBody = val ?? false;
+    notifyListeners();
+  }
+
+  void toggleIsBleeding(bool? val) {
+    _isBleeding = val ?? false;
+    notifyListeners();
+  }
+
+  void toggleHasPusOrInfection(bool? val) {
+    _hasPusOrInfection = val ?? false;
+    notifyListeners();
+  }
+
+  void resetWoundCheckboxes() {
+    _hasForeignBody = false;
+    _isBleeding = false;
+    _hasPusOrInfection = false;
+    notifyListeners();
+  }
+
   // Ảnh thực tế lần quét gần nhất
   Uint8List? _lastSelectedImageBytes;
   Uint8List? get lastSelectedImageBytes => _lastSelectedImageBytes;
@@ -67,7 +101,7 @@ mixin PhanTichAnhViewModel
     try {
       final List<PlatformFile> files = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp'],
       );
 
       if (files.isEmpty) {
@@ -75,7 +109,14 @@ mixin PhanTichAnhViewModel
       }
 
       final file = files.first;
-      final imageBytes = await file.readAsBytes();
+      Uint8List? imageBytes;
+      if (file.path != null && file.path!.isNotEmpty) {
+        final f = File(file.path!);
+        if (await f.exists()) {
+          imageBytes = await f.readAsBytes();
+        }
+      }
+      imageBytes ??= await file.readAsBytes();
       final fileName = file.name;
 
       if (imageBytes.isEmpty) {
@@ -123,10 +164,29 @@ mixin PhanTichAnhViewModel
     }
   }
 
-  /// Dán ảnh trực tiếp từ Clipboard (chỉ nạp ảnh vào trạng thái chờ, chưa quét ngay)
+  /// Dán ảnh trực tiếp từ Clipboard (hỗ trợ cả sao chép pixel ảnh và sao chép file ảnh từ File Explorer)
   Future<void> pasteAndStageImage(BuildContext context) async {
     try {
-      final imageBytes = await Pasteboard.image;
+      Uint8List? imageBytes = await Pasteboard.image;
+      String fileName = 'clipboard_${DateTime.now().millisecondsSinceEpoch}.png';
+
+      // Nếu không có pixel ảnh trực tiếp, kiểm tra xem người dùng có sao chép tệp ảnh từ Windows Explorer không
+      if (imageBytes == null || imageBytes.isEmpty) {
+        try {
+          final files = await Pasteboard.files();
+          if (files.isNotEmpty) {
+            final firstFilePath = files.first;
+            final ext = firstFilePath.split('.').last.toLowerCase();
+            if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].contains(ext)) {
+              final f = File(firstFilePath);
+              if (await f.exists()) {
+                imageBytes = await f.readAsBytes();
+                fileName = firstFilePath.split(RegExp(r'[\\/]')).last;
+              }
+            }
+          }
+        } catch (_) {}
+      }
 
       if (imageBytes == null || imageBytes.isEmpty) {
         if (context.mounted) {
@@ -138,7 +198,7 @@ mixin PhanTichAnhViewModel
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Clipboard chưa có hình ảnh. Hãy sao chép (Copy) ảnh vết thương rồi nhấn Ctrl+V để dán!',
+                      'Clipboard chưa có hình ảnh. Bạn có thể sao chép (Copy) ảnh hoặc file ảnh rồi nhấn Ctrl+V để dán!',
                     ),
                   ),
                 ],
@@ -151,7 +211,17 @@ mixin PhanTichAnhViewModel
         return;
       }
 
-      final fileName = 'clipboard_${DateTime.now().millisecondsSinceEpoch}.png';
+      // Xác định định dạng thật của ảnh từ magic bytes
+      if (imageBytes.length >= 4) {
+        if (imageBytes[0] == 0x42 && imageBytes[1] == 0x4D && !fileName.toLowerCase().endsWith('.bmp')) {
+          fileName = 'clipboard_${DateTime.now().millisecondsSinceEpoch}.bmp';
+        } else if (imageBytes[0] == 0xFF && imageBytes[1] == 0xD8 && !fileName.toLowerCase().endsWith('.jpg') && !fileName.toLowerCase().endsWith('.jpeg')) {
+          fileName = 'clipboard_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        } else if (imageBytes[0] == 0x89 && imageBytes[1] == 0x50 && !fileName.toLowerCase().endsWith('.png')) {
+          fileName = 'clipboard_${DateTime.now().millisecondsSinceEpoch}.png';
+        }
+      }
+
       _stagedImageBytes = imageBytes;
       _stagedImageName = fileName;
       _lastSelectedImageBytes = imageBytes;
@@ -160,16 +230,16 @@ mixin PhanTichAnhViewModel
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
-                Icon(Icons.check_circle_outline, color: Colors.white),
-                SizedBox(width: 8),
-                Expanded(child: Text('Đã dán ảnh thành công! Nhấn "Bắt đầu quét AI" để phân tích.')),
+                const Icon(Icons.check_circle_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Đã dán ảnh "$fileName" thành công! Nhấn "Bắt đầu quét AI" để phân tích.')),
               ],
             ),
-            backgroundColor: Color(0xFF15803D),
-            duration: Duration(seconds: 2),
+            backgroundColor: const Color(0xFF15803D),
+            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -185,10 +255,76 @@ mixin PhanTichAnhViewModel
     }
   }
 
+  /// Chụp ảnh hoặc chọn ảnh trực tiếp từ Camera thiết bị (tối ưu cho Web mobile, Android, iOS)
+  Future<void> captureImageFromCamera(BuildContext context) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? photo = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 92,
+      );
+
+      if (photo == null) {
+        return;
+      }
+
+      final imageBytes = await photo.readAsBytes();
+      if (imageBytes.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Không thể đọc dữ liệu ảnh từ Camera.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final fileName = photo.name.isNotEmpty
+          ? photo.name
+          : 'camera_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      _stagedImageBytes = imageBytes;
+      _stagedImageName = fileName;
+      _lastSelectedImageBytes = imageBytes;
+      _lastSelectedImageName = fileName;
+      notifyListeners();
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Đã chụp ảnh từ Camera thành công! Nhấn "Bắt đầu quét AI" để phân tích.')),
+              ],
+            ),
+            backgroundColor: const Color(0xFF15803D),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể mở camera trên thiết bị này: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   /// Hủy ảnh đang chờ quét để chọn ảnh khác
   void clearStagedImage() {
     _stagedImageBytes = null;
     _stagedImageName = null;
+    resetWoundCheckboxes();
     notifyListeners();
   }
 
@@ -249,11 +385,27 @@ mixin PhanTichAnhViewModel
         await AiServerManager.ensureServerRunning();
       }
 
-      // Xác định định dạng ảnh
-      final bool isPng = fileName.toLowerCase().endsWith('.png') ||
-          (imageBytes.length > 8 && imageBytes[0] == 0x89 && imageBytes[1] == 0x50);
-      final MediaType mimeType =
-          isPng ? MediaType('image', 'png') : MediaType('image', 'jpeg');
+      // Xác định định dạng ảnh và MediaType chuẩn xác
+      String ext = 'jpg';
+      MediaType mimeType = MediaType('image', 'jpeg');
+      if (imageBytes.length >= 4) {
+        if (imageBytes[0] == 0x89 && imageBytes[1] == 0x50 && imageBytes[2] == 0x4E && imageBytes[3] == 0x47) {
+          ext = 'png';
+          mimeType = MediaType('image', 'png');
+        } else if (imageBytes[0] == 0x42 && imageBytes[1] == 0x4D) {
+          ext = 'bmp';
+          mimeType = MediaType('image', 'bmp');
+        } else if (imageBytes[0] == 0xFF && imageBytes[1] == 0xD8) {
+          ext = 'jpg';
+          mimeType = MediaType('image', 'jpeg');
+        } else if (imageBytes.length >= 12 &&
+            imageBytes[0] == 0x52 && imageBytes[1] == 0x49 && imageBytes[2] == 0x46 && imageBytes[3] == 0x46) {
+          ext = 'webp';
+          mimeType = MediaType('image', 'webp');
+        }
+      }
+
+      final String safeUploadFileName = fileName.contains('.') ? fileName : '$fileName.$ext';
 
       // 3. Gửi Multipart Request lên Python FastAPI Server
       final predictUri = Uri.parse('$aiServerUrl/predict');
@@ -263,7 +415,7 @@ mixin PhanTichAnhViewModel
           http.MultipartFile.fromBytes(
             'file',
             imageBytes,
-            filename: fileName,
+            filename: safeUploadFileName,
             contentType: mimeType,
           ),
         );
@@ -332,8 +484,28 @@ mixin PhanTichAnhViewModel
         _stagedImageName = null;
         notifyListeners();
 
-        // Ghi lại lịch sử phân tích
-        onNewAnalysisRecorded(imageSourceName: fileName);
+        // Ghi lại lịch sử phân tích trong RAM
+        onNewAnalysisRecorded(
+          imageSourceName: fileName,
+          injuryType: isDetected ? injuryType : 'Không phát hiện tổn thương rõ ràng',
+          confidencePercent: isDetected ? confidence : null,
+          locationLabel: 'Cánh tay',
+          topicId: topicId,
+          rawImageBytes: imageBytes,
+        );
+
+        // Đồng bộ 3 checkbox lâm sàng sang Rule Engine
+        updateInjuryContext(
+          topicId: topicId,
+          injuryTypeName: injuryType,
+          locationId: 'arm',
+          confidencePercent: confidence,
+        );
+        toggleWarningSymptom(
+          hasDeepWoundOrForeignBody: _hasForeignBody,
+          isBleedingHeavy: _isBleeding,
+          hasSignsOfInfection: _hasPusOrInfection,
+        );
 
         // Chuyển sang màn hình Kết quả phân tích
         navigateToAnalysisResult(imageSourceName: fileName);
@@ -473,7 +645,7 @@ mixin PhanTichAnhViewModel
   }
 
   void onCaptureFromCameraPressed(BuildContext context) {
-    pasteAndStageImage(context);
+    captureImageFromCamera(context);
   }
 
   void onPasteImagePressed(BuildContext context) {

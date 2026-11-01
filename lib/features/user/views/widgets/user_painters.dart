@@ -430,7 +430,6 @@ class KnowledgeTopicThumbnailPainter extends CustomPainter {
         );
         break;
 
-      case 'poisoning':
       default:
         final tablePaint = Paint()
           ..shader = const LinearGradient(

@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../models/first_aid_models.dart';
@@ -20,13 +21,89 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
   int _selectedNavIndex = 0;
   int get selectedNavIndex => _selectedNavIndex;
 
-  // Trạng thái mục đang chọn trên Sidebar bên trái (Màn hình 2, 3, 4, 5, 6, 7, 8)
-  // 0: Trang chủ, 1: Phân tích ảnh AI, 2: Hướng dẫn sơ cứu, 3: Kiến thức, 4: Tài liệu, 5: Lịch sử phân tích, 6: ChatBox AI
+  // Trạng thái mục đang chọn trên Sidebar bên trái:
+  // 0: Trang chủ, 1: Phân tích ảnh AI, 2: Kiến thức sơ cứu, 3: Tài liệu, 4: Lịch sử phân tích, 5: ChatBox AI
   int _selectedSidebarIndex = 1;
   int get selectedSidebarIndex => _selectedSidebarIndex;
 
+  // Ngăn xếp lịch sử điều hướng màn hình hỗ trợ nút Quay lại (Back button)
+  final List<int> _navigationHistory = [0];
+  bool get canNavigateBack => _navigationHistory.length > 1 || _currentScreenIndex != 0;
+
+  void _pushScreen(int screenIndex) {
+    if (_navigationHistory.isEmpty) {
+      _navigationHistory.add(0);
+    }
+    if (_navigationHistory.last != screenIndex) {
+      _navigationHistory.add(screenIndex);
+    }
+  }
+
+  /// Quay lại màn hình trước đó trong lịch sử, hoặc trở về Trang chủ nếu không còn lịch sử
+  void navigateBack() {
+    if (_navigationHistory.length > 1) {
+      _navigationHistory.removeLast();
+      _currentScreenIndex = _navigationHistory.last;
+    } else {
+      _currentScreenIndex = 0;
+      _navigationHistory.clear();
+      _navigationHistory.add(0);
+    }
+    _syncSidebarAndNavIndex();
+    notifyListeners();
+  }
+
+  void _syncSidebarAndNavIndex() {
+    switch (_currentScreenIndex) {
+      case 0:
+        _selectedNavIndex = 0;
+        _selectedSidebarIndex = 0;
+        break;
+      case 1:
+      case 2:
+        _selectedNavIndex = -1;
+        _selectedSidebarIndex = 1; // Phân tích ảnh AI
+        break;
+      case 3:
+      case 4:
+        _selectedNavIndex = 1; // Kiến thức
+        _selectedSidebarIndex = 2; // Kiến thức sơ cứu
+        break;
+      case 5:
+        _selectedNavIndex = -1;
+        _selectedSidebarIndex = 5; // ChatBox AI
+        break;
+      case 6:
+        _selectedNavIndex = 2; // Tài liệu
+        _selectedSidebarIndex = 3; // Tài liệu
+        break;
+      case 7:
+        _selectedNavIndex = 3; // Lịch sử
+        _selectedSidebarIndex = 4; // Lịch sử phân tích
+        break;
+      default:
+        _selectedNavIndex = 0;
+        _selectedSidebarIndex = 0;
+    }
+  }
+
+  // Trạng thái tài khoản người dùng: Khách vãng lai (không bắt buộc đăng nhập) hoặc Đã đăng nhập
+  bool _isUserLoggedIn = false;
+  bool get isUserLoggedIn => _isUserLoggedIn;
+
   // Tên người dùng hiển thị trên góc phải Header
-  final String currentUserName = 'Nguyễn Văn A';
+  String get currentUserName =>
+      _isUserLoggedIn ? 'Nguyễn Văn A' : 'Khách';
+
+  void loginUser([String name = 'Nguyễn Văn A']) {
+    _isUserLoggedIn = true;
+    notifyListeners();
+  }
+
+  void logoutUser() {
+    _isUserLoggedIn = false;
+    notifyListeners();
+  }
 
   // Trạng thái tên file ảnh đã chọn/chụp giả lập
   String? _selectedImageName;
@@ -39,9 +116,16 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
   // Khai báo getter trừu tượng để kiểm tra hợp lệ chủ đề sơ cứu khi điều hướng
   Map<String, FirstAidGuideModel> get firstAidGuidesByTopic;
 
-  // Hook tự động được gọi khi người dùng chụp/tải ảnh mới để lưu vào Lịch sử phân tích (Màn hình 8)
+  // Hook tự động được gọi khi người dùng chụp/tải ảnh mới để lưu vào Lịch sử phân tích trong RAM
   @protected
-  void onNewAnalysisRecorded({required String imageSourceName}) {}
+  void onNewAnalysisRecorded({
+    required String imageSourceName,
+    String? injuryType,
+    int? confidencePercent,
+    String? locationLabel,
+    String? topicId,
+    Uint8List? rawImageBytes,
+  }) {}
 
   // Danh sách 4 mục menu ngang trên Top Navigation Bar
   final List<String> navItems = const [
@@ -51,7 +135,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     'Lịch sử',
   ];
 
-  // Danh sách 7 mục menu dọc trên Sidebar bên trái (Bổ sung "Lịch sử phân tích" ngay dưới "Tài liệu")
+  // Danh sách 6 mục menu dọc trên Sidebar bên trái (Đã loại bỏ Hướng dẫn sơ cứu trùng lặp và hợp nhất vào Kiến thức sơ cứu)
   final List<SidebarMenuItemModel> sidebarMenuItems = const [
     SidebarMenuItemModel(
       id: 'home',
@@ -64,13 +148,8 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
       icon: Icons.center_focus_strong_outlined,
     ),
     SidebarMenuItemModel(
-      id: 'first_aid_guide',
-      title: 'Hướng dẫn sơ cứu',
-      icon: Icons.medical_services_outlined,
-    ),
-    SidebarMenuItemModel(
       id: 'knowledge',
-      title: 'Kiến thức',
+      title: 'Kiến thức sơ cứu',
       icon: Icons.menu_book_outlined,
     ),
     SidebarMenuItemModel(
@@ -91,21 +170,23 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
   ];
 
   // =========================================================================
-  // LOGIC ĐIỀU HƯỚNG XUYÊN SUỐT GIỮA 8 MÀN HÌNH (1 <-> 2 <-> 3 <-> 4 <-> 5 <-> 6 <-> 7 <-> 8)
+  // LOGIC ĐIỀU HƯỚNG XUYÊN SUỐT GIỮA CÁC MÀN HÌNH
   // =========================================================================
 
   /// Chuyển sang Màn hình 1: Trang chủ
   void navigateToHome() {
     _currentScreenIndex = 0;
-    _selectedNavIndex = 0;
-    _selectedSidebarIndex = 0;
+    _navigationHistory.clear();
+    _navigationHistory.add(0);
+    _syncSidebarAndNavIndex();
     notifyListeners();
   }
 
   /// Chuyển sang Màn hình 2: Phân tích ảnh AI (Tải ảnh / Chụp ảnh)
   void navigateToAiAnalysis() {
+    _pushScreen(1);
     _currentScreenIndex = 1;
-    _selectedSidebarIndex = 1;
+    _syncSidebarAndNavIndex();
     notifyListeners();
   }
 
@@ -120,95 +201,84 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     if (recordHistory) {
       onNewAnalysisRecorded(imageSourceName: resolvedImageName);
     }
+    _pushScreen(2);
     _currentScreenIndex = 2;
-    _selectedSidebarIndex = 1;
+    _syncSidebarAndNavIndex();
     notifyListeners();
   }
 
-  /// Chuyển sang Màn hình 4: Hướng dẫn sơ cứu (Người dùng)
+  /// Chuyển sang Chi tiết Hướng dẫn sơ cứu (Dưới phân hệ Kiến thức sơ cứu)
   void navigateToFirstAidGuide({String? topicId}) {
     if (topicId != null && firstAidGuidesByTopic.containsKey(topicId)) {
       _selectedGuideTopicId = topicId;
     }
+    _pushScreen(3);
     _currentScreenIndex = 3;
-    _selectedSidebarIndex = 2;
+    _syncSidebarAndNavIndex();
     notifyListeners();
   }
 
-  /// Chuyển sang Màn hình 5: Tra cứu kiến thức (Người dùng)
+  /// Chuyển sang Màn hình Tra cứu kiến thức sơ cứu (Người dùng)
   void navigateToKnowledgeLookup() {
+    _pushScreen(4);
     _currentScreenIndex = 4;
-    _selectedSidebarIndex = 3;
-    _selectedNavIndex = 1;
+    _syncSidebarAndNavIndex();
     notifyListeners();
   }
 
-  /// Chuyển sang Màn hình 6: ChatBox AI (Người dùng)
+  /// Chuyển sang Màn hình ChatBox AI (Người dùng)
   void navigateToChatBoxAi() {
+    _pushScreen(5);
     _currentScreenIndex = 5;
-    _selectedSidebarIndex = 6;
+    _syncSidebarAndNavIndex();
     notifyListeners();
   }
 
-  /// Chuyển sang Màn hình 7: Kho tài liệu y tế (Quản lý tài liệu lưu trữ cục bộ trên thiết bị)
+  /// Chuyển sang Kho tài liệu y tế (Quản lý tài liệu lưu trữ cục bộ trên thiết bị)
   void navigateToMedicalDocuments() {
+    _pushScreen(6);
     _currentScreenIndex = 6;
-    _selectedSidebarIndex = 4;
-    _selectedNavIndex = 2;
+    _syncSidebarAndNavIndex();
     notifyListeners();
   }
 
-  /// Chuyển sang Màn hình 8: Lịch sử phân tích (Người dùng)
+  /// Chuyển sang Lịch sử phân tích (Người dùng)
   void navigateToAnalysisHistory() {
+    _pushScreen(7);
     _currentScreenIndex = 7;
-    _selectedSidebarIndex = 5;
-    _selectedNavIndex = 3;
+    _syncSidebarAndNavIndex();
     notifyListeners();
   }
 
   /// Xử lý khi bấm chọn mục trên Top Navigation Bar: ['Trang chủ', 'Kiến thức', 'Tài liệu', 'Lịch sử']
   void selectNavIndex(int index) {
-    _selectedNavIndex = index;
     if (index == 0) {
-      _currentScreenIndex = 0;
-      _selectedSidebarIndex = 0;
+      navigateToHome();
     } else if (index == 1) {
-      _currentScreenIndex = 4;
-      _selectedSidebarIndex = 3;
+      navigateToKnowledgeLookup();
     } else if (index == 2) {
-      _currentScreenIndex = 6;
-      _selectedSidebarIndex = 4;
+      navigateToMedicalDocuments();
     } else if (index == 3) {
-      _currentScreenIndex = 7;
-      _selectedSidebarIndex = 5;
+      navigateToAnalysisHistory();
     }
-    notifyListeners();
   }
 
-  /// Xử lý khi bấm chọn mục trên thanh Sidebar bên trái
-  /// 0: Trang chủ, 1: Phân tích ảnh AI, 2: Hướng dẫn sơ cứu, 3: Kiến thức, 4: Tài liệu, 5: Lịch sử phân tích, 6: ChatBox AI
+  /// Xử lý khi bấm chọn mục trên thanh Sidebar bên trái:
+  /// 0: Trang chủ, 1: Phân tích ảnh AI, 2: Kiến thức sơ cứu, 3: Tài liệu, 4: Lịch sử phân tích, 5: ChatBox AI
   void selectSidebarIndex(int index) {
-    _selectedSidebarIndex = index;
     if (index == 0) {
-      _currentScreenIndex = 0;
-      _selectedNavIndex = 0;
+      navigateToHome();
     } else if (index == 1) {
-      _currentScreenIndex = 1;
+      navigateToAiAnalysis();
     } else if (index == 2) {
-      _currentScreenIndex = 3;
+      navigateToKnowledgeLookup();
     } else if (index == 3) {
-      _currentScreenIndex = 4;
-      _selectedNavIndex = 1;
+      navigateToMedicalDocuments();
     } else if (index == 4) {
-      _currentScreenIndex = 6;
-      _selectedNavIndex = 2;
+      navigateToAnalysisHistory();
     } else if (index == 5) {
-      _currentScreenIndex = 7;
-      _selectedNavIndex = 3;
-    } else if (index == 6) {
-      _currentScreenIndex = 5;
+      navigateToChatBoxAi();
     }
-    notifyListeners();
   }
 
   void onProfileAvatarPressed() {

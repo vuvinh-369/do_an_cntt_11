@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../models/history_models.dart';
@@ -164,43 +165,52 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
     notifyListeners();
   }
 
-  /// TỰ ĐỘNG LƯU LỊCH SỬ: Được kích hoạt tự động mỗi khi navigateToAnalysisResult() chạy
+  /// TỰ ĐỘNG LƯU LỊCH SỬ TRONG RAM: Kích hoạt khi quét phân tích ảnh xong
   @override
-  void onNewAnalysisRecorded({required String imageSourceName}) {
+  void onNewAnalysisRecorded({
+    required String imageSourceName,
+    String? injuryType,
+    int? confidencePercent,
+    String? locationLabel,
+    String? topicId,
+    Uint8List? rawImageBytes,
+  }) {
     final now = DateTime.now();
     final lowerName = imageSourceName.toLowerCase();
 
-    // Nhận diện thông minh loại tổn thương từ tên ảnh hoặc dùng mặc định từ kết quả AI (Màn hình 3)
-    String detectedInjuryType = 'Trầy xước';
-    int? detectedConfidence = 82;
-    String detectedLocation = 'Cánh tay';
-    String? topicId = 'abrasion';
+    // Sử dụng trực tiếp giá trị thực tế nếu có, hoặc suy luận từ tên ảnh
+    String detectedInjuryType = injuryType ?? 'Trầy xước';
+    int? detectedConfidence = confidencePercent ?? 82;
+    String detectedLocation = locationLabel ?? 'Cánh tay';
+    String? assignedTopicId = topicId ?? 'abrasion';
     Color woundColor = const Color(0xFFD63638);
 
-    if (lowerName.contains('burn') || lowerName.contains('bong')) {
-      detectedInjuryType = 'Bỏng';
-      detectedConfidence = 88;
-      detectedLocation = 'Bàn tay';
-      topicId = 'burn';
-      woundColor = const Color(0xFFEA580C);
-    } else if (lowerName.contains('cut') || lowerName.contains('cat')) {
-      detectedInjuryType = 'Vết cắt';
-      detectedConfidence = 85;
-      detectedLocation = 'Ngón tay';
-      topicId = 'cut';
-      woundColor = const Color(0xFFB91C1C);
-    } else if (lowerName.contains('bruise') || lowerName.contains('bam')) {
-      detectedInjuryType = 'Bầm';
-      detectedConfidence = 67;
-      detectedLocation = 'Chân';
-      topicId = 'bruise';
-      woundColor = const Color(0xFF7E22CE);
-    } else if (lowerName.contains('none') || lowerName.contains('normal')) {
-      detectedInjuryType = 'Không phát hiện tổn thương rõ ràng';
-      detectedConfidence = null;
-      detectedLocation = '-';
-      topicId = null;
-      woundColor = const Color(0xFFC08470);
+    if (injuryType == null) {
+      if (lowerName.contains('burn') || lowerName.contains('bong')) {
+        detectedInjuryType = 'Bỏng';
+        detectedConfidence = 88;
+        detectedLocation = 'Bàn tay';
+        assignedTopicId = 'burn';
+        woundColor = const Color(0xFFEA580C);
+      } else if (lowerName.contains('cut') || lowerName.contains('cat')) {
+        detectedInjuryType = 'Vết cắt';
+        detectedConfidence = 85;
+        detectedLocation = 'Ngón tay';
+        assignedTopicId = 'cut_laceration';
+        woundColor = const Color(0xFFB91C1C);
+      } else if (lowerName.contains('bruise') || lowerName.contains('bam')) {
+        detectedInjuryType = 'Bầm';
+        detectedConfidence = 67;
+        detectedLocation = 'Chân';
+        assignedTopicId = 'bruise';
+        woundColor = const Color(0xFF7E22CE);
+      } else if (lowerName.contains('none') || lowerName.contains('normal')) {
+        detectedInjuryType = 'Không phát hiện tổn thương rõ ràng';
+        detectedConfidence = null;
+        detectedLocation = '-';
+        assignedTopicId = null;
+        woundColor = const Color(0xFFC08470);
+      }
     }
 
     final newRecord = AnalysisHistoryItemModel(
@@ -211,12 +221,14 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
       timestamp: _formatDateTime(now),
       dateTime: now,
       imageSourceName: imageSourceName,
-      relatedTopicId: topicId,
+      relatedTopicId: assignedTopicId,
       baseSkinColor: const Color(0xFFE7B89E),
       woundAccentColor: woundColor,
+      rawImageBytes: rawImageBytes,
     );
 
     _analysisHistoryItems.insert(0, newRecord);
+    notifyListeners();
   }
 
   /// Cho phép cập nhật lại vị trí tổn thương của bản ghi mới nhất khi người dùng đổi vị trí ở Màn hình 3

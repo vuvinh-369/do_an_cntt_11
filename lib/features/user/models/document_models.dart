@@ -31,6 +31,7 @@ class MedicalDocumentModel {
   final String summary;
   final List<String> contentPoints;
   final String? relatedGuideTopicId;
+  final String? externalUrl;
 
   const MedicalDocumentModel({
     required this.id,
@@ -47,6 +48,7 @@ class MedicalDocumentModel {
     required this.summary,
     required this.contentPoints,
     this.relatedGuideTopicId,
+    this.externalUrl,
   });
 
   MedicalDocumentModel copyWith({
@@ -64,6 +66,7 @@ class MedicalDocumentModel {
     String? summary,
     List<String>? contentPoints,
     String? relatedGuideTopicId,
+    String? externalUrl,
   }) {
     return MedicalDocumentModel(
       id: id ?? this.id,
@@ -80,6 +83,7 @@ class MedicalDocumentModel {
       summary: summary ?? this.summary,
       contentPoints: contentPoints ?? this.contentPoints,
       relatedGuideTopicId: relatedGuideTopicId ?? this.relatedGuideTopicId,
+      externalUrl: externalUrl ?? this.externalUrl,
     );
   }
 }

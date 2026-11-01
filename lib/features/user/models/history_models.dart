@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
-/// Mô hình dữ liệu cho từng bản ghi trong màn hình "8. Lịch sử phân tích (Người dùng)" (Màn hình 8)
+/// Mô hình dữ liệu cho từng bản ghi trong màn hình "Lịch sử phân tích (Người dùng)" (Màn hình 8)
+/// Dữ liệu lưu tạm thời trong RAM theo yêu cầu người dùng
 class AnalysisHistoryItemModel {
   final String id;
   final String injuryType;
@@ -12,6 +14,7 @@ class AnalysisHistoryItemModel {
   final String? relatedTopicId;
   final Color baseSkinColor;
   final Color woundAccentColor;
+  final Uint8List? rawImageBytes; // Lưu ảnh thật trong RAM
 
   const AnalysisHistoryItemModel({
     required this.id,
@@ -24,10 +27,10 @@ class AnalysisHistoryItemModel {
     this.relatedTopicId,
     this.baseSkinColor = const Color(0xFFE8BEAC),
     this.woundAccentColor = const Color(0xFFD9383A),
+    this.rawImageBytes,
   });
 
-  /// Hiển thị tiêu đề kèm phần trăm độ tin cậy (예: "Trầy xước (82%)")
-  /// Nếu confidencePercent == null (như "Không phát hiện tổn thương rõ ràng") thì chỉ hiển thị tên
+  /// Hiển thị tiêu đề kèm phần trăm độ tin cậy (Ví dụ: "Trầy xước (82%)")
   String get displayTitle => confidencePercent != null
       ? '$injuryType ($confidencePercent%)'
       : injuryType;
@@ -43,6 +46,7 @@ class AnalysisHistoryItemModel {
     String? relatedTopicId,
     Color? baseSkinColor,
     Color? woundAccentColor,
+    Uint8List? rawImageBytes,
   }) {
     return AnalysisHistoryItemModel(
       id: id ?? this.id,
@@ -55,6 +59,7 @@ class AnalysisHistoryItemModel {
       relatedTopicId: relatedTopicId ?? this.relatedTopicId,
       baseSkinColor: baseSkinColor ?? this.baseSkinColor,
       woundAccentColor: woundAccentColor ?? this.woundAccentColor,
+      rawImageBytes: rawImageBytes ?? this.rawImageBytes,
     );
   }
 }

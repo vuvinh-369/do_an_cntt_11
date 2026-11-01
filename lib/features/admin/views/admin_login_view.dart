@@ -1,12 +1,33 @@
-// File: lib/views/adminview/dang_nhap_quan_tri_view.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../viewmodels/admin_viewmodel.dart';
 import 'widgets/admin_painters.dart';
 
-class DangNhapQuanTriView extends StatelessWidget {
+class DangNhapQuanTriView extends StatefulWidget {
   const DangNhapQuanTriView({super.key});
+
+  @override
+  State<DangNhapQuanTriView> createState() => _DangNhapQuanTriViewState();
+}
+
+class _DangNhapQuanTriViewState extends State<DangNhapQuanTriView> {
+  late final TextEditingController _usernameController;
+  late final TextEditingController _passwordController;
+
+  @override
+  void initState() {
+    super.initState();
+    _usernameController = TextEditingController(text: '1');
+    _passwordController = TextEditingController(text: '1');
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -163,7 +184,7 @@ class DangNhapQuanTriView extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: isMobile ? 22 : 32),
+          SizedBox(height: isMobile ? 20 : 28),
           Text(
             spec.formTitle,
             style: TextStyle(
@@ -173,7 +194,19 @@ class DangNhapQuanTriView extends StatelessWidget {
               letterSpacing: -0.3,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
+
+          // Khung gợi ý tài khoản test cứng
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
+          ),
+          const SizedBox(height: 18),
+
           Text(
             spec.usernameLabel,
             style: const TextStyle(
@@ -184,6 +217,7 @@ class DangNhapQuanTriView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           TextField(
+            controller: _usernameController,
             onChanged: viewModel.updateUsername,
             textInputAction: TextInputAction.next,
             style: const TextStyle(fontSize: 14.5, color: Color(0xFF1E293B)),
@@ -226,6 +260,7 @@ class DangNhapQuanTriView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           TextField(
+            controller: _passwordController,
             onChanged: viewModel.updatePassword,
             obscureText: viewModel.isPasswordObscured,
             onSubmitted: (_) => viewModel.submitAdminLogin(),
@@ -342,12 +377,16 @@ class DangNhapQuanTriView extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 20),
+          SizedBox(height: isMobile ? 18 : 24),
           SizedBox(
             width: double.infinity,
-            height: 46,
+            height: 48,
             child: ElevatedButton(
-              onPressed: () => viewModel.submitAdminLogin(),
+              onPressed: () {
+                viewModel.updateUsername(_usernameController.text);
+                viewModel.updatePassword(_passwordController.text);
+                viewModel.submitAdminLogin();
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2563EB),
                 foregroundColor: Colors.white,
@@ -359,7 +398,7 @@ class DangNhapQuanTriView extends StatelessWidget {
               child: Text(
                 spec.loginButtonLabel,
                 style: const TextStyle(
-                  fontSize: 15,
+                  fontSize: 15.5,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -372,39 +411,47 @@ class DangNhapQuanTriView extends StatelessWidget {
 
   Widget _buildRightIllustrationPanel(dynamic spec, {required bool isMobile}) {
     return Container(
-      color: const Color(0xFFF0F5FF).withValues(alpha: 0.75),
+      color: const Color(0xFFF8FAFD),
       padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 20 : 36,
-        vertical: isMobile ? 24 : 44,
+        horizontal: isMobile ? 22 : 44,
+        vertical: isMobile ? 28 : 42,
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(
-            width: isMobile ? 210 : 260,
-            height: isMobile ? 150 : 190,
-            child: const CustomPaint(
-              painter: AdminSecurityIllustrationPainter(),
+          Container(
+            width: 140,
+            height: 140,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFBFDBFE), width: 2),
+            ),
+            child: const Icon(
+              Icons.admin_panel_settings_rounded,
+              size: 68,
+              color: Color(0xFF2563EB),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 24),
           Text(
             spec.rightPanelTitle,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 16.5,
+              fontSize: 19,
               fontWeight: FontWeight.w800,
               color: Color(0xFF0D2B6B),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
             spec.rightPanelSubtitle,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+              fontSize: 13.5,
               color: Color(0xFF64748B),
+              height: 1.4,
             ),
           ),
         ],
