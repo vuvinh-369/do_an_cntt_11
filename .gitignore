@@ -49,3 +49,11 @@ app.*.map.json
 
 .venv/
 
+# Local AI data and machine configuration; weights stay outside this repository.
+backend/.env.local
+backend/runtime/
+**/__pycache__/
+.run/
+*.safetensors
+*.gguf
+

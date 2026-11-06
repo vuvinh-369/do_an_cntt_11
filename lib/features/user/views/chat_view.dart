@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/url_launcher_helper.dart';
 import '../models/chat_models.dart';
 import '../viewmodels/user_viewmodel.dart';
 import 'widgets/user_painters.dart';
@@ -14,63 +15,42 @@ class ChatBoxAiView extends StatelessWidget {
 
   /// Hộp thoại chọn chuyển đổi Model AI (Google Gemini hoặc MedGemma Server)
   void _showModelSelectorDialog(BuildContext context, UserViewModel viewModel) {
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (ctx) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 500),
-            padding: const EdgeInsets.all(22),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Tiêu đề Popup
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.hub_rounded, color: Color(0xFF2563EB), size: 22),
-                    ),
-                    const SizedBox(width: 12),
+                    const Icon(Icons.hub_rounded, color: Color(0xFF2563EB)),
+                    const SizedBox(width: 10),
                     const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Chọn mô hình AI tư vấn',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF0D2B6B),
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Lựa chọn bộ não AI hỗ trợ phân tích và hướng dẫn các bước sơ cứu',
-                            style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                          ),
-                        ],
+                      child: Text(
+                        'Chọn mô hình AI',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B), size: 20),
                       onPressed: () => Navigator.pop(ctx),
-                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.close),
+                      tooltip: 'Đóng',
                     ),
                   ],
                 ),
                 const Divider(height: 24),
-
-                // Danh sách các mô hình
                 ...viewModel.availableChatModels.map((model) {
-                  final isSelected = viewModel.selectedChatModelId == model.id;
+                  final selected = viewModel.selectedChatModelId == model.id;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: InkWell(
@@ -80,13 +60,7 @@ class ChatBoxAiView extends StatelessWidget {
                         Navigator.pop(ctx);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Row(
-                              children: [
-                                Icon(model.icon, color: Colors.white, size: 18),
-                                const SizedBox(width: 8),
-                                Text('Đã kích hoạt mô hình: ${model.name}'),
-                              ],
-                            ),
+                            content: Text('Đã chọn mô hình: ${model.name}'),
                             backgroundColor: model.brandColor,
                             duration: const Duration(seconds: 2),
                           ),
@@ -95,67 +69,56 @@ class ChatBoxAiView extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: isSelected
+                          color: selected
                               ? model.brandColor.withValues(alpha: 0.06)
                               : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: isSelected ? model.brandColor : const Color(0xFFE2E8F0),
-                            width: isSelected ? 1.8 : 1,
+                            color: selected
+                                ? model.brandColor
+                                : const Color(0xFFE2E8F0),
+                            width: selected ? 1.8 : 1,
                           ),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: model.brandColor.withValues(alpha: 0.12),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(model.icon, color: model.brandColor, size: 22),
-                            ),
-                            const SizedBox(width: 14),
+                            Icon(model.icon, color: model.brandColor, size: 24),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          model.name,
-                                          style: TextStyle(
-                                            fontSize: 14.5,
-                                            fontWeight: FontWeight.w800,
-                                            color: isSelected
-                                                ? model.brandColor
-                                                : const Color(0xFF0F172A),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: model.tagColor.withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(6),
-                                          border: Border.all(
-                                            color: model.tagColor.withValues(alpha: 0.3),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          model.tagLabel,
-                                          style: TextStyle(
-                                            fontSize: 10.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: model.tagColor,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                  Text(
+                                    model.name,
+                                    style: TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: model.brandColor,
+                                    ),
                                   ),
                                   const SizedBox(height: 5),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 7,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: model.tagColor.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      model.tagLabel,
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        color: model.tagColor,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
                                   Text(
                                     model.description,
                                     style: const TextStyle(
@@ -165,35 +128,24 @@ class ChatBoxAiView extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 6),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        model.id == 'gemini'
-                                            ? Icons.cloud_outlined
-                                            : Icons.dns_outlined,
-                                        size: 13,
-                                        color: const Color(0xFF64748B),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        model.provider,
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF64748B),
-                                        ),
-                                      ),
-                                    ],
+                                  Text(
+                                    model.provider,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF64748B),
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
                             const SizedBox(width: 8),
                             Icon(
-                              isSelected
+                              selected
                                   ? Icons.check_circle_rounded
                                   : Icons.radio_button_unchecked_rounded,
-                              color: isSelected ? model.brandColor : const Color(0xFF94A3B8),
+                              color: selected
+                                  ? model.brandColor
+                                  : const Color(0xFF94A3B8),
                               size: 22,
                             ),
                           ],
@@ -205,8 +157,8 @@ class ChatBoxAiView extends StatelessWidget {
               ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -219,7 +171,9 @@ class ChatBoxAiView extends StatelessWidget {
     final currentModel = viewModel.currentChatModel;
 
     return InkWell(
-      onTap: () => _showModelSelectorDialog(context, viewModel),
+      onTap: viewModel.isAiThinking
+          ? null
+          : () => _showModelSelectorDialog(context, viewModel),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: EdgeInsets.symmetric(
@@ -275,9 +229,16 @@ class ChatBoxAiView extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: const Row(
           children: [
-            Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626), size: 24),
+            Icon(
+              Icons.delete_outline_rounded,
+              color: Color(0xFFDC2626),
+              size: 24,
+            ),
             SizedBox(width: 10),
-            Text('Xóa cuộc trò chuyện', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            Text(
+              'Xóa cuộc trò chuyện',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            ),
           ],
         ),
         content: const Text(
@@ -287,7 +248,10 @@ class ChatBoxAiView extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B))),
+            child: const Text(
+              'Hủy',
+              style: TextStyle(color: Color(0xFF64748B)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -328,7 +292,8 @@ class ChatBoxAiView extends StatelessWidget {
     final viewModel = context.watch<UserViewModel>();
     final screenSize = MediaQuery.sizeOf(context);
     final isMobile = screenSize.width < 768;
-    final totalItems = viewModel.chatMessages.length + (viewModel.isAiThinking ? 1 : 0);
+    final totalItems =
+        viewModel.chatMessages.length + (viewModel.isAiThinking ? 1 : 0);
 
     if (isMobile) {
       return Padding(
@@ -341,7 +306,11 @@ class ChatBoxAiView extends StatelessWidget {
               children: [
                 IconButton(
                   onPressed: () => context.read<UserViewModel>().navigateBack(),
-                  icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0D2B6B), size: 20),
+                  icon: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Color(0xFF0D2B6B),
+                    size: 20,
+                  ),
                   tooltip: 'Quay lại',
                   style: IconButton.styleFrom(
                     backgroundColor: const Color(0xFFF1F5F9),
@@ -366,7 +335,11 @@ class ChatBoxAiView extends StatelessWidget {
                 if (viewModel.chatMessages.isNotEmpty) ...[
                   const SizedBox(width: 4),
                   IconButton(
-                    icon: const Icon(Icons.delete_sweep_outlined, color: Color(0xFF64748B), size: 20),
+                    icon: const Icon(
+                      Icons.delete_sweep_outlined,
+                      color: Color(0xFF64748B),
+                      size: 20,
+                    ),
                     tooltip: 'Xóa hội thoại',
                     onPressed: () => _showClearChatDialog(context, viewModel),
                   ),
@@ -385,7 +358,8 @@ class ChatBoxAiView extends StatelessWidget {
                       controller: viewModel.chatScrollController,
                       padding: const EdgeInsets.only(top: 4, bottom: 12),
                       itemCount: totalItems,
-                      separatorBuilder: (context, index) => const SizedBox(height: 16),
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 16),
                       itemBuilder: (context, index) {
                         if (index == viewModel.chatMessages.length) {
                           return _buildAiThinkingRow(viewModel, isMobile: true);
@@ -402,6 +376,8 @@ class ChatBoxAiView extends StatelessWidget {
                     ),
             ),
             const SizedBox(height: 10),
+            if (viewModel.selectedChatModelId == 'medgemma')
+              _buildMedGemmaStatus(viewModel),
             _buildChatBottomInputBar(context, viewModel, isMobile: true),
           ],
         ),
@@ -474,18 +450,28 @@ class ChatBoxAiView extends StatelessWidget {
                 const SizedBox(width: 12),
                 // Nút chuyển đổi Model AI phong cách ChatGPT / Gemini
                 Flexible(
-                  child: _buildModelSelectorButton(context, viewModel, isMobile: screenSize.width < 960),
+                  child: _buildModelSelectorButton(
+                    context,
+                    viewModel,
+                    isMobile: screenSize.width < 960,
+                  ),
                 ),
                 if (viewModel.chatMessages.isNotEmpty) ...[
                   const SizedBox(width: 8),
                   IconButton(
                     onPressed: () => _showClearChatDialog(context, viewModel),
-                    icon: const Icon(Icons.delete_sweep_outlined, color: Color(0xFFDC2626), size: 20),
+                    icon: const Icon(
+                      Icons.delete_sweep_outlined,
+                      color: Color(0xFFDC2626),
+                      size: 20,
+                    ),
                     tooltip: 'Xóa cuộc trò chuyện',
                     style: IconButton.styleFrom(
                       backgroundColor: const Color(0xFFFEE2E2),
                       hoverColor: const Color(0xFFFECACA),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       padding: const EdgeInsets.all(10),
                     ),
                   ),
@@ -507,10 +493,14 @@ class ChatBoxAiView extends StatelessWidget {
                           right: 8,
                         ),
                         itemCount: totalItems,
-                        separatorBuilder: (context, index) => const SizedBox(height: 20),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 20),
                         itemBuilder: (context, index) {
                           if (index == viewModel.chatMessages.length) {
-                            return _buildAiThinkingRow(viewModel, isMobile: false);
+                            return _buildAiThinkingRow(
+                              viewModel,
+                              isMobile: false,
+                            );
                           }
                           final message = viewModel.chatMessages[index];
                           return message.isUser
@@ -521,9 +511,47 @@ class ChatBoxAiView extends StatelessWidget {
                     ),
             ),
             const SizedBox(height: 16),
+            if (viewModel.selectedChatModelId == 'medgemma')
+              _buildMedGemmaStatus(viewModel),
             _buildChatBottomInputBar(context, viewModel),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMedGemmaStatus(UserViewModel vm) {
+    final state = switch (vm.chatModelState) {
+      'ready' => 'MedGemma sẵn sàng',
+      'loading' => 'Đang nạp MedGemma trên máy chủ…',
+      'generating' => 'MedGemma đang xử lý câu hỏi…',
+      'not_loaded' => 'MedGemma chưa nạp',
+      'error' => 'Không nạp được MedGemma; kiểm tra bộ nhớ trên máy chủ',
+      'offline' => 'Chưa kết nối được máy chủ MedGemma',
+      _ => 'Kiểm tra kết nối MedGemma',
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        children: [
+          Text(
+            '$state · ${vm.chatReferenceCount} mục tham khảo',
+            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+          ),
+          IconButton(
+            onPressed: vm.refreshChatStatus,
+            icon: const Icon(Icons.refresh, size: 18),
+            tooltip: 'Kiểm tra kết nối',
+            visualDensity: VisualDensity.compact,
+          ),
+          if ({'not_loaded', 'error'}.contains(vm.chatModelState))
+            TextButton(
+              onPressed: vm.isAiThinking ? null : vm.loadChatModel,
+              child: const Text('Thử nạp model'),
+            ),
+        ],
       ),
     );
   }
@@ -546,7 +574,10 @@ class ChatBoxAiView extends StatelessWidget {
               decoration: BoxDecoration(
                 color: currentModel.brandColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
-                border: Border.all(color: currentModel.brandColor.withValues(alpha: 0.3), width: 1.5),
+                border: Border.all(
+                  color: currentModel.brandColor.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: currentModel.brandColor.withValues(alpha: 0.08),
@@ -577,7 +608,11 @@ class ChatBoxAiView extends StatelessWidget {
               child: Text(
                 'Mô hình đang hoạt động: ${currentModel.name} (${currentModel.provider}).\nBạn có thể mô tả chi tiết vết thương, hỏi về cách cầm máu, rửa vết thương, hoặc bấm nút chuyển mô hình phía trên để đổi sang MedGemma / Gemini.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.45),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF64748B),
+                  height: 1.45,
+                ),
               ),
             ),
             const SizedBox(height: 18),
@@ -600,7 +635,8 @@ class ChatBoxAiView extends StatelessWidget {
                       color: currentModel.brandColor,
                     ),
                   ),
-                  onPressed: () => context.read<UserViewModel>().sendChatMessage(question),
+                  onPressed: () =>
+                      context.read<UserViewModel>().sendChatMessage(question),
                 );
               }).toList(),
             ),
@@ -645,12 +681,19 @@ class ChatBoxAiView extends StatelessWidget {
               SizedBox(
                 width: 15,
                 height: 15,
-                child: CircularProgressIndicator(strokeWidth: 2, color: currentModel.brandColor),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: currentModel.brandColor,
+                ),
               ),
               const SizedBox(width: 10),
               Text(
                 '${currentModel.shortName} đang phân tích và chuẩn bị câu trả lời...',
-                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF64748B),
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ],
           ),
@@ -741,8 +784,17 @@ class ChatBoxAiView extends StatelessWidget {
     ChatMessageModel message, {
     bool isMobile = false,
   }) {
-    final isMedGemma = message.modelSource == 'medgemma';
-    final modelColor = isMedGemma ? const Color(0xFF7C3AED) : const Color(0xFF2563EB);
+    final isMedGemma =
+        message.modelSource != null && message.modelSource != 'gemini';
+    final sourceName = switch (message.modelSource) {
+      'medgemma' => 'MedGemma 1.5 4B',
+      'sqlite' => 'Tài liệu SQLite',
+      'app' => 'Phản hồi nhanh của ứng dụng',
+      _ => 'Gemini Flash Latest',
+    };
+    final modelColor = isMedGemma
+        ? const Color(0xFF7C3AED)
+        : const Color(0xFF2563EB);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -803,23 +855,30 @@ class ChatBoxAiView extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: modelColor.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: modelColor.withValues(alpha: 0.25)),
+                        border: Border.all(
+                          color: modelColor.withValues(alpha: 0.25),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            isMedGemma ? Icons.health_and_safety_rounded : Icons.auto_awesome,
+                            isMedGemma
+                                ? Icons.health_and_safety_rounded
+                                : Icons.auto_awesome,
                             size: 12,
                             color: modelColor,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            isMedGemma ? 'MedGemma Medical AI' : 'Gemini Flash Latest',
+                            sourceName,
                             style: TextStyle(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w700,
@@ -833,13 +892,69 @@ class ChatBoxAiView extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
 
+                if (message.notice.isNotEmpty) ...[
+                  Text(
+                    message.notice,
+                    style: const TextStyle(
+                      color: Color(0xFFB45309),
+                      fontSize: 12,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 _buildFormattedMessageContent(message.messageText, isMobile),
+                if (message.evidenceLabel.isNotEmpty ||
+                    message.elapsedSeconds != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    [
+                      message.evidenceLabel,
+                      if (message.elapsedSeconds != null)
+                        '${message.elapsedSeconds!.toStringAsFixed(2)} giây',
+                    ].where((text) => text.isNotEmpty).join(' · '),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+                ...message.citations.map(
+                  (citation) => TextButton.icon(
+                    onPressed: () => UrlLauncherHelper.launchWebUrl(
+                      context,
+                      citation.url.toString(),
+                    ),
+                    icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
+                    label: Text(
+                      '${citation.title}${citation.pages.isEmpty ? '' : ' · trang ${citation.pages}'}',
+                    ),
+                  ),
+                ),
+                if (message.guideOptions.isNotEmpty)
+                  Wrap(
+                    spacing: 6,
+                    children: message.guideOptions
+                        .map(
+                          (guide) => ActionChip(
+                            label: Text(guide.title),
+                            onPressed: () =>
+                                context.read<UserViewModel>().sendChatMessage(
+                                  message.originalQuestion,
+                                  guide.id,
+                                ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+
                 if (message.numberedSteps.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   ...List.generate(message.numberedSteps.length, (index) {
                     final stepNumber = index + 1;
                     final stepContent = message.numberedSteps[index];
-                    final isLastStep = index == message.numberedSteps.length - 1;
+                    final isLastStep =
+                        index == message.numberedSteps.length - 1;
 
                     return Padding(
                       padding: EdgeInsets.only(bottom: isLastStep ? 0 : 7),
@@ -893,18 +1008,30 @@ class ChatBoxAiView extends StatelessWidget {
                       ),
                     ),
                     InkWell(
-                      onTap: () => _copyToClipboard(context, message.messageText),
+                      onTap: () =>
+                          _copyToClipboard(context, message.messageText),
                       borderRadius: BorderRadius.circular(4),
                       child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.copy_rounded, size: 13, color: Color(0xFF64748B)),
+                            Icon(
+                              Icons.copy_rounded,
+                              size: 13,
+                              color: Color(0xFF64748B),
+                            ),
                             SizedBox(width: 4),
                             Text(
                               'Sao chép',
-                              style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ],
                         ),
@@ -952,30 +1079,43 @@ class ChatBoxAiView extends StatelessWidget {
       }
 
       // 2. Cảnh báo nguy hiểm ⚠️ hoặc khẩn cấp 🚨
-      if (line.startsWith('⚠️') || line.startsWith('🚨') || line.startsWith('🔴')) {
+      if (line.startsWith('⚠️') ||
+          line.startsWith('🚨') ||
+          line.startsWith('🔴')) {
         final isEmergency = line.startsWith('🚨') || line.startsWith('🔴');
         widgets.add(
           Container(
             margin: const EdgeInsets.symmetric(vertical: 6),
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isEmergency ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB),
+              color: isEmergency
+                  ? const Color(0xFFFEF2F2)
+                  : const Color(0xFFFFFBEB),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isEmergency ? const Color(0xFFFECACA) : const Color(0xFFFDE68A),
+                color: isEmergency
+                    ? const Color(0xFFFECACA)
+                    : const Color(0xFFFDE68A),
               ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(isEmergency ? '🚨' : '⚠️', style: const TextStyle(fontSize: 14)),
+                Text(
+                  isEmergency ? '🚨' : '⚠️',
+                  style: const TextStyle(fontSize: 14),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildRichTextWithBold(
                     line.replaceFirst(RegExp(r'^(⚠️|🚨|🔴)\s*'), ''),
                     fontSize: isMobile ? 12.5 : 13.5,
-                    defaultColor: isEmergency ? const Color(0xFF991B1B) : const Color(0xFF92400E),
-                    boldColor: isEmergency ? const Color(0xFF7F1D1D) : const Color(0xFF78350F),
+                    defaultColor: isEmergency
+                        ? const Color(0xFF991B1B)
+                        : const Color(0xFF92400E),
+                    boldColor: isEmergency
+                        ? const Color(0xFF7F1D1D)
+                        : const Color(0xFF78350F),
                   ),
                 ),
               ],
@@ -986,7 +1126,9 @@ class ChatBoxAiView extends StatelessWidget {
       }
 
       // 3. Danh sách gạch đầu dòng (•, -, *)
-      if (line.startsWith('•') || line.startsWith('- ') || line.startsWith('* ')) {
+      if (line.startsWith('•') ||
+          line.startsWith('- ') ||
+          line.startsWith('* ')) {
         final bulletText = line.replaceFirst(RegExp(r'^(•|\-|\*)\s*'), '');
         widgets.add(
           Padding(
@@ -994,7 +1136,14 @@ class ChatBoxAiView extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('• ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                const Text(
+                  '• ',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2563EB),
+                  ),
+                ),
                 Expanded(
                   child: _buildRichTextWithBold(
                     bulletText,
@@ -1055,9 +1204,7 @@ class ChatBoxAiView extends StatelessWidget {
       );
     }
 
-    return RichText(
-      text: TextSpan(children: spans),
-    );
+    return RichText(text: TextSpan(children: spans));
   }
 
   Widget _buildChatBottomInputBar(
@@ -1090,8 +1237,12 @@ class ChatBoxAiView extends StatelessWidget {
             child: TextField(
               controller: viewModel.chatInputController,
               enabled: !isThinking,
-              onChanged: (value) => context.read<UserViewModel>().updateChatInput(value),
-              onSubmitted: isThinking ? null : (value) => context.read<UserViewModel>().sendChatMessage(value),
+              onChanged: (value) =>
+                  context.read<UserViewModel>().updateChatInput(value),
+              onSubmitted: isThinking
+                  ? null
+                  : (value) =>
+                        context.read<UserViewModel>().sendChatMessage(value),
               style: TextStyle(
                 fontSize: isMobile ? 13.5 : 14.5,
                 color: const Color(0xFF1E293B),
@@ -1113,11 +1264,15 @@ class ChatBoxAiView extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Material(
-            color: isThinking ? const Color(0xFF94A3B8) : currentModel.brandColor,
+            color: isThinking
+                ? const Color(0xFF94A3B8)
+                : currentModel.brandColor,
             shape: const CircleBorder(),
             child: InkWell(
               customBorder: const CircleBorder(),
-              onTap: isThinking ? null : () => context.read<UserViewModel>().sendChatMessage(),
+              onTap: isThinking
+                  ? null
+                  : () => context.read<UserViewModel>().sendChatMessage(),
               child: SizedBox(
                 width: isMobile ? 36 : 40,
                 height: isMobile ? 36 : 40,
@@ -1127,11 +1282,12 @@ class ChatBoxAiView extends StatelessWidget {
                       ? const SizedBox(
                           width: 14,
                           height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
-                      : const CustomPaint(
-                          painter: PaperPlaneSendIconPainter(),
-                        ),
+                      : const CustomPaint(painter: PaperPlaneSendIconPainter()),
                 ),
               ),
             ),

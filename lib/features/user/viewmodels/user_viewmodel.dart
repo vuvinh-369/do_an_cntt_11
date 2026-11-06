@@ -29,15 +29,15 @@ class UserViewModel extends ChangeNotifier
         : 'abrasion';
     final secondaryTopics = analysisResult.hasMultipleInjuries
         ? analysisResult.allDetections
-            .where((d) => d.topicId != targetTopic)
-            .map((d) => d.topicId)
-            .toList()
+              .where((d) => d.topicId != targetTopic)
+              .map((d) => d.topicId)
+              .toList()
         : <String>[];
     final secondaryNames = analysisResult.hasMultipleInjuries
         ? analysisResult.allDetections
-            .where((d) => d.topicId != targetTopic)
-            .map((d) => d.label)
-            .toList()
+              .where((d) => d.topicId != targetTopic)
+              .map((d) => d.label)
+              .toList()
         : <String>[];
 
     toggleWarningSymptom(
@@ -55,6 +55,8 @@ class UserViewModel extends ChangeNotifier
 
   @override
   void dispose() {
+    disposeChat();
+    disposeImageAnalysis();
     chatInputController.dispose();
     chatScrollController.dispose();
     documentSearchController.dispose();

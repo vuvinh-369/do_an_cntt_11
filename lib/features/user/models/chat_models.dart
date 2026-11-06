@@ -1,6 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
-/// Mô hình dữ liệu cho từng Tin nhắn trong màn hình "6. ChatBox AI (Người dùng)" (Màn hình 6)
 class ChatMessageModel {
   final String id;
   final bool isUser;
@@ -9,6 +10,15 @@ class ChatMessageModel {
   final String timestamp;
   final String? relatedTopicId;
   final String? modelSource;
+  final String evidenceLabel;
+  final String notice;
+  final List<ChatCitation> citations;
+  final List<ChatGuideOption> guideOptions;
+  final String? originalQuestion;
+  final String? suggestedQuery;
+  final double? elapsedSeconds;
+  final Uint8List? imageBytes;
+  final String? imageName;
 
   const ChatMessageModel({
     required this.id,
@@ -18,7 +28,33 @@ class ChatMessageModel {
     required this.timestamp,
     this.relatedTopicId,
     this.modelSource,
+    this.evidenceLabel = '',
+    this.notice = '',
+    this.citations = const [],
+    this.guideOptions = const [],
+    this.originalQuestion,
+    this.suggestedQuery,
+    this.elapsedSeconds,
+    this.imageBytes,
+    this.imageName,
   });
+}
+
+class ChatCitation {
+  final String title;
+  final String pages;
+  final Uri url;
+  const ChatCitation({
+    required this.title,
+    required this.pages,
+    required this.url,
+  });
+}
+
+class ChatGuideOption {
+  final int id;
+  final String title;
+  const ChatGuideOption({required this.id, required this.title});
 }
 
 /// Mô hình thông tin định danh cho từng Model AI trong danh sách chọn (Model Switcher)
@@ -54,8 +90,7 @@ const List<ChatModelInfo> kDefaultChatModels = [
     id: 'gemini',
     name: 'Google Gemini 3.8 Flash',
     shortName: 'Gemini 3.8 Flash',
-    description:
-        'Mô hình Flash thế hệ 3.8 mới nhất của Google DeepMind. Tốc độ vượt trội, xử lý suy luận nhiều bước, hỗ trợ tư vấn sơ cứu tổn thương da và chuẩn hóa y tế 24/7.',
+    description: 'Mô hình Flash thế hệ 3.8 mới nhất của Google DeepMind. Tốc độ vượt trội, xử lý suy luận nhiều bước, hỗ trợ tư vấn sơ cứu tổn thương da và chuẩn hóa y tế 24/7.',
     provider: 'Google AI Studio (gemini-3.8-flash)',
     icon: Icons.auto_awesome,
     brandColor: Color(0xFF2563EB),
@@ -65,11 +100,10 @@ const List<ChatModelInfo> kDefaultChatModels = [
   ),
   ChatModelInfo(
     id: 'medgemma',
-    name: 'MedGemma Medical AI',
+    name: 'MedGemma 1.5 4B',
     shortName: 'MedGemma (LAN Server)',
-    description:
-        'Mô hình ngôn ngữ y sinh học mã nguồn mở (Gemma fine-tuned y tế) gọi từ máy chủ Server nội bộ / Bệnh viện (Đang thiết lập cổng kết nối).',
-    provider: 'Local Hospital Server / Máy chủ LAN',
+    description: 'Chạy trên máy chủ của nhóm, nạp một lần ở chế độ NF4 4-bit. Ưu tiên tra tài liệu SQLite; thiếu nguồn mới sinh câu trả lời.',
+    provider: 'Máy chủ nội bộ của nhóm',
     icon: Icons.health_and_safety_rounded,
     brandColor: Color(0xFF7C3AED),
     tagLabel: 'Server LAN (Thử nghiệm)',

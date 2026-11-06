@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/gemini/gemini_service.dart';
+import '../../../core/medgemma_chat_api.dart';
 import '../../../core/rule_engine/rule_models.dart';
 import '../models/chat_models.dart';
 import 'analysis_result_viewmodel.dart';
@@ -24,6 +27,57 @@ mixin ChatBoxAiViewModel
   bool _isAiThinking = false;
   bool get isAiThinking => _isAiThinking;
 
+  MedGemmaChatApi chatApi = MedGemmaChatApi();
+  Timer? _statusTimer;
+  bool _chatDisposed = false;
+  bool _checkingStatus = false;
+  String chatModelState = 'unknown';
+  int chatReferenceCount = 0;
+  String? _activeImageAnalysisId;
+  bool _nextImageInitial = false;
+
+  Future<void> refreshChatStatus() async {
+    if (_chatDisposed || _checkingStatus) return;
+    _checkingStatus = true;
+    try {
+      final value = await chatApi.status();
+      if (_chatDisposed) return;
+      chatModelState = value['model_state'] as String? ?? 'unknown';
+      chatReferenceCount = (value['reference_entries'] as num?)?.toInt() ?? 0;
+    } catch (_) {
+      if (!_chatDisposed) chatModelState = 'offline';
+    } finally {
+      _checkingStatus = false;
+      _statusTimer?.cancel();
+      if (!_chatDisposed) {
+        notifyListeners();
+        if (_selectedChatModelId == 'medgemma' &&
+            {'loading', 'generating'}.contains(chatModelState)) {
+          _statusTimer = Timer(const Duration(seconds: 5), refreshChatStatus);
+        }
+      }
+    }
+  }
+
+  Future<void> loadChatModel() async {
+    if (_chatDisposed || _isAiThinking) return;
+    try {
+      await chatApi.warmup();
+      await refreshChatStatus();
+    } catch (_) {
+      if (!_chatDisposed) {
+        chatModelState = 'offline';
+        notifyListeners();
+      }
+    }
+  }
+
+  void disposeChat() {
+    _chatDisposed = true;
+    _statusTimer?.cancel();
+    chatApi.close();
+  }
+
   // Lựa chọn Mô hình AI hiện tại (mặc định: 'gemini', tùy chọn: 'medgemma')
   String _selectedChatModelId = 'gemini';
   String get selectedChatModelId => _selectedChatModelId;
@@ -31,14 +85,20 @@ mixin ChatBoxAiViewModel
   List<ChatModelInfo> get availableChatModels => kDefaultChatModels;
 
   ChatModelInfo get currentChatModel => kDefaultChatModels.firstWhere(
-        (m) => m.id == _selectedChatModelId,
-        orElse: () => kDefaultChatModels.first,
-      );
+    (m) => m.id == _selectedChatModelId,
+    orElse: () => kDefaultChatModels.first,
+  );
 
   /// Chuyển đổi mô hình AI (Google Gemini hoặc MedGemma)
   void switchChatModel(String modelId) {
+    if (_chatDisposed ||
+        _isAiThinking ||
+        !kDefaultChatModels.any((model) => model.id == modelId)) {
+      return;
+    }
     if (_selectedChatModelId != modelId) {
       _selectedChatModelId = modelId;
+      if (modelId == 'medgemma') unawaited(refreshChatStatus());
       notifyListeners();
     }
   }
@@ -67,6 +127,9 @@ mixin ChatBoxAiViewModel
 
   /// Xóa toàn bộ lịch sử trò chuyện
   void clearChatHistory() {
+    if (_chatDisposed || _isAiThinking) return;
+    _activeImageAnalysisId = null;
+    _nextImageInitial = false;
     _chatMessages.clear();
     _isAiThinking = false;
     notifyListeners();
@@ -74,6 +137,33 @@ mixin ChatBoxAiViewModel
 
   /// Chuyển prompt kết quả phân tích ảnh sang ChatBox AI để AI tự động tư vấn
   void consultAiWithCurrentAnalysis() {
+    if (_chatDisposed || _isAiThinking) return;
+    if (_selectedChatModelId == 'medgemma') {
+      final prediction = lastWoundPrediction;
+      if (prediction != null &&
+          prediction.analysisId == analysisResult.serverAnalysisId &&
+          !analysisResult.isManualSelection) {
+        _activeImageAnalysisId = prediction.analysisId;
+        _nextImageInitial = true;
+        navigateToChatBoxAi();
+        unawaited(
+          sendChatMessage(
+            'Hãy giải thích dự đoán từ ảnh và tra tài liệu phù hợp cho bước tiếp theo.',
+          ),
+        );
+      } else {
+        _activeImageAnalysisId = null;
+        navigateToChatBoxAi();
+        unawaited(
+          sendChatMessage(
+            analysisResult.isManualSelection
+                ? 'Tôi chọn mô tả tổn thương là ${analysisResult.injuryType}. Tôi nên làm gì?'
+                : 'Tôi muốn hỏi về vết thương nhưng chưa có kết quả ảnh còn hiệu lực. Tôi cần mô tả thêm điều gì?',
+          ),
+        );
+      }
+      return;
+    }
     final location = selectedLocationLabel;
 
     // 1. Tóm tắt các tổn thương phát hiện (hỗ trợ trường hợp phát hiện 2-3 vết thương kết hợp trên ảnh)
@@ -90,19 +180,25 @@ mixin ChatBoxAiViewModel
     final String painNote = painLevel == PainLevel.severe
         ? ' (Bệnh nhân đang rất đau đớn dữ dội 7-10/10, cần ưu tiên hướng dẫn tư thế giảm đau an toàn và cảnh báo tổn thương mô sâu/gãy xương ngầm)'
         : (painLevel == PainLevel.none
-            ? ' (Không đau hoặc mất cảm giác đau - lưu ý nếu là vết bỏng có thể đã tổn thương sâu làm chết ngọn dây thần kinh bì)'
-            : ' (Đau nhẹ rát bề mặt thông thường)');
+              ? ' (Không đau hoặc mất cảm giác đau - lưu ý nếu là vết bỏng có thể đã tổn thương sâu làm chết ngọn dây thần kinh bì)'
+              : ' (Đau nhẹ rát bề mặt thông thường)');
 
     // 3. Tổng hợp các tình trạng quan sát kèm theo từ checkbox của người dùng
     final List<String> observedSymptoms = [];
     if (isBleeding) {
-      observedSymptoms.add('Vết thương đang chảy máu (chảy nhiều hoặc liên tục)');
+      observedSymptoms.add(
+        'Vết thương đang chảy máu (chảy nhiều hoặc liên tục)',
+      );
     }
     if (hasForeignBody) {
-      observedSymptoms.add('Có dị vật cắm sâu vào vết thương (kim loại, dằm, thủy tinh...)');
+      observedSymptoms.add(
+        'Có dị vật cắm sâu vào vết thương (kim loại, dằm, thủy tinh...)',
+      );
     }
     if (hasPusOrInfection) {
-      observedSymptoms.add('Vết thương chảy mủ / Sưng đỏ tấy (dấu hiệu nhiễm trùng)');
+      observedSymptoms.add(
+        'Vết thương chảy mủ / Sưng đỏ tấy (dấu hiệu nhiễm trùng)',
+      );
     }
 
     final String symptomsText = observedSymptoms.isNotEmpty
@@ -124,7 +220,7 @@ mixin ChatBoxAiViewModel
 
   void _scrollToLatestMessage() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (chatScrollController.hasClients) {
+      if (!_chatDisposed && chatScrollController.hasClients) {
         chatScrollController.animateTo(
           chatScrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 280),
@@ -135,9 +231,12 @@ mixin ChatBoxAiViewModel
   }
 
   /// Gửi tin nhắn tới Mô hình AI được chọn (Gemini API hoặc MedGemma Server)
-  Future<void> sendChatMessage([String? submittedText]) async {
+  Future<void> sendChatMessage([String? submittedText, int? guideId]) async {
     final rawText = (submittedText ?? chatInputController.text).trim();
-    if (rawText.isEmpty || _isAiThinking) return;
+    if (_chatDisposed || rawText.isEmpty || _isAiThinking) return;
+    final requestModel = _selectedChatModelId;
+    final imageInitial = _nextImageInitial;
+    _nextImageInitial = false;
 
     final now = DateTime.now();
     final formattedTime =
@@ -160,6 +259,16 @@ mixin ChatBoxAiViewModel
     _scrollToLatestMessage();
 
     try {
+      if (requestModel == 'medgemma') {
+        final reply = await chatApi.ask(
+          rawText,
+          guideId: guideId,
+          imageAnalysisId: _activeImageAnalysisId,
+          imageInitial: imageInitial,
+        );
+        if (!_chatDisposed) _chatMessages.add(reply);
+        return;
+      }
       // Chuẩn bị ngữ cảnh vết thương (nếu bệnh nhân vừa thực hiện quét ảnh AI trước đó)
       String? woundContext;
       if (analysisResult.isDetected) {
@@ -167,7 +276,9 @@ mixin ChatBoxAiViewModel
         symptoms.add('Cảm giác đau: ${painLevel.label}');
         if (isBleeding) symptoms.add('đang chảy máu nhiều/liên tục');
         if (hasForeignBody) symptoms.add('có dị vật cắm sâu vào vết thương');
-        if (hasPusOrInfection) symptoms.add('chảy mủ hoặc sưng đỏ tấy (dấu hiệu nhiễm trùng)');
+        if (hasPusOrInfection) {
+          symptoms.add('chảy mủ hoặc sưng đỏ tấy (dấu hiệu nhiễm trùng)');
+        }
         final symptomsInfo = ' [${symptoms.join(', ')}]';
 
         final woundDesc = analysisResult.hasMultipleInjuries
@@ -180,38 +291,20 @@ mixin ChatBoxAiViewModel
 
       // Chuẩn bị danh sách lịch sử hội thoại
       final conversationHistory = _chatMessages
-          .map((m) => {
-                'role': m.isUser ? 'user' : 'model',
-                'text': m.messageText,
-              })
+          .map(
+            (m) => {'role': m.isUser ? 'user' : 'model', 'text': m.messageText},
+          )
           .toList();
 
       String replyText;
 
-      // Xử lý theo model được chọn
-      if (_selectedChatModelId == 'medgemma') {
-        // MedGemma: Mô hình chạy Server riêng. Vì chưa kết nối endpoint máy chủ vật lý,
-        // hệ thống định tuyến thông qua phác đồ MedGemma y khoa
-        final String medGemmaContext = woundContext != null
-            ? '$woundContext\n[Yêu cầu: Trả lời theo chuẩn phân loại lâm sàng MedGemma Medical]'
-            : '[Yêu cầu: Trả lời theo chuẩn phân loại lâm sàng MedGemma Medical]';
-
-        final rawReply = await GeminiService.instance.sendChatMessage(
-          conversationHistory: conversationHistory,
-          userMessage: rawText,
-          woundContext: medGemmaContext,
-        );
-
-        replyText =
-            '*(Phản hồi định tuyến qua MedGemma Medical AI - Kênh máy chủ y sinh)*\n\n$rawReply';
-      } else {
-        // Google Gemini Cloud API
-        replyText = await GeminiService.instance.sendChatMessage(
-          conversationHistory: conversationHistory,
-          userMessage: rawText,
-          woundContext: woundContext,
-        );
-      }
+      // Google Gemini keeps its existing API and configuration.
+      replyText = await GeminiService.instance.sendChatMessage(
+        conversationHistory: conversationHistory,
+        userMessage: rawText,
+        woundContext: woundContext,
+      );
+      if (_chatDisposed) return;
 
       final replyNow = DateTime.now();
       final replyTime =
@@ -223,10 +316,11 @@ mixin ChatBoxAiViewModel
           isUser: false,
           messageText: replyText,
           timestamp: replyTime,
-          modelSource: _selectedChatModelId,
+          modelSource: requestModel,
         ),
       );
     } catch (e) {
+      if (_chatDisposed) return;
       final replyNow = DateTime.now();
       final replyTime =
           '${replyNow.hour.toString().padLeft(2, '0')}:${replyNow.minute.toString().padLeft(2, '0')}';
@@ -235,15 +329,19 @@ mixin ChatBoxAiViewModel
         ChatMessageModel(
           id: 'ai_${replyNow.microsecondsSinceEpoch}',
           isUser: false,
+          modelSource: requestModel,
           messageText:
               '⚠️ Đã xảy ra lỗi khi kết nối với mô hình AI: $e\n\nVui lòng kiểm tra lại kết nối mạng hoặc thử lại sau ít phút.',
           timestamp: replyTime,
         ),
       );
     } finally {
-      _isAiThinking = false;
-      notifyListeners();
-      _scrollToLatestMessage();
+      if (!_chatDisposed) {
+        _isAiThinking = false;
+        notifyListeners();
+        _scrollToLatestMessage();
+        if (requestModel == 'medgemma') unawaited(refreshChatStatus());
+      }
     }
   }
 }

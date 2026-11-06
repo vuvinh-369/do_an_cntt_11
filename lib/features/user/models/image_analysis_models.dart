@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 /// Mô hình cấu hình hiển thị cho khu vực Tải lên hình ảnh phân tích (Màn hình 2)
@@ -78,7 +79,10 @@ class DetectedWoundItemModel {
 
   factory DetectedWoundItemModel.fromJson(Map<String, dynamic> json) {
     return DetectedWoundItemModel(
-      label: json['vn_label'] as String? ?? json['injury_type'] as String? ?? 'Tổn thương da',
+      label:
+          json['vn_label'] as String? ??
+          json['injury_type'] as String? ??
+          'Tổn thương da',
       topicId: json['topic_id'] as String? ?? 'abrasion',
       confidencePercent: (json['confidence_percent'] as num?)?.toInt() ?? 0,
       severity: json['severity'] as String? ?? 'Nhẹ',
@@ -129,6 +133,7 @@ class AiAnalysisResultModel {
   final double? originalImageWidth;
   final double? originalImageHeight;
   final String? detectionMessage;
+  final String? serverAnalysisId;
 
   // Danh sách TẤT CẢ các vết thương phát hiện trên ảnh (2-3 vết thương)
   final List<DetectedWoundItemModel> allDetections;
@@ -148,8 +153,7 @@ class AiAnalysisResultModel {
     this.confidenceRowLabel = 'Độ tin cậy:',
     this.locationRowLabel = 'Vị trí:',
     this.locationSectionTitle = 'Chọn vị trí tổn thương',
-    this.bottomNoticeText =
-        'Hệ thống đã phân tích tổn thương. Vui lòng chọn vị trí cụ thể để xem hướng dẫn sơ cứu phù hợp.',
+    this.bottomNoticeText = 'Hệ thống đã phân tích tổn thương. Vui lòng chọn vị trí cụ thể để xem hướng dẫn sơ cứu phù hợp.',
     this.primaryActionLabel = 'Xem hướng dẫn sơ cứu',
     this.analyzedImageUrl,
     this.rawImageBytes,
@@ -160,6 +164,7 @@ class AiAnalysisResultModel {
     this.originalImageWidth,
     this.originalImageHeight,
     this.detectionMessage,
+    this.serverAnalysisId,
     this.allDetections = const [],
     this.isManualSelection = false,
     this.appliedContrast = 1.0,
@@ -175,13 +180,16 @@ class AiAnalysisResultModel {
     if (allDetections.length == 1) {
       return '${allDetections.first.label} (${allDetections.first.confidencePercent}%)';
     }
-    return allDetections.map((d) => '${d.label} (${d.confidencePercent}%)').join(', ');
+    return allDetections
+        .map((d) => '${d.label} (${d.confidencePercent}%)')
+        .join(', ');
   }
 
   String get formattedConfidence =>
       isManualSelection ? '100% (Xác nhận thủ công)' : '$confidencePercent%';
-  String get bannerConfidenceText =>
-      isManualSelection ? 'Xác nhận thủ công' : '$confidenceLabelPrefix $confidencePercent%';
+  String get bannerConfidenceText => isManualSelection
+      ? 'Xác nhận thủ công'
+      : '$confidenceLabelPrefix $confidencePercent%';
 
   AiAnalysisResultModel copyWith({
     String? bannerTitle,
@@ -205,13 +213,15 @@ class AiAnalysisResultModel {
     double? originalImageWidth,
     double? originalImageHeight,
     String? detectionMessage,
+    String? serverAnalysisId,
     List<DetectedWoundItemModel>? allDetections,
     bool? isManualSelection,
     double? appliedContrast,
   }) {
     return AiAnalysisResultModel(
       bannerTitle: bannerTitle ?? this.bannerTitle,
-      confidenceLabelPrefix: confidenceLabelPrefix ?? this.confidenceLabelPrefix,
+      confidenceLabelPrefix:
+          confidenceLabelPrefix ?? this.confidenceLabelPrefix,
       confidencePercent: confidencePercent ?? this.confidencePercent,
       injuryType: injuryType ?? this.injuryType,
       boundingBoxLabel: boundingBoxLabel ?? this.boundingBoxLabel,
@@ -231,6 +241,7 @@ class AiAnalysisResultModel {
       originalImageWidth: originalImageWidth ?? this.originalImageWidth,
       originalImageHeight: originalImageHeight ?? this.originalImageHeight,
       detectionMessage: detectionMessage ?? this.detectionMessage,
+      serverAnalysisId: serverAnalysisId ?? this.serverAnalysisId,
       allDetections: allDetections ?? this.allDetections,
       isManualSelection: isManualSelection ?? this.isManualSelection,
       appliedContrast: appliedContrast ?? this.appliedContrast,
