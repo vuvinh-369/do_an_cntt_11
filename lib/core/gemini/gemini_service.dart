@@ -205,10 +205,11 @@ class GeminiService {
       contents.removeLast();
     }
 
-    // Ghép ngữ cảnh vết thương (nếu có từ phân tích ảnh)
+    // Ghép ngữ cảnh vết thương & hồ sơ y tế bệnh nhân (nếu có từ phân tích ảnh hoặc thông tin cá nhân)
     String effectiveUserMessage = userMessage;
     if (woundContext != null && woundContext.isNotEmpty) {
-      effectiveUserMessage = '[Ngữ cảnh vết thương: $woundContext]\n\nCâu hỏi: $userMessage';
+      effectiveUserMessage =
+          '[Ngữ cảnh y tế & Hồ sơ bệnh nhân:\n$woundContext]\n\nCâu hỏi: $userMessage';
     }
 
     contents.add({

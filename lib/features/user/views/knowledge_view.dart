@@ -201,9 +201,10 @@ class TraCuuKienThucView extends StatelessWidget {
     BuildContext context,
     UserViewModel viewModel,
   ) {
-    final topics = viewModel.filteredKnowledgeTopics;
+    final allTopics = viewModel.filteredKnowledgeTopics;
+    final topics = viewModel.paginatedKnowledgeTopics;
 
-    if (topics.isEmpty) {
+    if (allTopics.isEmpty) {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
         decoration: BoxDecoration(
@@ -224,26 +225,33 @@ class TraCuuKienThucView extends StatelessWidget {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth;
-        final int columns = maxWidth >= 560 ? 2 : 1;
-        const double spacing = 16;
-        const double runSpacing = 14;
-        final double cardWidth =
-            (maxWidth - (spacing * (columns - 1))) / columns;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final maxWidth = constraints.maxWidth;
+            final int columns = maxWidth >= 560 ? 2 : 1;
+            const double spacing = 16;
+            const double runSpacing = 14;
+            final double cardWidth =
+                (maxWidth - (spacing * (columns - 1))) / columns;
 
-        return Wrap(
-          spacing: spacing,
-          runSpacing: runSpacing,
-          children: topics.map((topic) {
-            return SizedBox(
-              width: cardWidth,
-              child: _buildSingleKnowledgeTopicCard(context, topic),
+            return Wrap(
+              spacing: spacing,
+              runSpacing: runSpacing,
+              children: topics.map((topic) {
+                return SizedBox(
+                  width: cardWidth,
+                  child: _buildSingleKnowledgeTopicCard(context, topic),
+                );
+              }).toList(),
             );
-          }).toList(),
-        );
-      },
+          },
+        ),
+        const SizedBox(height: 20),
+        _buildKnowledgePaginationBar(context, viewModel),
+      ],
     );
   }
 
@@ -336,6 +344,144 @@ class TraCuuKienThucView extends StatelessWidget {
     }
     return CustomPaint(
       painter: KnowledgeTopicThumbnailPainter(topicId: topic.id),
+    );
+  }
+
+  Widget _buildKnowledgePaginationBar(
+    BuildContext context,
+    UserViewModel viewModel,
+  ) {
+    final totalItems = viewModel.filteredKnowledgeTopics.length;
+    final totalPages = viewModel.totalKnowledgePages;
+    final currentPage = viewModel.currentKnowledgePage;
+    const pageSize = 5;
+
+    if (totalItems == 0) return const SizedBox.shrink();
+
+    final startItem = (currentPage - 1) * pageSize + 1;
+    final endItem = (currentPage * pageSize > totalItems)
+        ? totalItems
+        : currentPage * pageSize;
+    final infoText =
+        'Hiển thị $startItem - $endItem trên tổng số $totalItems chủ đề (5 chủ đề / trang)';
+
+    final paginationControls = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildPaginationArrowButton(
+          icon: Icons.chevron_left_rounded,
+          onTap: currentPage > 1
+              ? () => viewModel.goToPreviousKnowledgePage()
+              : () {},
+        ),
+        const SizedBox(width: 6),
+        ...List.generate(totalPages, (i) => i + 1).map((page) {
+          final isSelected = currentPage == page;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Material(
+              color: isSelected ? const Color(0xFF2563EB) : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => viewModel.selectKnowledgePage(page),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF2563EB)
+                          : const Color(0xFFE2E8F0),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Text(
+                    '$page',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF475569),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+        const SizedBox(width: 6),
+        _buildPaginationArrowButton(
+          icon: Icons.chevron_right_rounded,
+          onTap: currentPage < totalPages
+              ? () => viewModel.goToNextKnowledgePage()
+              : () {},
+        ),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 600;
+        if (isNarrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                infoText,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              paginationControls,
+            ],
+          );
+        }
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              infoText,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            paginationControls,
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPaginationArrowButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+          ),
+          child: Icon(icon, size: 20, color: const Color(0xFF475569)),
+        ),
+      ),
     );
   }
 }

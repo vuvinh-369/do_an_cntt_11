@@ -71,16 +71,59 @@ mixin TraCuuKienThucViewModel
     }).toList();
   }
 
+  // Phân trang Kiến thức sơ cứu (5 chủ đề / trang)
+  int _currentKnowledgePage = 1;
+  int get currentKnowledgePage => _currentKnowledgePage;
+  static const int knowledgePageSize = 5;
+
+  int get totalKnowledgePages {
+    final total = (filteredKnowledgeTopics.length / knowledgePageSize).ceil();
+    return total < 1 ? 1 : total;
+  }
+
+  List<KnowledgeTopicModel> get paginatedKnowledgeTopics {
+    final all = filteredKnowledgeTopics;
+    final startIndex = (_currentKnowledgePage - 1) * knowledgePageSize;
+    if (startIndex >= all.length) return [];
+    final endIndex = (startIndex + knowledgePageSize > all.length)
+        ? all.length
+        : startIndex + knowledgePageSize;
+    return all.sublist(startIndex, endIndex);
+  }
+
+  void selectKnowledgePage(int page) {
+    if (page < 1 || page > totalKnowledgePages) return;
+    if (_currentKnowledgePage == page) return;
+    _currentKnowledgePage = page;
+    notifyListeners();
+  }
+
+  void goToPreviousKnowledgePage() {
+    if (_currentKnowledgePage > 1) {
+      _currentKnowledgePage--;
+      notifyListeners();
+    }
+  }
+
+  void goToNextKnowledgePage() {
+    if (_currentKnowledgePage < totalKnowledgePages) {
+      _currentKnowledgePage++;
+      notifyListeners();
+    }
+  }
+
   /// Chọn danh mục lọc trên Màn hình 5 (Tất cả, Vết thương, Bỏng, Xương khớp, Khác)
   void selectKnowledgeCategory(String categoryId) {
     if (_selectedKnowledgeCategoryId == categoryId) return;
     _selectedKnowledgeCategoryId = categoryId;
+    _currentKnowledgePage = 1;
     notifyListeners();
   }
 
   /// Cập nhật từ khóa tìm kiếm trên Màn hình 5
   void updateKnowledgeSearchQuery(String query) {
     _knowledgeSearchQuery = query;
+    _currentKnowledgePage = 1;
     notifyListeners();
   }
 

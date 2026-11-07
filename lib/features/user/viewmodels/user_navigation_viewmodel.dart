@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/first_aid_models.dart';
 import '../models/navigation_model.dart';
 import '../models/user_account_model.dart';
+import '../../../core/email/email_config_service.dart';
 
 mixin DieuHuongCoSoViewModel on ChangeNotifier {
   // Chỉ số màn hình hiện tại:
@@ -88,15 +89,9 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     }
   }
 
-  // Danh sách tài khoản người dùng đã đăng ký trong hệ thống (Hỗ trợ lưu trữ dữ liệu cá nhân khi đổi thiết bị)
-  final List<UserAccountModel> _registeredAccounts = [
-    UserAccountModel(
-      username: 'user123',
-      password: '123456',
-      fullName: 'Nguyễn Văn A',
-      createdAt: DateTime(2026, 1, 1),
-    ),
-  ];
+  // Danh sách tài khoản người dùng đã đăng ký trong hệ thống (Lưu tạm trong RAM)
+  // Tuyệt đối không lưu trữ tên thật, sđt hay địa chỉ của người dùng. Sẵn sàng tích hợp Database.
+  final List<UserAccountModel> _registeredAccounts = [];
   List<UserAccountModel> get registeredAccounts => List.unmodifiable(_registeredAccounts);
 
   // Tài khoản người dùng đang đăng nhập (null = Khách vãng lai)
@@ -106,28 +101,23 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
   // Trạng thái tài khoản người dùng: Khách vãng lai (không bắt buộc đăng nhập) hoặc Đã đăng nhập
   bool get isUserLoggedIn => _currentUser != null;
 
-  // Tên người dùng hiển thị trên góc phải Header
-  String get currentUserName => _currentUser?.fullName ?? 'Khách';
+  // Tên người dùng hiển thị (sử dụng username ẩn danh, không lưu tên thật)
+  String get currentUserName => _currentUser != null ? '@${_currentUser!.username}' : 'Khách';
 
   // Tên tài khoản (username) đang đăng nhập
   String? get currentUsername => _currentUser?.username;
 
-  /// Đăng ký tài khoản người dùng mới (username + password + họ tên)
-  /// Không bắt buộc đăng ký. Người dùng chỉ cần đăng ký nếu muốn lưu dữ liệu cá nhân khi đổi thiết bị.
-  /// Trả về null nếu thành công, hoặc chuỗi thông báo lỗi nếu thất bại.
+  /// Đăng ký tài khoản người dùng mới (chỉ cần username + password, email là tùy chọn)
+  /// Tuyệt đối KHÔNG yêu cầu họ tên, số điện thoại hay địa chỉ nhà.
   String? registerUser({
     required String username,
     required String password,
-    required String fullName,
+    String? fullName, // Giữ tương thích tham số cũ nếu có gọi
     String? emailOrPhone,
   }) {
     final cleanUsername = username.trim();
-    final cleanFullName = fullName.trim();
     final cleanPassword = password.trim();
 
-    if (cleanFullName.isEmpty) {
-      return 'Vui lòng nhập họ và tên của bạn.';
-    }
     if (cleanUsername.length < 3) {
       return 'Tên tài khoản phải có ít nhất 3 ký tự.';
     }
@@ -144,12 +134,73 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     final newAccount = UserAccountModel(
       username: cleanUsername,
       password: cleanPassword,
-      fullName: cleanFullName,
       createdAt: DateTime.now(),
-      emailOrPhone: emailOrPhone?.trim(),
+      emailOrPhone: emailOrPhone?.trim().isNotEmpty == true ? emailOrPhone!.trim() : null,
     );
     _registeredAccounts.add(newAccount);
     _currentUser = newAccount;
+    notifyListeners();
+    return null;
+  }
+
+  /// Cập nhật Hồ sơ thông tin cá nhân & Chỉ số y tế (Lưu tạm RAM, không lưu tên/SĐT/địa chỉ)
+  String? updateUserProfile({
+    String? gender,
+    double? weightKg,
+    double? heightCm,
+    String? bloodType,
+    String? rhFactor,
+    List<String>? allergies,
+    List<String>? medicalConditions,
+    String? otherNotes,
+    String? email,
+  }) {
+    if (_currentUser == null) return 'Bạn chưa đăng nhập tài khoản.';
+
+    final updated = _currentUser!.copyWith(
+      gender: gender,
+      weightKg: weightKg,
+      heightCm: heightCm,
+      bloodType: bloodType,
+      rhFactor: rhFactor,
+      allergies: allergies,
+      medicalConditions: medicalConditions,
+      otherNotes: otherNotes,
+      emailOrPhone: (email != null && email.trim().isNotEmpty) ? email.trim() : _currentUser!.emailOrPhone,
+    );
+
+    _currentUser = updated;
+    final idx = _registeredAccounts.indexWhere(
+      (a) => a.username.toLowerCase() == updated.username.toLowerCase(),
+    );
+    if (idx != -1) {
+      _registeredAccounts[idx] = updated;
+    }
+    notifyListeners();
+    return null;
+  }
+
+  /// Đổi mật khẩu tài khoản đang đăng nhập
+  String? changeUserPassword({
+    required String oldPassword,
+    required String newPassword,
+  }) {
+    if (_currentUser == null) return 'Bạn chưa đăng nhập tài khoản.';
+    if (_currentUser!.password != oldPassword.trim()) {
+      return 'Mật khẩu cũ không chính xác. Vui lòng kiểm tra lại.';
+    }
+    if (newPassword.trim().length < 6) {
+      return 'Mật khẩu mới phải có ít nhất 6 ký tự.';
+    }
+
+    final updated = _currentUser!.copyWith(password: newPassword.trim());
+    _currentUser = updated;
+    final idx = _registeredAccounts.indexWhere(
+      (a) => a.username.toLowerCase() == updated.username.toLowerCase(),
+    );
+    if (idx != -1) {
+      _registeredAccounts[idx] = updated;
+    }
     notifyListeners();
     return null;
   }
@@ -182,6 +233,95 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
   void logoutUser() {
     _currentUser = null;
     notifyListeners();
+  }
+
+  /// Yêu cầu gửi mã OTP khôi phục mật khẩu qua Email (Lưu tạm và xử lý trong RAM)
+  Map<String, dynamic> requestPasswordResetOtp(String identifier) {
+    final cleanId = identifier.trim().toLowerCase();
+    if (cleanId.isEmpty) {
+      return {
+        'success': false,
+        'message': 'Vui lòng nhập tên tài khoản hoặc địa chỉ email của bạn.',
+      };
+    }
+
+    UserAccountModel? targetUser;
+    for (final acc in _registeredAccounts) {
+      if (acc.username.toLowerCase() == cleanId ||
+          (acc.emailOrPhone != null &&
+              acc.emailOrPhone!.trim().toLowerCase() == cleanId)) {
+        targetUser = acc;
+        break;
+      }
+    }
+
+    if (targetUser == null) {
+      return {
+        'success': false,
+        'message': 'Không tìm thấy tài khoản tương ứng với "$identifier" trong hệ thống.',
+      };
+    }
+
+    final targetEmail = targetUser.emailOrPhone?.trim() ?? '';
+    if (targetEmail.isEmpty) {
+      return {
+        'success': false,
+        'message': 'Tài khoản này chưa thiết lập email khôi phục. Vui lòng liên hệ quản trị viên.',
+      };
+    }
+
+    final result = EmailConfigService.instance.generateAndDispatchOtp(
+      identifier: targetUser.username,
+      targetEmail: targetEmail,
+      username: targetUser.username,
+    );
+
+    return result;
+  }
+
+  /// Xác thực mã OTP và cập nhật mật khẩu mới cho tài khoản trong RAM
+  String? verifyAndResetPassword({
+    required String identifier,
+    required String otp,
+    required String newPassword,
+  }) {
+    final cleanId = identifier.trim().toLowerCase();
+    final cleanOtp = otp.trim();
+    final cleanPass = newPassword.trim();
+
+    if (cleanPass.length < 6) {
+      return 'Mật khẩu mới phải có ít nhất 6 ký tự.';
+    }
+
+    final verifyResult = EmailConfigService.instance.verifyOtp(
+      identifier: cleanId,
+      otpInput: cleanOtp,
+    );
+
+    if (verifyResult['valid'] != true) {
+      return verifyResult['message'] as String? ?? 'Mã OTP không hợp lệ hoặc đã hết hạn.';
+    }
+
+    final record = verifyResult['record'] as PendingOtpRecord;
+    final userIdx = _registeredAccounts.indexWhere(
+      (a) => a.username.toLowerCase() == record.username.toLowerCase(),
+    );
+
+    if (userIdx == -1) {
+      return 'Không tìm thấy tài khoản tương ứng để cập nhật mật khẩu.';
+    }
+
+    final oldAccount = _registeredAccounts[userIdx];
+    final updatedAccount = oldAccount.copyWith(password: cleanPass);
+    _registeredAccounts[userIdx] = updatedAccount;
+
+    if (_currentUser?.username.toLowerCase() == oldAccount.username.toLowerCase()) {
+      _currentUser = updatedAccount;
+    }
+
+    EmailConfigService.instance.consumeOtp(cleanId);
+    notifyListeners();
+    return null; // Thành công
   }
 
   /// Đăng nhập nhanh tương thích ngược

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../viewmodels/admin_viewmodel.dart';
 import 'admin_login_view.dart';
 import 'admin_dashboard_view.dart';
+import 'admin_feedback_audit_view.dart';
 import 'admin_management_views.dart';
 
 class AdminShellView extends StatefulWidget {
@@ -530,6 +531,8 @@ class _AdminShellViewState extends State<AdminShellView> {
     switch (selectedItem.id) {
       case 'dashboard':
         return const DashboardQuanTriView();
+      case 'ai_feedback_audit':
+        return const AdminAiFeedbackAuditView();
       case 'knowledge_base':
         return const AdminKnowledgeBaseView();
       case 'injury_types':

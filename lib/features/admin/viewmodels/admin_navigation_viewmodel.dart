@@ -35,6 +35,11 @@ mixin DieuHuongQuanTriViewModel on ChangeNotifier {
       icon: Icons.dashboard_outlined,
     ),
     AdminSidebarItemModel(
+      id: 'ai_feedback_audit',
+      title: 'Đánh giá từ người dùng',
+      icon: Icons.rate_review_outlined,
+    ),
+    AdminSidebarItemModel(
       id: 'knowledge_base',
       title: 'Knowledge Base',
       icon: Icons.menu_book_outlined,

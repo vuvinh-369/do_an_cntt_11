@@ -85,12 +85,9 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
       return false;
     }
 
-    // Code cứng tài khoản admin và mật khẩu là 1 và 1 (hỗ trợ thêm admin / 1 / 123456)
-    final bool isAuthorized = (trimmedUser == '1' && trimmedPass == '1') ||
-        (trimmedUser == 'admin' &&
-            (trimmedPass == '1' ||
-                trimmedPass == 'admin' ||
-                trimmedPass == '123456'));
+    // Xác thực tài khoản quản trị (Mặc định: admin / admin, hỗ trợ dev: 1 / 1. Sẵn sàng thay bằng truy vấn Database)
+    final bool isAuthorized = (trimmedUser == 'admin' && (trimmedPass == 'admin' || trimmedPass == '1')) ||
+        (trimmedUser == '1' && trimmedPass == '1');
 
     if (!isAuthorized) {
       _isLoginError = true;

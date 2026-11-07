@@ -154,6 +154,12 @@ class InjuryContext {
   final bool hasSignsOfInfection; // Vết thương sưng mủ, sốt cao, đỏ tấy lan rộng
   final bool isChildOrElderly; // Đối tượng dễ tổn thương: trẻ nhỏ hoặc người già
 
+  // Thông tin sức khỏe nền tảng cá nhân của người dùng (từ Hồ sơ cá nhân)
+  final List<String> medicalConditions; // 'diabetes', 'hemophilia', 'cardiovascular'...
+  final List<String> allergies; // 'alcohol', 'penicillin', 'iodine'...
+  final String? userBloodType; // 'A', 'B', 'AB', 'O'
+  final String? userRhFactor; // 'Rh+', 'Rh-'
+
   const InjuryContext({
     required this.injuryTypeId,
     required this.injuryTypeName,
@@ -168,9 +174,27 @@ class InjuryContext {
     this.isSeverePainOrFractureSuspected = false,
     this.hasSignsOfInfection = false,
     this.isChildOrElderly = false,
+    this.medicalConditions = const [],
+    this.allergies = const [],
+    this.userBloodType,
+    this.userRhFactor,
   });
 
   bool get hasMultipleInjuries => secondaryInjuryTypeIds.isNotEmpty;
+
+  // Tiện ích kiểm tra bệnh nền & dị ứng
+  bool get hasHemophilia => medicalConditions.contains('hemophilia');
+  bool get hasDiabetes => medicalConditions.contains('diabetes');
+  bool get hasCardiovascular => medicalConditions.contains('cardiovascular');
+  bool get hasAlcoholAllergy => allergies.any((a) =>
+      a.toLowerCase().contains('cồn') || a.toLowerCase().contains('alcohol'));
+  bool get hasPenicillinAllergy => allergies.any((a) =>
+      a.toLowerCase().contains('penicillin') ||
+      a.toLowerCase().contains('kháng sinh'));
+  bool get hasIodineAllergy => allergies.any((a) =>
+      a.toLowerCase().contains('iodine') ||
+      a.toLowerCase().contains('betadine') ||
+      a.toLowerCase().contains('i-ốt'));
 
   InjuryContext copyWith({
     String? injuryTypeId,
@@ -186,6 +210,10 @@ class InjuryContext {
     bool? isSeverePainOrFractureSuspected,
     bool? hasSignsOfInfection,
     bool? isChildOrElderly,
+    List<String>? medicalConditions,
+    List<String>? allergies,
+    String? userBloodType,
+    String? userRhFactor,
   }) {
     return InjuryContext(
       injuryTypeId: injuryTypeId ?? this.injuryTypeId,
@@ -206,6 +234,10 @@ class InjuryContext {
           isSeverePainOrFractureSuspected ?? this.isSeverePainOrFractureSuspected,
       hasSignsOfInfection: hasSignsOfInfection ?? this.hasSignsOfInfection,
       isChildOrElderly: isChildOrElderly ?? this.isChildOrElderly,
+      medicalConditions: medicalConditions ?? this.medicalConditions,
+      allergies: allergies ?? this.allergies,
+      userBloodType: userBloodType ?? this.userBloodType,
+      userRhFactor: userRhFactor ?? this.userRhFactor,
     );
   }
 }

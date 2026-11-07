@@ -147,11 +147,8 @@ class KhoTaiLieuView extends StatelessWidget {
           ),
           const SizedBox(height: 18),
 
-          // 4. Thanh phân trang (< 1 2 3 >)
-          Align(
-            alignment: isMobile ? Alignment.center : Alignment.centerRight,
-            child: _buildDocumentsPaginationBar(context, viewModel),
-          ),
+          // 4. Thanh phân trang (5 tài liệu / trang)
+          _buildDocumentsPaginationBar(context, viewModel),
         ],
       ),
     );
@@ -1282,16 +1279,33 @@ class KhoTaiLieuView extends StatelessWidget {
     BuildContext context,
     UserViewModel viewModel,
   ) {
-    return Row(
+    final totalItems = viewModel.allFilteredMedicalDocuments.length;
+    final totalPages = viewModel.totalDocumentPages;
+    final currentPage = viewModel.currentDocumentPage;
+    const pageSize = 5;
+
+    if (totalItems == 0) return const SizedBox.shrink();
+
+    final startItem = (currentPage - 1) * pageSize + 1;
+    final endItem = (currentPage * pageSize > totalItems)
+        ? totalItems
+        : currentPage * pageSize;
+    final infoText =
+        'Hiển thị $startItem - $endItem trên tổng số $totalItems tài liệu (5 tài liệu / trang)';
+
+    final paginationControls = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildPaginationArrowButton(
           icon: Icons.chevron_left_rounded,
-          onTap: () => context.read<UserViewModel>().goToPreviousDocumentPage(),
+          onTap: currentPage > 1
+              ? () =>
+                  context.read<UserViewModel>().goToPreviousDocumentPage()
+              : () {},
         ),
         const SizedBox(width: 6),
-        ...[1, 2, 3].map((page) {
-          final isSelected = viewModel.currentDocumentPage == page;
+        ...List.generate(totalPages, (i) => i + 1).map((page) {
+          final isSelected = currentPage == page;
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 3),
             child: Material(
@@ -1332,9 +1346,48 @@ class KhoTaiLieuView extends StatelessWidget {
         const SizedBox(width: 6),
         _buildPaginationArrowButton(
           icon: Icons.chevron_right_rounded,
-          onTap: () => context.read<UserViewModel>().goToNextDocumentPage(),
+          onTap: currentPage < totalPages
+              ? () => context.read<UserViewModel>().goToNextDocumentPage()
+              : () {},
         ),
       ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 600;
+        if (isNarrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                infoText,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              paginationControls,
+            ],
+          );
+        }
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              infoText,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            paginationControls,
+          ],
+        );
+      },
     );
   }
 

@@ -86,9 +86,16 @@ mixin HuongDanSoCuuViewModel on DieuHuongCoSoViewModel {
     _reEvaluateRuleEngine();
   }
 
-  // Kích hoạt Rule Engine đánh giá lại
+  // Kích hoạt Rule Engine đánh giá lại kèm thông tin sức khỏe người dùng (nếu có)
   void _reEvaluateRuleEngine() {
-    _currentRuleResult = _ruleEngine.evaluate(_injuryContext);
+    final user = currentUser;
+    final contextWithUser = _injuryContext.copyWith(
+      medicalConditions: user?.medicalConditions ?? const [],
+      allergies: user?.allergies ?? const [],
+      userBloodType: user?.bloodType,
+      userRhFactor: user?.rhFactor,
+    );
+    _currentRuleResult = _ruleEngine.evaluate(contextWithUser);
     notifyListeners();
   }
 

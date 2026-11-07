@@ -24,69 +24,8 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
   DateTime? _historyToDate;
   DateTime? get historyToDate => _historyToDate;
 
-  // Danh sách lịch sử phân tích khởi tạo đúng với 5 bản ghi trong thiết kế Màn hình 8
-  final List<AnalysisHistoryItemModel> _analysisHistoryItems = [
-    AnalysisHistoryItemModel(
-      id: 'hist_1',
-      injuryType: 'Trầy xước',
-      confidencePercent: 82,
-      locationLabel: 'Cánh tay',
-      timestamp: '25/10/2025 14:30',
-      dateTime: DateTime(2025, 10, 25, 14, 30),
-      imageSourceName: 'tray_xuoc_canh_tay.jpg',
-      relatedTopicId: 'abrasion',
-      baseSkinColor: const Color(0xFFE7B89E),
-      woundAccentColor: const Color(0xFFD63638),
-    ),
-    AnalysisHistoryItemModel(
-      id: 'hist_2',
-      injuryType: 'Bầm',
-      confidencePercent: 67,
-      locationLabel: 'Chân',
-      timestamp: '24/10/2025 16:30',
-      dateTime: DateTime(2025, 10, 24, 16, 30),
-      imageSourceName: 'vet_bam_chan.jpg',
-      relatedTopicId: 'bruise',
-      baseSkinColor: const Color(0xFFDCA88E),
-      woundAccentColor: const Color(0xFF7E22CE),
-    ),
-    AnalysisHistoryItemModel(
-      id: 'hist_3',
-      injuryType: 'Không phát hiện tổn thương rõ ràng',
-      confidencePercent: null,
-      locationLabel: '-',
-      timestamp: '23/10/2025 10:15',
-      dateTime: DateTime(2025, 10, 23, 10, 15),
-      imageSourceName: 'khong_phat_hien.jpg',
-      relatedTopicId: null,
-      baseSkinColor: const Color(0xFFE2B49A),
-      woundAccentColor: const Color(0xFFC08470),
-    ),
-    AnalysisHistoryItemModel(
-      id: 'hist_4',
-      injuryType: 'Vết cắt',
-      confidencePercent: 85,
-      locationLabel: 'Ngón tay',
-      timestamp: '22/10/2025 09:40',
-      dateTime: DateTime(2025, 10, 22, 9, 40),
-      imageSourceName: 'vet_cat_ngon_tay.jpg',
-      relatedTopicId: 'cut',
-      baseSkinColor: const Color(0xFFE5B59C),
-      woundAccentColor: const Color(0xFFB91C1C),
-    ),
-    AnalysisHistoryItemModel(
-      id: 'hist_5',
-      injuryType: 'Bỏng',
-      confidencePercent: 88,
-      locationLabel: 'Bàn tay',
-      timestamp: '20/10/2025 18:05',
-      dateTime: DateTime(2025, 10, 20, 18, 5),
-      imageSourceName: 'bong_ban_tay.jpg',
-      relatedTopicId: 'burn',
-      baseSkinColor: const Color(0xFFDFAC92),
-      woundAccentColor: const Color(0xFFEA580C),
-    ),
-  ];
+  // Danh sách lịch sử phân tích (Lưu tạm RAM, sẵn sàng nạp từ Database khi tích hợp)
+  final List<AnalysisHistoryItemModel> _analysisHistoryItems = [];
 
   /// Danh sách lịch sử sau khi áp dụng bộ lọc Từ ngày - Đến ngày và Loại kết quả
   List<AnalysisHistoryItemModel> get filteredAnalysisHistoryItems {
@@ -130,6 +69,47 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
     }).toList();
   }
 
+  // Phân trang Lịch sử phân tích (5 ca / trang)
+  int _currentHistoryPage = 1;
+  int get currentHistoryPage => _currentHistoryPage;
+  static const int historyPageSize = 5;
+
+  int get totalHistoryPages {
+    final total = (filteredAnalysisHistoryItems.length / historyPageSize).ceil();
+    return total < 1 ? 1 : total;
+  }
+
+  List<AnalysisHistoryItemModel> get paginatedAnalysisHistoryItems {
+    final all = filteredAnalysisHistoryItems;
+    final startIndex = (_currentHistoryPage - 1) * historyPageSize;
+    if (startIndex >= all.length) return [];
+    final endIndex = (startIndex + historyPageSize > all.length)
+        ? all.length
+        : startIndex + historyPageSize;
+    return all.sublist(startIndex, endIndex);
+  }
+
+  void selectHistoryPage(int page) {
+    if (page < 1 || page > totalHistoryPages) return;
+    if (_currentHistoryPage == page) return;
+    _currentHistoryPage = page;
+    notifyListeners();
+  }
+
+  void goToPreviousHistoryPage() {
+    if (_currentHistoryPage > 1) {
+      _currentHistoryPage--;
+      notifyListeners();
+    }
+  }
+
+  void goToNextHistoryPage() {
+    if (_currentHistoryPage < totalHistoryPages) {
+      _currentHistoryPage++;
+      notifyListeners();
+    }
+  }
+
   /// Văn bản hiển thị trên ô lọc khoảng ngày ("Từ ngày  —  Đến ngày")
   String get formattedDateRangeLabel {
     if (_historyFromDate == null && _historyToDate == null) {
@@ -148,6 +128,7 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
   void setHistoryResultFilter(String? filterValue) {
     if (filterValue == null) return;
     _selectedHistoryResultFilter = filterValue;
+    _currentHistoryPage = 1;
     notifyListeners();
   }
 
@@ -155,6 +136,7 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
   void setHistoryDateRange(DateTimeRange? range) {
     _historyFromDate = range?.start;
     _historyToDate = range?.end;
+    _currentHistoryPage = 1;
     notifyListeners();
   }
 
@@ -162,6 +144,7 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
   void clearHistoryDateRange() {
     _historyFromDate = null;
     _historyToDate = null;
+    _currentHistoryPage = 1;
     notifyListeners();
   }
 
@@ -228,6 +211,7 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
     );
 
     _analysisHistoryItems.insert(0, newRecord);
+    _currentHistoryPage = 1;
     notifyListeners();
   }
 

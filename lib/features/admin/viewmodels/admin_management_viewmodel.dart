@@ -1,3 +1,5 @@
+import '../../../core/feedback/ai_feedback_model.dart';
+import '../../../core/feedback/ai_feedback_service.dart';
 import '../../../core/gemini/gemini_config_model.dart';
 import '../../../core/gemini/gemini_service.dart';
 import '../../../core/rule_engine/rule_engine_service.dart';
@@ -228,7 +230,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
   // Phân trang Knowledge Base (Khớp giao diện phân trang Kho tài liệu)
   int _currentKbPage = 1;
   int get currentKbPage => _currentKbPage;
-  static const int kbPageSize = 4;
+  static const int kbPageSize = 5;
 
   int get totalKbPages {
     final total = (filteredKnowledgeArticles.length / kbPageSize).ceil();
@@ -361,6 +363,47 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
   List<SupportedInjuryTypeModel> get supportedInjuryTypes =>
       List.unmodifiable(_supportedInjuryTypes);
 
+  // Phân trang nhóm loại tổn thương (5 mục / trang)
+  int _currentInjuryTypePage = 1;
+  int get currentInjuryTypePage => _currentInjuryTypePage;
+  static const int injuryTypePageSize = 5;
+
+  int get totalInjuryTypePages {
+    final total = (_supportedInjuryTypes.length / injuryTypePageSize).ceil();
+    return total < 1 ? 1 : total;
+  }
+
+  List<SupportedInjuryTypeModel> get paginatedInjuryTypes {
+    final all = _supportedInjuryTypes;
+    final startIndex = (_currentInjuryTypePage - 1) * injuryTypePageSize;
+    if (startIndex >= all.length) return [];
+    final endIndex = (startIndex + injuryTypePageSize > all.length)
+        ? all.length
+        : startIndex + injuryTypePageSize;
+    return all.sublist(startIndex, endIndex);
+  }
+
+  void selectInjuryTypePage(int page) {
+    if (page < 1 || page > totalInjuryTypePages) return;
+    if (_currentInjuryTypePage == page) return;
+    _currentInjuryTypePage = page;
+    notifyListeners();
+  }
+
+  void goToPreviousInjuryTypePage() {
+    if (_currentInjuryTypePage > 1) {
+      _currentInjuryTypePage--;
+      notifyListeners();
+    }
+  }
+
+  void goToNextInjuryTypePage() {
+    if (_currentInjuryTypePage < totalInjuryTypePages) {
+      _currentInjuryTypePage++;
+      notifyListeners();
+    }
+  }
+
   void toggleInjuryTypeAiDetection(String id) {
     final index = _supportedInjuryTypes.indexWhere((t) => t.id == id);
     if (index != -1) {
@@ -431,7 +474,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
   // Phân trang Rule Engine (Khớp giao diện phân trang Kho tài liệu)
   int _currentRulePage = 1;
   int get currentRulePage => _currentRulePage;
-  static const int rulePageSize = 4;
+  static const int rulePageSize = 5;
 
   int get totalRulePages {
     final total = (filteredAdminRules.length / rulePageSize).ceil();
@@ -546,5 +589,24 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
     required String model,
   }) async {
     return await GeminiService.instance.testApiKey(apiKey: apiKey, model: model);
+  }
+
+  // ===========================================================================
+  // 6. PHẢN HỒI & ĐÁNH GIÁ AI TỪ NGƯỜI DÙNG (User Feedback Loop)
+  // ===========================================================================
+  List<AiFeedbackModel> get aiFeedbacks => AiFeedbackService.instance.feedbacks;
+
+  int get totalAiFeedbackCount => AiFeedbackService.instance.totalCount;
+  int get inaccurateAiReportCount => AiFeedbackService.instance.inaccurateCount;
+  int get helpfulAiReportCount => AiFeedbackService.instance.helpfulCount;
+  double get aiAccuracyRate => AiFeedbackService.instance.accuracyRate;
+
+  void deleteAiFeedback(String id) {
+    AiFeedbackService.instance.deleteFeedback(id);
+    notifyListeners();
+  }
+
+  String exportAiFeedbackDatasetJson() {
+    return AiFeedbackService.instance.exportFeedbackDatasetJson();
   }
 }

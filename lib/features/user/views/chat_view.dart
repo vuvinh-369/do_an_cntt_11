@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/url_launcher_helper.dart';
+import '../../../core/feedback/ai_feedback_model.dart';
+import '../../../core/feedback/ai_feedback_service.dart';
 import '../models/chat_models.dart';
 import '../viewmodels/user_viewmodel.dart';
 import 'widgets/user_painters.dart';
@@ -347,6 +349,7 @@ class ChatBoxAiView extends StatelessWidget {
               ],
             ),
             const Divider(height: 16),
+            _buildActiveHealthProfileBanner(context, viewModel, isMobile: true),
             Expanded(
               child: viewModel.chatMessages.isEmpty
                   ? _buildEmptyChatWelcomeState(
@@ -479,6 +482,7 @@ class ChatBoxAiView extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 18),
+            _buildActiveHealthProfileBanner(context, viewModel, isMobile: false),
             Expanded(
               child: viewModel.chatMessages.isEmpty
                   ? _buildEmptyChatWelcomeState(context, viewModel)
@@ -556,6 +560,69 @@ class ChatBoxAiView extends StatelessWidget {
     );
   }
 
+    Widget _buildActiveHealthProfileBanner(
+    BuildContext context,
+    UserViewModel viewModel, {
+    bool isMobile = false,
+  }) {
+    final user = viewModel.currentUser;
+    if (user == null || !user.hasHealthData) return const SizedBox.shrink();
+
+    final tags = <String>[];
+    if (user.bloodTypeSummary != null) tags.add('Nhóm máu: ${user.bloodTypeSummary}');
+    if (user.hasHemophilia) tags.add('Máu khó đông (Hemophilia)');
+    if (user.hasDiabetes) tags.add('Tiểu đường');
+    if (user.hasCardiovascular) tags.add('Tim mạch');
+    if (user.allergies.isNotEmpty) tags.add('Dị ứng: ${user.allergies.join(", ")}');
+
+    return Container(
+      margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFBBF7D0)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.shield_outlined, size: 16, color: Color(0xFF16A34A)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Hồ sơ sức khỏe ẩn danh đã kích hoạt: ${tags.join(" • ")}',
+              style: TextStyle(
+                fontSize: isMobile ? 11 : 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF166534),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 6),
+          InkWell(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'AI đang cá nhân hóa các câu trả lời dựa trên hồ sơ: ${tags.join(" • ")}. Thông tin hoàn toàn ẩn danh và không lưu trữ PII.',
+                  ),
+                  duration: const Duration(seconds: 4),
+                  backgroundColor: const Color(0xFF166534),
+                ),
+              );
+            },
+            child: const Icon(
+              Icons.info_outline_rounded,
+              size: 15,
+              color: Color(0xFF16A34A),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildEmptyChatWelcomeState(
     BuildContext context,
     UserViewModel viewModel, {
@@ -606,7 +673,7 @@ class ChatBoxAiView extends StatelessWidget {
             Container(
               constraints: BoxConstraints(maxWidth: isMobile ? 320 : 540),
               child: Text(
-                'Mô hình đang hoạt động: ${currentModel.name} (${currentModel.provider}).\nBạn có thể mô tả chi tiết vết thương, hỏi về cách cầm máu, rửa vết thương, hoặc bấm nút chuyển mô hình phía trên để đổi sang MedGemma / Gemini.',
+                'Mô hình đang hoạt động: ${currentModel.name}.\nBạn có thể mô tả chi tiết vết thương, hỏi về cách cầm máu, rửa vết thương, hoặc bấm nút chuyển mô hình phía trên để đổi sang MedGemma / Gemini.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,
@@ -1007,35 +1074,88 @@ class ChatBoxAiView extends StatelessWidget {
                         color: Color(0xFF94A3B8),
                       ),
                     ),
-                    InkWell(
-                      onTap: () =>
-                          _copyToClipboard(context, message.messageText),
-                      borderRadius: BorderRadius.circular(4),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.copy_rounded,
-                              size: 13,
-                              color: Color(0xFF64748B),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Tooltip(
+                          message: 'Đánh giá câu trả lời hữu ích',
+                          child: InkWell(
+                            onTap: () {
+                              AiFeedbackService.instance.submitFeedback(
+                                AiFeedbackModel(
+                                  id: 'fb_chat_${DateTime.now().millisecondsSinceEpoch}',
+                                  timestamp: DateTime.now(),
+                                  userDisplayName: context.read<UserViewModel>().currentUserName,
+                                  sourceModel: message.modelSource == 'medgemma'
+                                      ? AiSourceModel.medgemma
+                                      : AiSourceModel.gemini,
+                                  feedbackType: AiFeedbackType.helpful,
+                                  issueCategory: 'Tư vấn sơ cứu hữu ích',
+                                  userComment: 'Người dùng đánh giá hài lòng với câu trả lời của AI.',
+                                  detectedWoundSummary: message.messageText.length > 60
+                                      ? '${message.messageText.substring(0, 60)}...'
+                                      : message.messageText,
+                                ),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Cảm ơn bạn đã đánh giá hữu ích cho câu trả lời của AI!'),
+                                  duration: Duration(seconds: 2),
+                                  backgroundColor: Color(0xFF16A34A),
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(4),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              child: Icon(Icons.thumb_up_alt_outlined, size: 14, color: Color(0xFF94A3B8)),
                             ),
-                            SizedBox(width: 4),
-                            Text(
-                              'Sao chép',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF64748B),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 4),
+                        Tooltip(
+                          message: 'Báo cáo câu trả lời không chính xác / nghi ngờ về /admin',
+                          child: InkWell(
+                            onTap: () => _showChatFeedbackDialog(context, message),
+                            borderRadius: BorderRadius.circular(4),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              child: Icon(Icons.thumb_down_alt_outlined, size: 14, color: Color(0xFF94A3B8)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: () =>
+                              _copyToClipboard(context, message.messageText),
+                          borderRadius: BorderRadius.circular(4),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.copy_rounded,
+                                  size: 13,
+                                  color: Color(0xFF64748B),
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Sao chép',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF64748B),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -1296,4 +1416,141 @@ class ChatBoxAiView extends StatelessWidget {
       ),
     );
   }
+
+  /// Hộp thoại báo cáo câu trả lời AI Chat không chính xác về /admin
+  void _showChatFeedbackDialog(BuildContext context, ChatMessageModel message) {
+    final commentCtrl = TextEditingController(
+      text: 'Lời khuyên sơ cứu của AI chưa phù hợp hoặc thiếu chính xác.',
+    );
+    String selectedCategory = 'Lời khuyên sơ cứu chưa chính xác';
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.report_problem_rounded, color: Color(0xFFDC2626), size: 22),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Báo Cáo Phản Hồi AI Về /admin',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0D2B6B)),
+                          ),
+                        ),
+                        IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Báo cáo của bạn sẽ được gửi đến ban quản trị /admin để giúp cải thiện và tinh chỉnh mô hình tốt hơn trong tương lai.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    ),
+                    const Divider(height: 20),
+                    const Text(
+                      'Vấn đề gặp phải:',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        'Lời khuyên sơ cứu chưa chính xác',
+                        'Chống chỉ định hoặc thiếu an toàn',
+                        'Thông tin mơ hồ, không thực tế',
+                        'Lý do khác',
+                      ].map((cat) {
+                        final isSel = selectedCategory == cat;
+                        return ChoiceChip(
+                          label: Text(cat, style: TextStyle(fontSize: 11, color: isSel ? Colors.white : const Color(0xFF334155))),
+                          selected: isSel,
+                          selectedColor: const Color(0xFFDC2626),
+                          onSelected: (val) {
+                            if (val) setDialogState(() => selectedCategory = cat);
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Mô tả chi tiết sai sót:',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: commentCtrl,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'Nhập chi tiết điều AI nói chưa đúng chuẩn y tế...',
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            final commentText = commentCtrl.text.trim();
+                            AiFeedbackService.instance.submitFeedback(
+                              AiFeedbackModel(
+                                id: 'fb_chat_${DateTime.now().millisecondsSinceEpoch}',
+                                timestamp: DateTime.now(),
+                                userDisplayName: context.read<UserViewModel>().currentUserName,
+                                sourceModel: message.modelSource == 'medgemma'
+                                    ? AiSourceModel.medgemma
+                                    : AiSourceModel.gemini,
+                                feedbackType: AiFeedbackType.inaccurate,
+                                issueCategory: selectedCategory,
+                                userComment: commentText.isNotEmpty
+                                    ? commentText
+                                    : 'Lời khuyên sơ cứu của AI chưa chuẩn xác',
+                                detectedWoundSummary: message.messageText.length > 80
+                                    ? '${message.messageText.substring(0, 80)}...'
+                                    : message.messageText,
+                              ),
+                            );
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Đã gửi báo cáo ca chẩn đoán nghi ngờ về trang /admin thành công!'),
+                                backgroundColor: Color(0xFF16A34A),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.send_rounded, size: 16),
+                          label: const Text('Gửi phản hồi báo sai'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFDC2626),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
 }

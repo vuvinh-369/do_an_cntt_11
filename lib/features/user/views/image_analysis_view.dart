@@ -941,7 +941,12 @@ class PhanTichAnhView extends StatelessWidget {
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: stagedBytes != null
-                          ? Image.memory(stagedBytes, fit: BoxFit.cover)
+                          ? Image.memory(
+                              stagedBytes,
+                              fit: BoxFit.cover,
+                              cacheWidth: 160,
+                              cacheHeight: 160,
+                            )
                           : const Icon(Icons.center_focus_strong, color: Color(0xFF2563EB), size: 36),
                     ),
                     const SizedBox(

@@ -456,6 +456,77 @@ class RuleEngineService {
       warnings.add('Ảnh có đa tổn thương kết hợp ($multiList): Luôn ưu tiên cầm máu vết thương hở trước, sau đó mới vệ sinh sát khuẩn vùng trầy xước.');
     }
 
+    // =========================================================================
+    // CÁ NHÂN HÓA THEO HỒ SƠ Y TẾ & BỆNH LÝ NỀN CỦA NGƯỜI DÙNG (RULE ENGINE)
+    // =========================================================================
+    final isOpenWound = context.injuryTypeId == 'cut_laceration' ||
+        context.injuryTypeId == 'abrasion' ||
+        context.injuryTypeId == 'other_wounds' ||
+        context.isBleedingHeavy ||
+        context.hasDeepWoundOrForeignBody;
+
+    // A. BỆNH MÁU KHÓ ĐÔNG (HEMOPHILIA):
+    if (context.hasHemophilia && (isOpenWound || context.injuryTypeId == 'bruise')) {
+      highestSeverity = RuleSeverityLevel.emergency;
+      warnings.insert(
+        0,
+        '🩸 CẢNH BÁO NGUY CẤP (BỆNH MÁU KHÓ ĐÔNG - HEMOPHILIA): Nạn nhân có tiền sử rối loạn đông máu. Vết thương rách da dù nhỏ cũng có nguy cơ mất máu không tự cầm và tụ máu mô sâu nguy hiểm tính mạng! Bắt buộc: Băng ép chèn trực tiếp liên tục, gọi 115 hoặc di chuyển khẩn cấp tới bệnh viện có sẵn yếu tố đông máu.',
+      );
+      if (!actions.any((a) => a.contains('Hemophilia') || a.contains('ép trực tiếp'))) {
+        actions.insert(0, 'Áp gạc vô trùng ép thật mạnh và liên tục lên miệng vết thương, tuyệt đối không mở ra xem máu ngừng chảy chưa.');
+        actions.insert(1, 'Thông báo ngay cho bác sĩ hoặc kíp cấp cứu 115 rằng nạn nhân mắc bệnh Máu khó đông (Hemophilia).');
+      }
+      if (!contraindications.any((c) => c.contains('Aspirin') || c.contains('NSAID'))) {
+        contraindications.insert(
+          0,
+          'TUYỆT ĐỐI KHÔNG DÙNG Aspirin hoặc thuốc kháng viêm giảm đau NSAID (như Ibuprofen) vì ức chế ngưng tập tiểu cầu, làm máu chảy dữ dội hơn.',
+        );
+      }
+    }
+
+    // B. ĐÁI THÁO ĐƯỜNG (TIỂU ĐƯỜNG - DIABETES):
+    if (context.hasDiabetes && (isOpenWound || context.injuryTypeId == 'burn')) {
+      if (highestSeverity == RuleSeverityLevel.normal) {
+        highestSeverity = RuleSeverityLevel.warning;
+      }
+      warnings.insert(
+        0,
+        '🩺 LƯU Ý ĐẶC BIỆT CHO NGƯỜI BỆNH TIỂU ĐƯỜNG: Vết thương ở người đái tháo đường có nguy cơ nhiễm trùng và hoại tử cao gấp nhiều lần do giảm tưới máu vi mạch. Cần: Sát trùng bằng nước muối sinh lý NaCl 0.9%, băng vô trùng, kiểm tra đường huyết thường xuyên và đi khám chuyên khoa ngay nếu xuất hiện sưng, nóng, đỏ, đau hoặc chảy dịch sau 24-48 giờ.',
+      );
+      if (!contraindications.any((c) => c.contains('ngâm nước ấm') || c.contains('tiểu đường'))) {
+        contraindications.add('Không ngâm vết thương/bàn chân lâu trong nước ấm hoặc các loại dung dịch sát khuẩn nồng độ cao vì dễ gây trợt loét vi mô.');
+      }
+    }
+
+    // C. BỆNH TIM MẠCH (CARDIOVASCULAR):
+    if (context.hasCardiovascular) {
+      warnings.add(
+        '❤️ CẢNH BÁO BỆNH TIM MẠCH: Chấn thương kèm mất máu hoặc đau đớn có thể gây rối loạn nhịp tim hoặc tụt huyết áp đột ngột. Hãy đặt nạn nhân nằm nghỉ ngơi nơi thoáng khí, giữ ấm cơ thể, nới lỏng cổ áo và theo dõi sát mạch đập.',
+      );
+    }
+
+    // D. TIỀN SỬ DỊ ỨNG THUỐC & HÓA CHẤT:
+    if (context.allergies.isNotEmpty) {
+      if (context.hasAlcoholAllergy) {
+        contraindications.insert(
+          0,
+          '⚠️ CHỐNG CHỈ ĐỊNH DỊ ỨNG CỒN: Nạn nhân có tiền sử dị ứng CỒN Y TẾ. TUYỆT ĐỐI KHÔNG DÙNG CỒN (Ethanol/Isopropanol) để sát trùng vết thương! Hãy dùng nước muối sinh lý NaCl 0.9% hoặc Povidone Iodine pha loãng.',
+        );
+      }
+      if (context.hasPenicillinAllergy) {
+        contraindications.insert(
+          0,
+          '⚠️ CHỐNG CHỈ ĐỊNH DỊ ỨNG KHÁNG SINH: Nạn nhân dị ứng kháng sinh nhóm Penicillin. Không tự ý rắc bột kháng sinh hoặc bôi kem mỡ chứa Penicillin lên vết thương.',
+        );
+      }
+      if (context.hasIodineAllergy) {
+        contraindications.insert(
+          0,
+          '⚠️ CHỐNG CHỈ ĐỊNH DỊ ỨNG I-ỐT: Nạn nhân dị ứng Povidone Iodine (Betadine). Thay thế hoàn toàn bằng nước muối sinh lý NaCl 0.9%.',
+        );
+      }
+    }
+
     // 4. Tạo tóm tắt & tiêu đề kết quả
     String summaryTitle;
     String statusDescription;

@@ -35,6 +35,44 @@ class DashboardQuanTriView extends StatelessWidget {
             ),
             const SizedBox(height: 20),
           ],
+          if (viewModel.totalAiFeedbackCount > 0) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.rate_review_rounded, color: Color(0xFF2563EB), size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Hệ thống ghi nhận ${viewModel.totalAiFeedbackCount} lượt đánh giá từ người dùng (${viewModel.inaccurateAiReportCount} báo cáo sai lệch). Bạn có thể xem chi tiết để phân tích và cải thiện mô hình.',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E3A8A)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: () {
+                      final idx = viewModel.adminSidebarItems.indexWhere((it) => it.id == 'ai_feedback_audit');
+                      if (idx != -1) viewModel.selectAdminSidebarIndex(idx);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    ),
+                    child: const Text('Xem đánh giá', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            ),
+          ],
           _buildKpiCardsRow(viewModel.kpiCards),
           SizedBox(height: isMobile ? 16 : 22),
           _buildBottomAnalyticsSection(viewModel),

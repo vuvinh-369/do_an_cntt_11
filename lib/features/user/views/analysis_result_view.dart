@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/feedback/ai_feedback_model.dart';
+import '../../../core/feedback/ai_feedback_service.dart';
 import '../../../core/rule_engine/rule_models.dart';
 import '../models/image_analysis_models.dart';
 import '../viewmodels/user_viewmodel.dart';
@@ -630,6 +632,8 @@ class KetQuaPhanTichView extends StatelessWidget {
           ),
         ),
 
+        const SizedBox(height: 14),
+        _buildAiFeedbackCard(context, viewModel, result, isMobile: isMobile),
         const SizedBox(height: 18),
         Text(
           result.locationSectionTitle,
@@ -1542,4 +1546,433 @@ class KetQuaPhanTichView extends StatelessWidget {
       ),
     );
   }
+
+  /// Thẻ Đánh giá kết quả nhận diện AI (Feedback & Audit Loop)
+  Widget _buildAiFeedbackCard(
+    BuildContext context,
+    UserViewModel viewModel,
+    AiAnalysisResultModel result, {
+    bool isMobile = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.rate_review_outlined, size: 18, color: Color(0xFF2563EB)),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Đánh giá kết quả AI (Feedback & Audit)',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0D2B6B),
+                  ),
+                ),
+              ),
+              Tooltip(
+                message: 'Đánh giá của bạn được ghi nhận về trang /admin để giúp cải thiện và huấn luyện mô hình tốt hơn trong tương lai.',
+                child: const Icon(Icons.info_outline, size: 16, color: Color(0xFF94A3B8)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Mô hình AI có thể nhận diện sai lệch. Đánh giá của bạn giúp đội ngũ cải thiện độ chính xác của mô hình trong tương lai.',
+            style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _showAiFeedbackDialog(
+                    context,
+                    viewModel,
+                    result,
+                    initialType: AiFeedbackType.helpful,
+                  ),
+                  icon: const Icon(Icons.thumb_up_alt_outlined, size: 16, color: Color(0xFF16A34A)),
+                  label: const Text(
+                    'Hữu ích',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: Color(0xFF16A34A),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFBBF7D0)),
+                    backgroundColor: const Color(0xFFF0FDF4),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _showAiFeedbackDialog(
+                    context,
+                    viewModel,
+                    result,
+                    initialType: AiFeedbackType.inaccurate,
+                  ),
+                  icon: const Icon(Icons.report_problem_outlined, size: 16),
+                  label: const Text(
+                    'Không chính xác',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDC2626),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Hộp thoại Đánh giá & Báo cáo ca chẩn đoán nghi ngờ gửi về /admin
+  void _showAiFeedbackDialog(
+    BuildContext context,
+    UserViewModel viewModel,
+    AiAnalysisResultModel result, {
+    AiFeedbackType initialType = AiFeedbackType.inaccurate,
+  }) {
+    AiFeedbackType selectedType = initialType;
+    String selectedCategory = initialType == AiFeedbackType.inaccurate
+        ? 'YOLO nhận diện nhầm loại tổn thương'
+        : 'Chính xác & Hữu ích';
+    String? selectedProposedLabel = initialType == AiFeedbackType.inaccurate ? 'Trầy xước ngoài da' : null;
+
+    final commentCtrl = TextEditingController(
+      text: initialType == AiFeedbackType.inaccurate
+          ? 'YOLO nhận diện nhầm vết trầy xước thành vết bỏng.'
+          : 'Kết quả nhận diện rất chuẩn xác và hướng dẫn sơ cứu kịp thời.',
+    );
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isInaccurate = selectedType == AiFeedbackType.inaccurate;
+
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 540),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          isInaccurate ? Icons.report_problem_rounded : Icons.thumb_up_alt_rounded,
+                          color: isInaccurate ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                          size: 22,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            isInaccurate
+                                ? 'Báo Cáo Ca Chẩn Đoán Nghi Ngờ'
+                                : 'Đánh Giá Kết Quả AI Hữu Ích',
+                            style: const TextStyle(
+                              fontSize: 16.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0D2B6B),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Đánh giá đúng/sai của bạn sẽ được gửi về trang /admin để giúp đội ngũ theo dõi sai số và nâng cấp mô hình AI trong tương lai.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    ),
+                    const Divider(height: 20),
+
+                    // Lựa chọn Hữu ích hay Không chính xác
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              setDialogState(() {
+                                selectedType = AiFeedbackType.helpful;
+                                selectedCategory = 'Chính xác & Hữu ích';
+                                selectedProposedLabel = null;
+                                commentCtrl.text = 'Kết quả nhận diện chuẩn xác và hữu ích.';
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: !isInaccurate ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: !isInaccurate ? const Color(0xFF86EFAC) : const Color(0xFFCBD5E1),
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '👍 Hữu ích / Chuẩn',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: !isInaccurate ? const Color(0xFF166534) : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              setDialogState(() {
+                                selectedType = AiFeedbackType.inaccurate;
+                                selectedCategory = 'YOLO nhận diện nhầm loại tổn thương';
+                                selectedProposedLabel = 'Trầy xước ngoài da';
+                                commentCtrl.text = 'YOLO nhận diện nhầm vết trầy xước thành vết bỏng.';
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isInaccurate ? const Color(0xFFFEE2E2) : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isInaccurate ? const Color(0xFFFCA5A5) : const Color(0xFFCBD5E1),
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '⚠️ Không chính xác',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: isInaccurate ? const Color(0xFF991B1B) : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Thông tin chẩn đoán hiện tại của AI
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.psychology_outlined, size: 16, color: Color(0xFF2563EB)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'AI đang nhận diện: ${result.injuryType} (${result.confidencePercent}%) tại ${viewModel.selectedLocationLabel}',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    if (isInaccurate) ...[
+                      // Phân loại vấn đề
+                      const Text(
+                        'Vấn đề bạn gặp phải:',
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          'YOLO nhận diện nhầm loại tổn thương',
+                          'Độ tin cậy / vị trí không đúng',
+                          'Bỏ sót tổn thương phụ trên ảnh',
+                          'Lời khuyên sơ cứu chưa phù hợp',
+                          'Lý do khác',
+                        ].map((cat) {
+                          final isSel = selectedCategory == cat;
+                          return ChoiceChip(
+                            label: Text(cat, style: TextStyle(fontSize: 11, color: isSel ? Colors.white : const Color(0xFF334155))),
+                            selected: isSel,
+                            selectedColor: const Color(0xFFDC2626),
+                            backgroundColor: const Color(0xFFF1F5F9),
+                            onSelected: (val) {
+                              if (val) setDialogState(() => selectedCategory = cat);
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Tổn thương thực tế người dùng nhận định
+                      const Text(
+                        'Tổn thương thực tế bạn nhận định là gì?',
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          'Trầy xước ngoài da',
+                          'Vết cắt / rách da',
+                          'Bỏng nhiệt / hóa chất',
+                          'Bầm tím phần mềm',
+                          'Khác',
+                        ].map((label) {
+                          final isSel = selectedProposedLabel == label;
+                          return ChoiceChip(
+                            label: Text(label, style: TextStyle(fontSize: 11, color: isSel ? const Color(0xFF1E40AF) : const Color(0xFF334155))),
+                            selected: isSel,
+                            selectedColor: const Color(0xFFDBEAFE),
+                            backgroundColor: const Color(0xFFF1F5F9),
+                            onSelected: (val) {
+                              if (val) setDialogState(() => selectedProposedLabel = label);
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // Mô tả chi tiết lý do
+                    Text(
+                      isInaccurate ? 'Lý do & mô tả chi tiết của bạn:' : 'Ghi chú / Đóng góp thêm:',
+                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: commentCtrl,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: isInaccurate
+                            ? 'Ví dụ: YOLO nhận diện nhầm vết trầy xước thành vết bỏng do ảnh có vùng da đỏ rát...'
+                            : 'Nhập đóng góp ý kiến của bạn...',
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Hủy'),
+                        ),
+                        const SizedBox(width: 10),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            final commentText = commentCtrl.text.trim();
+                            final feedback = AiFeedbackModel(
+                              id: 'fb_${DateTime.now().millisecondsSinceEpoch}',
+                              analysisId: result.serverAnalysisId,
+                              timestamp: DateTime.now(),
+                              userDisplayName: viewModel.currentUserName,
+                              sourceModel: AiSourceModel.yoloVision,
+                              feedbackType: selectedType,
+                              issueCategory: selectedCategory,
+                              userComment: commentText.isNotEmpty
+                                  ? commentText
+                                  : (isInaccurate
+                                      ? 'YOLO nhận diện nhầm loại tổn thương'
+                                      : 'Đánh giá AI hữu ích và chính xác'),
+                              userProposedLabel: selectedProposedLabel,
+                              detectedWoundSummary: '${result.injuryType} (${result.confidencePercent}%)',
+                              woundLocation: viewModel.selectedLocationLabel,
+                              painLevel: viewModel.painLevel.label,
+                              observedSymptoms: [
+                                if (viewModel.isBleeding) 'Đang chảy máu nhiều/liên tục',
+                                if (viewModel.hasForeignBody) 'Có dị vật cắm sâu',
+                                if (viewModel.hasPusOrInfection) 'Chảy mủ hoặc sưng đỏ tấy',
+                              ],
+                              imageBytes: result.rawImageBytes,
+                              imageFileName: result.imageFileName,
+                            );
+
+                            AiFeedbackService.instance.submitFeedback(feedback);
+                            Navigator.pop(ctx);
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        isInaccurate
+                                            ? 'Cảm ơn bạn! Đánh giá đã được ghi nhận về trang /admin để giúp đội ngũ cải thiện mô hình AI tốt hơn trong tương lai.'
+                                            : 'Cảm ơn bạn đã gửi đánh giá! Phản hồi tích cực đã được ghi nhận vào hệ thống /admin.',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: const Color(0xFF16A34A),
+                                duration: const Duration(seconds: 4),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.send_rounded, size: 16),
+                          label: Text(
+                            isInaccurate ? 'Gửi phản hồi báo sai' : 'Gửi đánh giá',
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isInaccurate ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
 }

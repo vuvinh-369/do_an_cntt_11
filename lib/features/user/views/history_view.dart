@@ -11,7 +11,8 @@ class LichSuPhanTichView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<UserViewModel>();
-    final historyItems = viewModel.filteredAnalysisHistoryItems;
+    final allHistoryItems = viewModel.filteredAnalysisHistoryItems;
+    final historyItems = viewModel.paginatedAnalysisHistoryItems;
     final isMobile = MediaQuery.sizeOf(context).width < 768;
 
     return Padding(
@@ -58,9 +59,9 @@ class LichSuPhanTichView extends StatelessWidget {
           ],
           _buildFilterRow(context, viewModel),
           const SizedBox(height: 18),
-          if (historyItems.isEmpty)
+          if (allHistoryItems.isEmpty)
             _buildEmptyState(context, viewModel)
-          else
+          else ...[
             Column(
               children: List.generate(historyItems.length, (index) {
                 final item = historyItems[index];
@@ -75,6 +76,9 @@ class LichSuPhanTichView extends StatelessWidget {
                 );
               }),
             ),
+            const SizedBox(height: 14),
+            _buildHistoryPaginationBar(context, viewModel, isMobile: isMobile),
+          ],
         ],
       ),
     );
@@ -317,6 +321,24 @@ class LichSuPhanTichView extends StatelessWidget {
   }
 
   Widget _buildWoundThumbnail(AnalysisHistoryItemModel item) {
+    if (item.rawImageBytes != null && item.rawImageBytes!.isNotEmpty) {
+      return Container(
+        width: 60,
+        height: 54,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Image.memory(
+          item.rawImageBytes!,
+          fit: BoxFit.cover,
+          cacheWidth: 160,
+          cacheHeight: 160,
+        ),
+      );
+    }
+
     final isClear = item.confidencePercent == null;
 
     return Container(
@@ -397,6 +419,127 @@ class LichSuPhanTichView extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHistoryPaginationBar(
+    BuildContext context,
+    UserViewModel viewModel, {
+    bool isMobile = false,
+  }) {
+    final totalItems = viewModel.filteredAnalysisHistoryItems.length;
+    final totalPages = viewModel.totalHistoryPages;
+    final currentPage = viewModel.currentHistoryPage;
+    final pageSize = 5;
+
+    if (totalItems == 0) return const SizedBox.shrink();
+
+    final startItem = (currentPage - 1) * pageSize + 1;
+    final endItem = (currentPage * pageSize > totalItems) ? totalItems : currentPage * pageSize;
+    final infoText = 'Hiển thị $startItem - $endItem trên tổng số $totalItems ca phân tích (5 ca / trang)';
+
+    final paginationControls = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: currentPage > 1 ? () => viewModel.goToPreviousHistoryPage() : null,
+            child: Container(
+              width: 34,
+              height: 34,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Icon(
+                Icons.chevron_left_rounded,
+                size: 20,
+                color: currentPage > 1 ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        ...List.generate(totalPages, (i) {
+          final pageNum = i + 1;
+          final isSelected = pageNum == currentPage;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Material(
+              color: isSelected ? const Color(0xFF2563EB) : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => viewModel.selectHistoryPage(pageNum),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Text(
+                    '',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected ? Colors.white : const Color(0xFF334155),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+        const SizedBox(width: 6),
+        Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: currentPage < totalPages ? () => viewModel.goToNextHistoryPage() : null,
+            child: Container(
+              width: 34,
+              height: 34,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: currentPage < totalPages ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (isMobile) {
+      return Column(
+        children: [
+          Text(infoText, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+          const SizedBox(height: 8),
+          paginationControls,
+        ],
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(infoText, style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+        paginationControls,
+      ],
     );
   }
 }

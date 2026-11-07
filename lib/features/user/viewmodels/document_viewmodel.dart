@@ -23,26 +23,26 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       'fileName': 'so_tay_so_cuu_gia_dinh_2026.pdf',
       'fileExtension': 'PDF',
       'fileSize': '2.4 MB',
-      'localFilePath': 'C:/Users/NguyenVanA/Documents/Medical/so_tay_so_cuu_gia_dinh_2026.pdf',
+      'localFilePath': 'storage/medical_docs/so_tay_so_cuu_gia_dinh_2026.pdf',
     },
     {
       'fileName': 'quy_trinh_xu_ly_bong_nhiet.docx',
       'fileExtension': 'DOCX',
       'fileSize': '850 KB',
-      'localFilePath': 'C:/Users/NguyenVanA/Documents/Medical/quy_trinh_xu_ly_bong_nhiet.docx',
+      'localFilePath': 'storage/medical_docs/quy_trinh_xu_ly_bong_nhiet.docx',
     },
     {
       'fileName': 'huong_dan_cam_mau_vet_cat.pdf',
       'fileExtension': 'PDF',
       'fileSize': '1.6 MB',
       'localFilePath':
-          'C:/Users/NguyenVanA/Documents/Medical/huong_dan_cam_mau_vet_cat.pdf',
+          'storage/medical_docs/huong_dan_cam_mau_vet_cat.pdf',
     },
     {
       'fileName': 'bang_kiem_dung_cu_y_te_ca_nhan.txt',
       'fileExtension': 'TXT',
       'fileSize': '120 KB',
-      'localFilePath': 'C:/Users/NguyenVanA/Documents/Medical/bang_kiem_dung_cu_y_te_ca_nhan.txt',
+      'localFilePath': 'storage/medical_docs/bang_kiem_dung_cu_y_te_ca_nhan.txt',
     },
   ];
 
@@ -99,7 +99,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       fileName: 'huong_dan_so_cuu_co_ban.pdf',
       fileExtension: 'PDF',
       fileSize: '1.8 MB',
-      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/huong_dan_so_cuu_co_ban.pdf',
+      localFilePath: 'storage/medical_docs/huong_dan_so_cuu_co_ban.pdf',
       summary: 'Tài liệu tổng hợp quy trình đánh giá hiện trường, kiểm tra phản ứng của nạn nhân và các nguyên tắc sơ cứu ban đầu an toàn được lưu trữ cục bộ trên thiết bị.',
       contentPoints: [
         '1. Đảm bảo an toàn cho bản thân và nạn nhân trước khi tiếp cận hiện trường.',
@@ -120,7 +120,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       fileName: 'xu_ly_vet_thuong_ngoai_da.pdf',
       fileExtension: 'PDF',
       fileSize: '1.4 MB',
-      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/xu_ly_vet_thuong_ngoai_da.pdf',
+      localFilePath: 'storage/medical_docs/xu_ly_vet_thuong_ngoai_da.pdf',
       summary: 'Quy trình chuẩn làm sạch, sát khuẩn và băng bó các vết trầy xước, vết cắt hoặc vết rách nông ngoài da giúp ngăn ngừa nhiễm trùng.',
       contentPoints: [
         '1. Dùng gạc vô trùng ấn nhẹ trực tiếp lên vết thương để cầm máu ban đầu.',
@@ -142,7 +142,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       fileExtension: 'PDF',
       fileSize: '1.1 MB',
       localFilePath:
-          'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/so_cuu_bong_nhiet.pdf',
+          'storage/medical_docs/so_cuu_bong_nhiet.pdf',
       summary: 'Hướng dẫn làm mát vùng da bị bỏng nhiệt đúng cách, giảm tổn thương mô sâu và các điều tuyệt đối tránh khi sơ cứu bỏng.',
       contentPoints: [
         '1. Đưa vùng da bị bỏng dưới dòng nước mát sạch chảy nhẹ trong 15 – 20 phút.',
@@ -163,7 +163,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       fileName: 'nhan_biet_va_xu_ly_di_vat.docx',
       fileExtension: 'DOCX',
       fileSize: '920 KB',
-      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/nhan_biet_va_xu_ly_di_vat.docx',
+      localFilePath: 'storage/medical_docs/nhan_biet_va_xu_ly_di_vat.docx',
       summary: 'Cách phân biệt dị vật nông trên bề mặt da và dị vật đâm sâu để xử lý an toàn, tránh làm tổn thương mạch máu và dây thần kinh.',
       contentPoints: [
         '1. Quan sát kỹ vị trí, kích thước và độ sâu của dị vật trên da.',
@@ -183,7 +183,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       fileName: 'cac_dau_hieu_canh_bao_nguy_hiem.pdf',
       fileExtension: 'PDF',
       fileSize: '1.5 MB',
-      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/cac_dau_hieu_canh_bao_nguy_hiem.pdf',
+      localFilePath: 'storage/medical_docs/cac_dau_hieu_canh_bao_nguy_hiem.pdf',
       summary: 'Danh mục các triệu chứng cảnh báo đỏ (Red Flags) sau chấn thương hoặc ngộ độc đòi hỏi phải chuyển viện cấp cứu ngay lập tức.',
       contentPoints: [
         '1. Vết thương chảy máu thành tia hoặc không cầm máu sau 15 phút ấn trực tiếp.',
@@ -206,7 +206,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       fileExtension: 'PDF',
       fileSize: '1.3 MB',
       localFilePath:
-          'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/cam_mau_vet_cat_sau.pdf',
+          'storage/medical_docs/cam_mau_vet_cat_sau.pdf',
       summary: 'Kỹ thuật băng ép trực tiếp và kê cao chi bị thương nhằm kiểm soát chảy máu hiệu quả trước khi đến cơ sở y tế.',
       contentPoints: [
         '1. Đặt lớp gạc dày vô trùng trực tiếp lên miệng vết cắt và ấn giữ liên tục.',
@@ -225,7 +225,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       fileName: 'cham_soc_vet_bam_tim.docx',
       fileExtension: 'DOCX',
       fileSize: '780 KB',
-      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/cham_soc_vet_bam_tim.docx',
+      localFilePath: 'storage/medical_docs/cham_soc_vet_bam_tim.docx',
       summary: 'Hướng dẫn áp dụng quy tắc chườm lạnh trong 24 giờ đầu và chườm ấm sau 48 giờ để giảm sưng đau và tan máu bầm.',
       contentPoints: [
         '1. Chườm lạnh bằng túi đá bọc khăn sạch 15 – 20 phút mỗi lần trong 24 giờ đầu.',
@@ -244,7 +244,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       fileName: 've_sinh_thay_bang_vet_tray_xuoc.pdf',
       fileExtension: 'PDF',
       fileSize: '1.6 MB',
-      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/ve_sinh_thay_bang_vet_tray_xuoc.pdf',
+      localFilePath: 'storage/medical_docs/ve_sinh_thay_bang_vet_tray_xuoc.pdf',
       summary: 'Quy trình rửa sạch vết xước bằng nước muối sinh lý và bôi thuốc mỡ kháng sinh thúc đẩy lành da.',
       contentPoints: [
         '1. Rửa tay thật sạch bằng xà phòng trước khi chạm vào vết thương.',
@@ -265,7 +265,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       fileName: 'danh_muc_hop_so_cuu_gia_dinh.txt',
       fileExtension: 'TXT',
       fileSize: '95 KB',
-      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/danh_muc_hop_so_cuu_gia_dinh.txt',
+      localFilePath: 'storage/medical_docs/danh_muc_hop_so_cuu_gia_dinh.txt',
       summary: 'Danh sách các vật tư y tế thiết yếu cần chuẩn bị sẵn trong tủ thuốc và túi sơ cứu cá nhân.',
       contentPoints: [
         '1. Băng gạc vô trùng các kích cỡ, băng cuộn y tế và băng cá nhân.',
@@ -284,7 +284,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       fileName: 'phong_ngua_nhiem_trung_vet_thuong.pdf',
       fileExtension: 'PDF',
       fileSize: '1.2 MB',
-      localFilePath: 'C:/Users/NguyenVanA/Documents/KhoTaiLieuYTe/phong_ngua_nhiem_trung_vet_thuong.pdf',
+      localFilePath: 'storage/medical_docs/phong_ngua_nhiem_trung_vet_thuong.pdf',
       summary: 'Hướng dẫn theo dõi quá trình lành thương và nhận biết sớm các biểu hiện nhiễm khuẩn ngoài da.',
       contentPoints: [
         '1. Giữ vết thương luôn khô ráo, sạch sẽ và thay băng đúng định kỳ.',
@@ -327,12 +327,12 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
   }
 
   /// Lấy danh sách tài liệu hiển thị trên bảng dựa theo Bộ lọc danh mục, Từ khóa tìm kiếm và Phân trang
-  List<MedicalDocumentModel> get filteredMedicalDocuments {
-    final query = _documentSearchQuery.trim().toLowerCase();
-    final isFilteringOrSearching =
-        _selectedDocumentCategoryId != 'all' || query.isNotEmpty;
+  static const int documentPageSize = 5;
 
-    final matched = _medicalDocuments.where((doc) {
+  /// Danh sách tài liệu sau khi lọc theo Danh mục và Từ khóa tìm kiếm
+  List<MedicalDocumentModel> get allFilteredMedicalDocuments {
+    final query = _documentSearchQuery.trim().toLowerCase();
+    return _medicalDocuments.where((doc) {
       final matchesCategory =
           _selectedDocumentCategoryId == 'all' ||
           doc.categoryId == _selectedDocumentCategoryId;
@@ -344,15 +344,22 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
           doc.dateAdded.toLowerCase().contains(query);
       return matchesCategory && matchesQuery;
     }).toList();
+  }
 
-    // Khi đang ở chế độ mặc định ("Tất cả" và chưa nhập từ khóa), hiển thị theo trang 1, 2, 3
-    if (!isFilteringOrSearching) {
-      return matched
-          .where((doc) => doc.pageGroup == _currentDocumentPage)
-          .toList();
-    }
+  int get totalDocumentPages {
+    final total = (allFilteredMedicalDocuments.length / documentPageSize).ceil();
+    return total < 1 ? 1 : total;
+  }
 
-    return matched;
+  /// Lấy danh sách tài liệu hiển thị trên bảng dựa theo Phân trang chuẩn 5 tài liệu / trang
+  List<MedicalDocumentModel> get filteredMedicalDocuments {
+    final matched = allFilteredMedicalDocuments;
+    final startIndex = (_currentDocumentPage - 1) * documentPageSize;
+    if (startIndex >= matched.length) return [];
+    final endIndex = (startIndex + documentPageSize > matched.length)
+        ? matched.length
+        : startIndex + documentPageSize;
+    return matched.sublist(startIndex, endIndex);
   }
 
   // =========================================================================
@@ -466,7 +473,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
 
   /// 6. Chuyển trang trên thanh phân trang (1, 2, 3) của Kho tài liệu y tế
   void selectDocumentPage(int page) {
-    if (page < 1 || page > 3) return;
+    if (page < 1 || page > totalDocumentPages) return;
     if (_currentDocumentPage == page) return;
     _currentDocumentPage = page;
     notifyListeners();
@@ -480,7 +487,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
   }
 
   void goToNextDocumentPage() {
-    if (_currentDocumentPage < 3) {
+    if (_currentDocumentPage < totalDocumentPages) {
       _currentDocumentPage++;
       notifyListeners();
     }

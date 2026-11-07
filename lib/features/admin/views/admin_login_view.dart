@@ -194,18 +194,7 @@ class _DangNhapQuanTriViewState extends State<DangNhapQuanTriView> {
               letterSpacing: -0.3,
             ),
           ),
-          const SizedBox(height: 10),
-
-          // Khung gợi ý tài khoản test cứng
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFBFDBFE)),
-            ),
-          ),
-          const SizedBox(height: 18),
+          SizedBox(height: isMobile ? 18 : 24),
 
           Text(
             spec.usernameLabel,

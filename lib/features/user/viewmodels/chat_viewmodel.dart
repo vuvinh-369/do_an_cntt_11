@@ -138,8 +138,18 @@ mixin ChatBoxAiViewModel
   /// Chuyển prompt kết quả phân tích ảnh sang ChatBox AI để AI tự động tư vấn
   void consultAiWithCurrentAnalysis() {
     if (_chatDisposed || _isAiThinking) return;
+
+    // Hồ sơ sức khỏe cá nhân hóa của người dùng (Zero-Knowledge, không chứa PII tên/SĐT/địa chỉ)
+    final healthProfileFull = currentUser?.buildAiHealthProfileSummary() ?? '';
+    final healthProfileCompact =
+        currentUser?.buildAiHealthProfileSummary(compact: true) ?? '';
+
     if (_selectedChatModelId == 'medgemma') {
       final prediction = lastWoundPrediction;
+      final healthNote = healthProfileCompact.isNotEmpty
+          ? ' Lưu ý hồ sơ bệnh nhân: $healthProfileCompact'
+          : '';
+
       if (prediction != null &&
           prediction.analysisId == analysisResult.serverAnalysisId &&
           !analysisResult.isManualSelection) {
@@ -148,7 +158,7 @@ mixin ChatBoxAiViewModel
         navigateToChatBoxAi();
         unawaited(
           sendChatMessage(
-            'Hãy giải thích dự đoán từ ảnh và tra tài liệu phù hợp cho bước tiếp theo.',
+            'Hãy giải thích dự đoán từ ảnh và tra tài liệu phù hợp cho bước tiếp theo.$healthNote',
           ),
         );
       } else {
@@ -157,8 +167,8 @@ mixin ChatBoxAiViewModel
         unawaited(
           sendChatMessage(
             analysisResult.isManualSelection
-                ? 'Tôi chọn mô tả tổn thương là ${analysisResult.injuryType}. Tôi nên làm gì?'
-                : 'Tôi muốn hỏi về vết thương nhưng chưa có kết quả ảnh còn hiệu lực. Tôi cần mô tả thêm điều gì?',
+                ? 'Tôi chọn mô tả tổn thương là ${analysisResult.injuryType}. Tôi nên làm gì?$healthNote'
+                : 'Tôi muốn hỏi về vết thương nhưng chưa có kết quả ảnh còn hiệu lực. Tôi cần mô tả thêm điều gì?$healthNote',
           ),
         );
       }
@@ -205,9 +215,19 @@ mixin ChatBoxAiViewModel
         ? '\n- Dấu hiệu quan sát kèm theo: ${observedSymptoms.join('; ')}.'
         : '';
 
+    // 4. Khối hồ sơ sức khỏe cá nhân hóa và chỉ thị AI chuyên biệt
+    final String healthSection = healthProfileFull.isNotEmpty
+        ? '\n\n$healthProfileFull\n\n'
+          '⚠️ YÊU CẦU ĐẶC BIỆT DÀNH CHO AI:\n'
+          '- Cá nhân hóa toàn bộ quy trình sơ cứu theo hồ sơ bệnh nhân ở trên.\n'
+          '- Nếu bệnh nhân có Máu khó đông (Hemophilia): Nhấn mạnh băng ép trực tiếp liên tục không buông tay, cấm tuyệt đối Aspirin/NSAID và yêu cầu gọi 115 chuyển viện khẩn cấp.\n'
+          '- Nếu bệnh nhân có Đái tháo đường: Nhắc nhở nguy cơ nhiễm trùng vi mạch âm ỉ, vết thương rất lâu lành và cần quy trình vô trùng nghiêm ngặt.\n'
+          '- TUYỆT ĐỐI CHỐNG CHỈ ĐỊNH các chất/thuốc mà bệnh nhân dị ứng (ví dụ: không dùng cồn y tế nếu dị ứng cồn, không dùng Betadine nếu dị ứng Iodine, không khuyên bôi Penicillin nếu dị ứng kháng sinh).'
+        : '';
+
     final prompt =
         'Tôi vừa quét ảnh phát hiện tổn thương: $woundSummary ở vị trí $location.$multiWoundNotice\n'
-        '- Cảm giác đau hiện tại: $painLabel$painNote.$symptomsText\n'
+        '- Cảm giác đau hiện tại: $painLabel$painNote.$symptomsText$healthSection\n\n'
         'Hãy phân tích tình trạng vết thương, hướng dẫn quy trình sơ cứu từng bước rõ ràng theo thứ tự ưu tiên, '
         'cách giảm đau an toàn, những điều cấm kỵ tuyệt đối không được làm và dấu hiệu nguy hiểm cần đến bệnh viện ngay?';
 
@@ -287,6 +307,16 @@ mixin ChatBoxAiViewModel
 
         woundContext =
             'Bệnh nhân vừa quét ảnh phát hiện: $woundDesc tại vị trí $selectedLocationLabel.$symptomsInfo';
+      }
+
+      // Tự động bổ sung hồ sơ sức khỏe cá nhân hóa vào ngữ cảnh nếu có và chưa xuất hiện trong rawText
+      final userHealthSummary = currentUser?.buildAiHealthProfileSummary() ?? '';
+      if (userHealthSummary.isNotEmpty && !rawText.contains('[HỒ SƠ SỨC KHỎE BỆNH NHÂN')) {
+        if (woundContext != null && woundContext.isNotEmpty) {
+          woundContext = '$woundContext\n\n$userHealthSummary';
+        } else {
+          woundContext = userHealthSummary;
+        }
       }
 
       // Chuẩn bị danh sách lịch sử hội thoại
