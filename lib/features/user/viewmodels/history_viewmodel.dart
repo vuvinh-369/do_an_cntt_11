@@ -1,7 +1,9 @@
+import '../../../core/history/analysis_history_service.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../models/history_models.dart';
+import '../../../core/supabase/supabase_service.dart';
 import 'user_navigation_viewmodel.dart';
 
 mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
@@ -24,7 +26,26 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
   DateTime? _historyToDate;
   DateTime? get historyToDate => _historyToDate;
 
-  // Danh sách lịch sử phân tích (Lưu tạm RAM, sẵn sàng nạp từ Database khi tích hợp)
+    /// Nạp danh sách lịch sử phân tích từ Supabase
+  Future<void> fetchHistoryFromSupabase() async {
+    try {
+      final client = SupabaseService.instance.client;
+      if (client == null) return;
+      final dynamic query = client.from('analysis_history').select();
+      final res = currentUser?.username != null
+          ? await query.eq('username', currentUser!.username).order('created_at', ascending: false)
+          : await query.order('created_at', ascending: false);
+      _analysisHistoryItems.clear();
+      for (final row in res) {
+        _analysisHistoryItems.add(AnalysisHistoryItemModel.fromMap(row));
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[HistoryViewModel] Lấy lịch sử Supabase (chuẩn bị bảng): $e');
+    }
+  }
+
+  // Danh sách lịch sử phân tích (Đồng bộ thời gian thực với Supabase Database)
   final List<AnalysisHistoryItemModel> _analysisHistoryItems = [];
 
   /// Danh sách lịch sử sau khi áp dụng bộ lọc Từ ngày - Đến ngày và Loại kết quả
@@ -148,7 +169,7 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
     notifyListeners();
   }
 
-  /// TỰ ĐỘNG LƯU LỊCH SỬ TRONG RAM: Kích hoạt khi quét phân tích ảnh xong
+  /// TỰ ĐỘNG LƯU LỊCH SỬ VÀO DATABASE SUPABASE: Kích hoạt khi quét phân tích ảnh xong
   @override
   void onNewAnalysisRecorded({
     required String imageSourceName,
@@ -213,6 +234,23 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
     _analysisHistoryItems.insert(0, newRecord);
     _currentHistoryPage = 1;
     notifyListeners();
+
+    // Đồng bộ lên Supabase
+    try {
+      final client = SupabaseService.instance.client;
+      if (client != null) {
+        client.from('analysis_history').insert({
+          'username': currentUser?.username,
+          'injury_type_id': assignedTopicId ?? 'other',
+          'injury_type_name': detectedInjuryType,
+          'confidence_score': detectedConfidence?.toDouble() ?? 80.0,
+          'severity_level': 'moderate',
+          'created_at': now.toIso8601String(),
+        }).then((_) {
+          AnalysisHistoryService.instance.fetchHistoryFromSupabase(silent: true);
+        });
+      }
+    } catch (_) {}
   }
 
   /// Cho phép cập nhật lại vị trí tổn thương của bản ghi mới nhất khi người dùng đổi vị trí ở Màn hình 3

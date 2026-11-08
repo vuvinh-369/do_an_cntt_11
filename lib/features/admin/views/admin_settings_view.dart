@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../../../core/email/email_config_service.dart';
 import '../../../core/gemini/gemini_config_model.dart';
 import '../../../core/gemini/gemini_service.dart';
+import '../../../core/config/supabase_config.dart';
+import '../../../core/supabase/supabase_service.dart';
 import '../../../core/url_launcher_helper.dart';
 import '../viewmodels/admin_viewmodel.dart';
 import 'widgets/admin_pagination_footer.dart';
@@ -28,13 +30,33 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
   bool _obscureApiKey = true;
 
   bool _isTestingGemini = false;
+  bool _isPingingSupabase = false;
+  String? _supabasePingMessage;
+  bool? _supabasePingSuccess;
+
+  Future<void> _pingSupabase() async {
+    setState(() {
+      _isPingingSupabase = true;
+      _supabasePingMessage = null;
+    });
+
+    final res = await SupabaseService.instance.pingConnection();
+
+    if (mounted) {
+      setState(() {
+        _isPingingSupabase = false;
+        _supabasePingSuccess = res['success'] == true;
+        _supabasePingMessage = res['message'] as String?;
+      });
+    }
+  }
   GeminiTestResult? _geminiTestResult;
 
   // Phân trang nhật ký gửi Email (5 dòng / trang)
   int _currentEmailLogPage = 1;
   static const int _emailLogPageSize = 5;
 
-  // Cấu hình dịch vụ Email & Khôi phục mật khẩu (Lưu tạm RAM)
+  // Cấu hình dịch vụ Email & Khôi phục mật khẩu (Supabase Cloud)
   late TextEditingController _smtpHostController;
   late TextEditingController _smtpPortController;
   late TextEditingController _senderEmailController;
@@ -215,7 +237,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
           children: [
             Icon(Icons.check_circle_rounded, color: Colors.white),
             SizedBox(width: 8),
-            Text('Đã lưu cấu hình dịch vụ Email (SMTP & OTP) vào RAM!'),
+            Text('Đã lưu cấu hình dịch vụ Email (SMTP & OTP) lên Supabase!'),
           ],
         ),
         backgroundColor: Color(0xFF10B981),
@@ -265,7 +287,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Kiểm tra định tuyến gửi email với cấu hình SMTP hiện tại (được ghi nhận vào RAM).',
+              'Kiểm tra định tuyến gửi email với cấu hình SMTP hiện tại.',
               style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 14),
@@ -314,7 +336,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<AdminViewModel>();
-    final config = viewModel.systemConfig;
+
     final isMobile = MediaQuery.sizeOf(context).width < 768;
 
     return SingleChildScrollView(
@@ -335,46 +357,199 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Quản lý các thiết lập vận hành của mô hình YOLO, Rule Engine và Google Gemini API cho ChatBox sơ cứu',
+            'Quản lý các thiết lập vận hành của Google Gemini API cho ChatBox sơ cứu và dịch vụ Email khôi phục mật khẩu',
             style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 20),
 
           // ===================================================================
-          // CARD 1: THÔNG TIN MÔ HÌNH NHẬN DIỆN AI (YOLO)
+          // ===================================================================
+          // CARD: CƠ SỞ DỮ LIỆU SUPABASE CLOUD (POSTGRESQL & REST API)
           // ===================================================================
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: const Color(0xFF6EE7B7)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0810B981),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '1. Thông tin mô hình AI nhận diện (YOLO v11 / FastAPI)',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF0D2B6B)),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFECFDF5),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFA7F3D0)),
+                      ),
+                      child: const Icon(Icons.storage_rounded, color: Color(0xFF059669), size: 24),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text(
+                                'Cơ sở dữ liệu Supabase Cloud',
+                                style: TextStyle(
+                                  fontSize: 16.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF065F46),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFDCFCE7),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFF86EFAC)),
+                                ),
+                                child: const Text(
+                                  'Sẵn sàng kết nối',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF15803D),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Lưu trữ đồng bộ đám mây cho tài khoản, bài viết sơ cứu, lịch sử quét và phản hồi AI.',
+                            style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Mô hình Deep Learning YOLO chịu trách nhiệm phân loại 4 nhóm vết thương (Trầy xước, Vết cắt, Bỏng, Bầm tím). Mức độ nghiêm trọng y tế được xác định qua phản hồi triệu chứng và cảm giác đau thực tế.',
-                  style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                const Divider(height: 28),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(
+                      width: 150,
+                      child: Text(
+                        'Project Endpoint:',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                      ),
+                    ),
+                    Expanded(
+                      child: SelectableText(
+                        SupabaseConfig.url,
+                        style: const TextStyle(fontSize: 13, fontFamily: 'monospace', color: Color(0xFF0F172A), fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                _buildInfoRow('Phiên bản mô hình:', config.yoloModelVersion),
-                const SizedBox(height: 6),
-                _buildInfoRow('Endpoint API cục bộ:', config.aiServerEndpoint),
-                const SizedBox(height: 6),
-                _buildInfoRow('Cơ chế đánh giá:', 'YOLO phân loại vết thương -> Rule Engine kết hợp triệu chứng quan sát và mức độ đau.'),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(
+                      width: 150,
+                      child: Text(
+                        'Publishable Key:',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                      ),
+                    ),
+                    Expanded(
+                      child: SelectableText(
+                        '${SupabaseConfig.anonKey.substring(0, math.min(24, SupabaseConfig.anonKey.length))}••••••••••••••••',
+                        style: const TextStyle(fontSize: 13, fontFamily: 'monospace', color: Color(0xFF64748B)),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_supabasePingMessage != null) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _supabasePingSuccess == true ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _supabasePingSuccess == true ? const Color(0xFFA7F3D0) : const Color(0xFFFECACA),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _supabasePingSuccess == true ? Icons.check_circle_rounded : Icons.error_rounded,
+                          color: _supabasePingSuccess == true ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _supabasePingMessage!,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: _supabasePingSuccess == true ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _isPingingSupabase ? null : _pingSupabase,
+                      icon: _isPingingSupabase
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF059669)),
+                            )
+                          : const Icon(Icons.sync_rounded, size: 18, color: Color(0xFF059669)),
+                      label: Text(_isPingingSupabase ? 'Đang kiểm tra...' : 'Kiểm tra kết nối Supabase'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF059669),
+                        side: const BorderSide(color: Color(0xFF059669)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    TextButton.icon(
+                      onPressed: () => UrlLauncherHelper.launchWebUrl(
+                        context,
+                        'https://supabase.com/dashboard/project/oageskffhndqypwuuaij',
+                      ),
+                      icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                      label: const Text('Mở Supabase Dashboard'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF2563EB),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
           const SizedBox(height: 24),
 
-          // ===================================================================
-          // CARD 2: CẤU HÌNH CHATBOX GOOGLE GEMINI API
+          // CARD 1: CẤU HÌNH CHATBOX GOOGLE GEMINI API
           // ===================================================================
           Container(
             padding: const EdgeInsets.all(22),
@@ -412,7 +587,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                           Row(
                             children: [
                               const Text(
-                                '2. Cấu hình ChatBox Gemini',
+                                '1. Cấu hình ChatBox Gemini',
                                 style: TextStyle(
                                   fontSize: 16.5,
                                   fontWeight: FontWeight.w800,
@@ -755,7 +930,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
           const SizedBox(height: 24),
 
           // ===================================================================
-          // CARD 3: CẤU HÌNH DỊCH VỤ GỬI EMAIL KHÔI PHỤC MẬT KHẨU (SMTP / OTP)
+          // CARD 2: CẤU HÌNH DỊCH VỤ GỬI EMAIL KHÔI PHỤC MẬT KHẨU (SMTP / OTP)
           // ===================================================================
           Container(
             padding: const EdgeInsets.all(22),
@@ -793,7 +968,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                           Row(
                             children: [
                               const Text(
-                                '3. Cấu hình Gửi Email Khôi phục Mật khẩu (SMTP & OTP)',
+                                '2. Cấu hình Gửi Email Khôi phục Mật khẩu (SMTP & OTP)',
                                 style: TextStyle(
                                   fontSize: 16.5,
                                   fontWeight: FontWeight.w800,
@@ -829,7 +1004,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                           ),
                           const SizedBox(height: 2),
                           const Text(
-                            'Quản lý thông số máy chủ SMTP và thời hạn mã OTP khi người dùng yêu cầu khôi phục mật khẩu (Lưu tạm trong RAM).',
+                            'Quản lý thông số máy chủ SMTP và thời hạn mã OTP khi người dùng yêu cầu khôi phục mật khẩu (Đồng bộ Supabase Cloud).',
                             style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
                           ),
                         ],
@@ -848,7 +1023,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                 ),
                 const Divider(height: 28),
 
-                // Lưu ý về lưu tạm RAM
+                // Lưu ý về lưu trên Supabase
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -862,7 +1037,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Chế độ In-Memory: Mọi cấu hình và mã OTP được lưu trữ tạm trong RAM cho phiên chạy này. Khi người dùng bấm "Quên mật khẩu", hệ thống tự động đối chiếu thông số tại đây.',
+                          'Đồng bộ Supabase: Mọi cấu hình được lưu trữ vĩnh viễn trên bảng "system_configurations" của Supabase. Khi người dùng yêu cầu khôi phục mật khẩu, hệ thống tự động áp dụng thông số này.',
                           style: TextStyle(fontSize: 12, color: Color(0xFF166534), fontWeight: FontWeight.w500),
                         ),
                       ),
@@ -1091,7 +1266,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                     ElevatedButton.icon(
                       onPressed: _saveEmailConfiguration,
                       icon: const Icon(Icons.save_rounded, size: 18),
-                      label: const Text('Lưu cấu hình Email (RAM)'),
+                      label: const Text('Lưu cấu hình Email'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2563EB),
                         foregroundColor: Colors.white,
@@ -1282,14 +1457,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      children: [
-        SizedBox(width: 170, child: Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
-        Text(value, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-      ],
-    );
-  }
+
 }
 
 

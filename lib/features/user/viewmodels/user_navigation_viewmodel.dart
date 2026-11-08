@@ -1,3 +1,4 @@
+import '../../../core/storage/local_storage_service.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
@@ -5,6 +6,7 @@ import '../models/first_aid_models.dart';
 import '../models/navigation_model.dart';
 import '../models/user_account_model.dart';
 import '../../../core/email/email_config_service.dart';
+import '../../../core/user_management/user_account_service.dart';
 
 mixin DieuHuongCoSoViewModel on ChangeNotifier {
   // Chỉ số màn hình hiện tại:
@@ -89,10 +91,8 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     }
   }
 
-  // Danh sách tài khoản người dùng đã đăng ký trong hệ thống (Lưu tạm trong RAM)
-  // Tuyệt đối không lưu trữ tên thật, sđt hay địa chỉ của người dùng. Sẵn sàng tích hợp Database.
-  final List<UserAccountModel> _registeredAccounts = [];
-  List<UserAccountModel> get registeredAccounts => List.unmodifiable(_registeredAccounts);
+  // Danh sách tài khoản người dùng đã đăng ký (Đồng bộ với UserAccountService)
+  List<UserAccountModel> get registeredAccounts => UserAccountService.instance.accounts;
 
   // Tài khoản người dùng đang đăng nhập (null = Khách vãng lai)
   UserAccountModel? _currentUser;
@@ -115,35 +115,19 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     String? fullName, // Giữ tương thích tham số cũ nếu có gọi
     String? emailOrPhone,
   }) {
-    final cleanUsername = username.trim();
-    final cleanPassword = password.trim();
-
-    if (cleanUsername.length < 3) {
-      return 'Tên tài khoản phải có ít nhất 3 ký tự.';
-    }
-    if (cleanPassword.length < 6) {
-      return 'Mật khẩu phải có ít nhất 6 ký tự.';
-    }
-    final isExisting = _registeredAccounts.any(
-      (a) => a.username.toLowerCase() == cleanUsername.toLowerCase(),
+    final err = UserAccountService.instance.register(
+      username: username,
+      password: password,
+      emailOrPhone: emailOrPhone,
     );
-    if (isExisting) {
-      return 'Tên tài khoản "$cleanUsername" đã tồn tại. Vui lòng chọn tên khác.';
-    }
+    if (err != null) return err;
 
-    final newAccount = UserAccountModel(
-      username: cleanUsername,
-      password: cleanPassword,
-      createdAt: DateTime.now(),
-      emailOrPhone: emailOrPhone?.trim().isNotEmpty == true ? emailOrPhone!.trim() : null,
-    );
-    _registeredAccounts.add(newAccount);
-    _currentUser = newAccount;
+    _currentUser = UserAccountService.instance.findByUsername(username);
     notifyListeners();
     return null;
   }
 
-  /// Cập nhật Hồ sơ thông tin cá nhân & Chỉ số y tế (Lưu tạm RAM, không lưu tên/SĐT/địa chỉ)
+  /// Cập nhật Hồ sơ thông tin cá nhân & Chỉ số y tế (Lưu trên Supabase, không lưu tên/SĐT/địa chỉ)
   String? updateUserProfile({
     String? gender,
     double? weightKg,
@@ -170,12 +154,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     );
 
     _currentUser = updated;
-    final idx = _registeredAccounts.indexWhere(
-      (a) => a.username.toLowerCase() == updated.username.toLowerCase(),
-    );
-    if (idx != -1) {
-      _registeredAccounts[idx] = updated;
-    }
+    UserAccountService.instance.updateProfile(updated);
     notifyListeners();
     return null;
   }
@@ -195,47 +174,80 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
 
     final updated = _currentUser!.copyWith(password: newPassword.trim());
     _currentUser = updated;
-    final idx = _registeredAccounts.indexWhere(
-      (a) => a.username.toLowerCase() == updated.username.toLowerCase(),
-    );
-    if (idx != -1) {
-      _registeredAccounts[idx] = updated;
-    }
+    UserAccountService.instance.changePassword(_currentUser!.username, newPassword.trim());
     notifyListeners();
     return null;
   }
 
   /// Đăng nhập tài khoản bằng username và password
-  /// Trả về null nếu thành công, hoặc chuỗi thông báo lỗi nếu thất bại.
-  String? loginWithCredentials({
+  /// Trả về null nếu thành công, hoặc chuỗi thông báo lỗi nếu thất bại (bao gồm TÀI_KHOẢN_BỊ_KHÓA).
+  Future<String?> loginWithCredentials({
     required String username,
     required String password,
-  }) {
-    final cleanUsername = username.trim().toLowerCase();
-    final cleanPassword = password.trim();
+    bool rememberMe = true,
+  }) async {
+    // 1. Thử xác thực trực tiếp qua Stored Procedure Bcrypt trên Supabase
+    final res = await UserAccountService.instance.authenticateAsync(
+      username: username,
+      password: password,
+    );
 
-    try {
-      final account = _registeredAccounts.firstWhere(
-        (a) => a.username.toLowerCase() == cleanUsername,
+    if (res['success'] == true) {
+      _currentUser = res['account'] as UserAccountModel;
+      await LocalStorageService.instance.saveUserCredentials(
+        rememberMe: rememberMe,
+        username: username,
+        password: password,
       );
-      if (account.password != cleanPassword) {
-        return 'Mật khẩu không chính xác. Vui lòng kiểm tra lại.';
-      }
-      _currentUser = account;
       notifyListeners();
       return null;
-    } catch (_) {
-      return 'Tài khoản "$username" không tồn tại trong hệ thống.';
+    }
+
+    if (res['isLocked'] == true) {
+      final reason = res['lockReason'] as String? ?? 'Tài khoản của bạn đã bị khóa bởi Quản trị viên.';
+      return 'TÀI_KHOẢN_BỊ_KHÓA: $reason';
+    }
+
+    // 2. Cơ chế fallback nếu mất kết nối
+    final syncResult = UserAccountService.instance.authenticate(
+      username: username,
+      password: password,
+    );
+    if (syncResult['success'] == true) {
+      _currentUser = syncResult['account'] as UserAccountModel;
+      await LocalStorageService.instance.saveUserCredentials(
+        rememberMe: rememberMe,
+        username: username,
+        password: password,
+      );
+      notifyListeners();
+      return null;
+    }
+
+    return res['message'] as String? ?? syncResult['message'] as String? ?? 'Đăng nhập không thành công.';
+  }
+
+  /// Khôi phục phiên đăng nhập người dùng từ bộ nhớ cục bộ nếu có bật Ghi nhớ
+  Future<void> restoreSavedUserSession() async {
+    final saved = await LocalStorageService.instance.loadUserCredentials();
+    if (saved['rememberMe'] == true) {
+      final user = saved['username'] as String? ?? '';
+      final pass = saved['password'] as String? ?? '';
+      if (user.isNotEmpty && pass.isNotEmpty) {
+        debugPrint('[UserAuth] Đang tự động khôi phục tài khoản người dùng: $user');
+        await loginWithCredentials(username: user, password: pass, rememberMe: true);
+      }
     }
   }
 
   /// Đăng xuất tài khoản người dùng về chế độ Khách (Guest)
-  void logoutUser() {
+  Future<void> logoutUser() async {
     _currentUser = null;
+    await LocalStorageService.instance.clearUserSession();
     notifyListeners();
   }
 
-  /// Yêu cầu gửi mã OTP khôi phục mật khẩu qua Email (Lưu tạm và xử lý trong RAM)
+  /// Yêu cầu gửi mã OTP khôi phục mật khẩu qua Email (Lưu tạm và xử lý trên Supabase Cloud)
   Map<String, dynamic> requestPasswordResetOtp(String identifier) {
     final cleanId = identifier.trim().toLowerCase();
     if (cleanId.isEmpty) {
@@ -246,7 +258,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     }
 
     UserAccountModel? targetUser;
-    for (final acc in _registeredAccounts) {
+    for (final acc in UserAccountService.instance.accounts) {
       if (acc.username.toLowerCase() == cleanId ||
           (acc.emailOrPhone != null &&
               acc.emailOrPhone!.trim().toLowerCase() == cleanId)) {
@@ -279,7 +291,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     return result;
   }
 
-  /// Xác thực mã OTP và cập nhật mật khẩu mới cho tài khoản trong RAM
+  /// Xác thực mã OTP và cập nhật mật khẩu mới cho tài khoản trên Supabase Cloud
   String? verifyAndResetPassword({
     required String identifier,
     required String otp,
@@ -303,20 +315,15 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     }
 
     final record = verifyResult['record'] as PendingOtpRecord;
-    final userIdx = _registeredAccounts.indexWhere(
-      (a) => a.username.toLowerCase() == record.username.toLowerCase(),
-    );
+    final user = UserAccountService.instance.findByUsername(record.username);
 
-    if (userIdx == -1) {
+    if (user == null) {
       return 'Không tìm thấy tài khoản tương ứng để cập nhật mật khẩu.';
     }
 
-    final oldAccount = _registeredAccounts[userIdx];
-    final updatedAccount = oldAccount.copyWith(password: cleanPass);
-    _registeredAccounts[userIdx] = updatedAccount;
-
-    if (_currentUser?.username.toLowerCase() == oldAccount.username.toLowerCase()) {
-      _currentUser = updatedAccount;
+    UserAccountService.instance.changePassword(user.username, cleanPass);
+    if (_currentUser?.username.toLowerCase() == user.username.toLowerCase()) {
+      _currentUser = _currentUser!.copyWith(password: cleanPass);
     }
 
     EmailConfigService.instance.consumeOtp(cleanId);
@@ -346,7 +353,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
   // Khai báo getter trừu tượng để kiểm tra hợp lệ chủ đề sơ cứu khi điều hướng
   Map<String, FirstAidGuideModel> get firstAidGuidesByTopic;
 
-  // Hook tự động được gọi khi người dùng chụp/tải ảnh mới để lưu vào Lịch sử phân tích trong RAM
+  // Hook tự động được gọi khi người dùng chụp/tải ảnh mới để lưu vào Lịch sử phân tích trên Supabase Cloud
   @protected
   void onNewAnalysisRecorded({
     required String imageSourceName,
@@ -426,10 +433,9 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     String? imageSourceName,
     bool recordHistory = true,
   }) {
-    final resolvedImageName = imageSourceName ?? 'wound_sample_arm.jpg';
-    _selectedImageName = resolvedImageName;
-    if (recordHistory) {
-      onNewAnalysisRecorded(imageSourceName: resolvedImageName);
+    _selectedImageName = imageSourceName;
+    if (recordHistory && imageSourceName != null && imageSourceName.trim().isNotEmpty) {
+      onNewAnalysisRecorded(imageSourceName: imageSourceName.trim());
     }
     _pushScreen(2);
     _currentScreenIndex = 2;

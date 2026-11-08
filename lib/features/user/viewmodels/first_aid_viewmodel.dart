@@ -403,8 +403,7 @@ mixin HuongDanSoCuuViewModel on DieuHuongCoSoViewModel {
 
     return baseGuide.copyWith(
       ruleResult: _currentRuleResult,
-      sourceLinks: _currentRuleResult?.sourceLinks ??
-          RuleEngineService.standardMedicalSources,
+      sourceLinks: _ruleEngine.getSourceLinksForTopic(selectedGuideTopicId),
       contraindications: _currentRuleResult?.contraindications ??
           baseGuide.contraindications,
     );

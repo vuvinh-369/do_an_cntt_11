@@ -1,5 +1,7 @@
+import '../../../../core/storage/local_storage_service.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/user_management/user_account_service.dart';
 import '../../viewmodels/user_viewmodel.dart';
 
 class UserAuthModalDialog extends StatefulWidget {
@@ -13,6 +15,27 @@ class UserAuthModalDialog extends StatefulWidget {
 
 class _UserAuthModalDialogState extends State<UserAuthModalDialog> {
   int _activeTab = 0; // 0 = Đăng nhập, 1 = Đăng ký, 2 = Quên mật khẩu
+  bool _rememberMe = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedUserCredentials();
+  }
+
+  Future<void> _loadSavedUserCredentials() async {
+    final saved = await LocalStorageService.instance.loadUserCredentials();
+    if (mounted) {
+      _rememberMe = saved['rememberMe'] as bool? ?? true;
+      if (saved['username'] != null && (saved['username'] as String).isNotEmpty) {
+        _loginUserCtrl.text = saved['username'] as String;
+      }
+      if (saved['password'] != null && (saved['password'] as String).isNotEmpty) {
+        _loginPassCtrl.text = saved['password'] as String;
+      }
+      setState(() {});
+    }
+  }
 
   // Controllers cho Đăng nhập
   final _loginUserCtrl = TextEditingController();
@@ -38,6 +61,12 @@ class _UserAuthModalDialogState extends State<UserAuthModalDialog> {
   String? _forgotTargetEmail;
   String? _demoOtpHint;
 
+  // Trạng thái tài khoản bị khóa và khiếu nại mở khóa
+  bool _isLockedAccount = false;
+  String _lockedUsername = '';
+  String _lockedReason = '';
+  final _appealReasonCtrl = TextEditingController();
+
   String? _errorMessage;
   String? _successMessage;
 
@@ -53,13 +82,15 @@ class _UserAuthModalDialogState extends State<UserAuthModalDialog> {
     _forgotOtpCtrl.dispose();
     _forgotNewPassCtrl.dispose();
     _forgotConfirmPassCtrl.dispose();
+    _appealReasonCtrl.dispose();
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     setState(() {
       _errorMessage = null;
       _successMessage = null;
+      _isLockedAccount = false;
     });
     final user = _loginUserCtrl.text.trim();
     final pass = _loginPassCtrl.text.trim();
@@ -69,10 +100,24 @@ class _UserAuthModalDialogState extends State<UserAuthModalDialog> {
       return;
     }
 
-    final error = widget.viewModel.loginWithCredentials(username: user, password: pass);
+    final error = await widget.viewModel.loginWithCredentials(
+      username: user,
+      password: pass,
+      rememberMe: _rememberMe,
+    );
     if (error != null) {
-      setState(() => _errorMessage = error);
+      if (error.startsWith('TÀI_KHOẢN_BỊ_KHÓA:')) {
+        setState(() {
+          _isLockedAccount = true;
+          _lockedUsername = user;
+          _lockedReason = error.replaceFirst('TÀI_KHOẢN_BỊ_KHÓA:', '').trim();
+          _errorMessage = null;
+        });
+      } else {
+        setState(() => _errorMessage = error);
+      }
     } else {
+      if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -88,6 +133,26 @@ class _UserAuthModalDialogState extends State<UserAuthModalDialog> {
         ),
       );
     }
+  }
+
+  void _handleSubmitUnlockAppeal() {
+    final reason = _appealReasonCtrl.text.trim();
+    if (reason.isEmpty) {
+      setState(() => _errorMessage = 'Vui lòng nhập lý do muốn mở khóa tài khoản.');
+      return;
+    }
+
+    UserAccountService.instance.submitUnlockAppeal(
+      username: _lockedUsername,
+      reason: reason,
+    );
+
+    setState(() {
+      _isLockedAccount = false;
+      _appealReasonCtrl.clear();
+      _errorMessage = null;
+      _successMessage = 'Đã gửi yêu cầu gỡ khóa tài khoản @$_lockedUsername tới Quản trị viên! Vui lòng chờ phê duyệt.';
+    });
   }
 
   void _handleRegister() {
@@ -119,6 +184,7 @@ class _UserAuthModalDialogState extends State<UserAuthModalDialog> {
     if (error != null) {
       setState(() => _errorMessage = error);
     } else {
+      if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -413,6 +479,83 @@ class _UserAuthModalDialogState extends State<UserAuthModalDialog> {
               // NỘI DUNG TAB 0: ĐĂNG NHẬP
               // ===============================================================
               if (_activeTab == 0) ...[
+                if (_isLockedAccount) ...[
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFECACA), width: 1.5),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.lock_person_rounded, color: Color(0xFFDC2626), size: 22),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Tài khoản của bạn đã bị khóa',
+                                style: TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF991B1B),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Lý do: $_lockedReason',
+                          style: const TextStyle(fontSize: 12, color: Color(0xFFB91C1C), height: 1.35),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Gửi yêu cầu mở khóa tài khoản:',
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF7F1D1D)),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: _appealReasonCtrl,
+                          maxLines: 2,
+                          decoration: InputDecoration(
+                            hintText: 'Nhập lý do hoặc giải trình bạn muốn mở khóa...',
+                            hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            isDense: true,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            TextButton(
+                              onPressed: () => setState(() => _isLockedAccount = false),
+                              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                              child: const Text('Thử lại', style: TextStyle(fontSize: 12)),
+                            ),
+                            const Spacer(),
+                            ElevatedButton.icon(
+                              onPressed: _handleSubmitUnlockAppeal,
+                              icon: const Icon(Icons.send_rounded, size: 14),
+                              label: const Text('Gửi yêu cầu gỡ khóa', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFDC2626),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 TextField(
                   controller: _loginUserCtrl,
                   decoration: InputDecoration(
@@ -445,7 +588,34 @@ class _UserAuthModalDialogState extends State<UserAuthModalDialog> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const SizedBox.shrink(),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(4),
+                      onTap: () => setState(() => _rememberMe = !_rememberMe),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: Checkbox(
+                              value: _rememberMe,
+                              onChanged: (val) => setState(() => _rememberMe = val ?? false),
+                              activeColor: const Color(0xFF2563EB),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Ghi nhớ đăng nhập',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: Color(0xFF475569),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     TextButton(
                       onPressed: () => setState(() {
                         _activeTab = 2;
@@ -684,7 +854,7 @@ class _UserAuthModalDialogState extends State<UserAuthModalDialog> {
                               border: Border.all(color: const Color(0xFFFDE68A)),
                             ),
                             child: Text(
-                              '🔑 Mã OTP mô phỏng trong RAM: $_demoOtpHint',
+                              '🔑 Mã OTP xác thực thử nghiệm: $_demoOtpHint',
                               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFFB45309)),
                             ),
                           ),

@@ -86,4 +86,53 @@ class MedicalDocumentModel {
       externalUrl: externalUrl ?? this.externalUrl,
     );
   }
+
+  /// Chuyển đổi Model sang Map JSON tương thích với bảng 'medical_documents' trong Supabase (PostgreSQL)
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'category_id': categoryId,
+      'category_label': categoryLabel,
+      'date_added': dateAdded,
+      'page_group': pageGroup,
+      'file_name': fileName,
+      'file_extension': fileExtension,
+      'file_size': fileSize,
+      'local_file_path': localFilePath,
+      'is_user_added': isUserAdded,
+      'summary': summary,
+      'content_points': contentPoints,
+      'related_guide_topic_id': relatedGuideTopicId,
+      'external_url': externalUrl,
+    };
+  }
+
+  /// Khởi tạo Model từ dữ liệu truy vấn Supabase (hỗ trợ cả snake_case và camelCase)
+  factory MedicalDocumentModel.fromMap(Map<String, dynamic> map) {
+    return MedicalDocumentModel(
+      id: map['id']?.toString() ?? '',
+      title: map['title'] as String? ?? '',
+      categoryId: map['category_id'] as String? ?? map['categoryId'] as String? ?? 'other',
+      categoryLabel: map['category_label'] as String? ?? map['categoryLabel'] as String? ?? 'Khác',
+      dateAdded: map['date_added'] as String? ?? map['dateAdded'] as String? ?? '',
+      pageGroup: (map['page_group'] as num?)?.toInt() ?? (map['pageGroup'] as num?)?.toInt() ?? 1,
+      fileName: map['file_name'] as String? ?? map['fileName'] as String? ?? '',
+      fileExtension: map['file_extension'] as String? ?? map['fileExtension'] as String? ?? 'PDF',
+      fileSize: map['file_size'] as String? ?? map['fileSize'] as String? ?? '1.0 MB',
+      localFilePath: map['local_file_path'] as String? ??
+          map['localFilePath'] as String? ??
+          map['file_url'] as String? ??
+          '',
+      isUserAdded: map['is_user_added'] as bool? ?? map['isUserAdded'] as bool? ?? false,
+      summary: map['summary'] as String? ?? '',
+      contentPoints: List<String>.from(
+        map['content_points'] as List? ??
+            map['contentPoints'] as List? ??
+            const [],
+      ),
+      relatedGuideTopicId: map['related_guide_topic_id'] as String? ?? map['relatedGuideTopicId'] as String?,
+      externalUrl: map['external_url'] as String? ?? map['externalUrl'] as String?,
+    );
+  }
 }

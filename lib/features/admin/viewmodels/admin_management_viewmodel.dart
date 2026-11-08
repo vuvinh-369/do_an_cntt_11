@@ -300,6 +300,37 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
   }
 
   // ===========================================================================
+  // 1.1. QUẢN LÝ NGUỒN TRÍCH XUẤT Y KHOA CHI TIẾT (Medical Source Links)
+  // ===========================================================================
+  List<MedicalSourceLink> get adminMedicalSources =>
+      _ruleEngineService.medicalSources;
+
+  void addAdminMedicalSource(MedicalSourceLink source) {
+    _ruleEngineService.addMedicalSource(source);
+    notifyListeners();
+  }
+
+  void updateAdminMedicalSource(String id, MedicalSourceLink updated) {
+    _ruleEngineService.updateMedicalSource(id, updated);
+    notifyListeners();
+  }
+
+  void deleteAdminMedicalSource(String id) {
+    _ruleEngineService.deleteMedicalSource(id);
+    notifyListeners();
+  }
+
+  void toggleAdminMedicalSource(String id) {
+    _ruleEngineService.toggleMedicalSourceEnabled(id);
+    notifyListeners();
+  }
+
+  void resetMedicalSourcesToDefault() {
+    _ruleEngineService.resetMedicalSourcesToDefault();
+    notifyListeners();
+  }
+
+  // ===========================================================================
   // 2. QUẢN LÝ LOẠI TỔN THƯƠNG (Injury Types Supported)
   // ===========================================================================
   final List<SupportedInjuryTypeModel> _supportedInjuryTypes = [

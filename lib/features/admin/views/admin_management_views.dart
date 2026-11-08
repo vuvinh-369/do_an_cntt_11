@@ -7,4 +7,6 @@ export 'admin_knowledge_base_view.dart';
 export 'admin_injury_types_view.dart';
 export 'admin_rule_engine_view.dart';
 export 'admin_history_analytics_view.dart';
+export 'admin_user_management_view.dart';
+export 'admin_profile_view.dart';
 export 'admin_settings_view.dart';

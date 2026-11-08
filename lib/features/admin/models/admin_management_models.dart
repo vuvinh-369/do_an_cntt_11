@@ -90,6 +90,59 @@ class KnowledgeArticleModel {
       sourceOrganization: sourceOrganization ?? this.sourceOrganization,
     );
   }
+
+  /// Chuyển đổi Model sang Map JSON tương thích với bảng 'knowledge_articles' trong Supabase (PostgreSQL)
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'category_id': categoryId,
+      'category_name': categoryName,
+      'summary': summary,
+      'target_injury_type_id': targetInjuryTypeId,
+      'target_injury_type_name': targetInjuryTypeName,
+      'default_severity': defaultSeverity.name,
+      'steps': steps,
+      'warnings': warnings,
+      'contraindications': contraindications,
+      'last_updated': lastUpdated,
+      'is_published': isPublished,
+      'source_url': sourceUrl,
+      'source_organization': sourceOrganization,
+    };
+  }
+
+  /// Khởi tạo Model từ dữ liệu truy vấn Supabase (hỗ trợ cả snake_case và camelCase)
+  factory KnowledgeArticleModel.fromMap(Map<String, dynamic> map) {
+    final rawSeverity = map['default_severity'] as String? ?? map['defaultSeverity'] as String?;
+    RuleSeverityLevel severity = RuleSeverityLevel.normal;
+    if (rawSeverity != null) {
+      for (final s in RuleSeverityLevel.values) {
+        if (s.name.toLowerCase() == rawSeverity.toLowerCase()) {
+          severity = s;
+          break;
+        }
+      }
+    }
+
+    return KnowledgeArticleModel(
+      id: map['id']?.toString() ?? '',
+      title: map['title'] as String? ?? '',
+      categoryId: map['category_id'] as String? ?? map['categoryId'] as String? ?? 'other',
+      categoryName: map['category_name'] as String? ?? map['categoryName'] as String? ?? 'Vết thương khác',
+      summary: map['summary'] as String? ?? '',
+      targetInjuryTypeId: map['target_injury_type_id'] as String? ?? map['targetInjuryTypeId'] as String? ?? 'other_wounds',
+      targetInjuryTypeName: map['target_injury_type_name'] as String? ?? map['targetInjuryTypeName'] as String? ?? '',
+      defaultSeverity: severity,
+      steps: List<String>.from(map['steps'] as List? ?? const []),
+      warnings: List<String>.from(map['warnings'] as List? ?? const []),
+      contraindications: List<String>.from(map['contraindications'] as List? ?? const []),
+      lastUpdated: map['last_updated'] as String? ?? map['lastUpdated'] as String? ?? '',
+      isPublished: map['is_published'] as bool? ?? map['isPublished'] as bool? ?? true,
+      sourceUrl: map['source_url'] as String? ?? map['sourceUrl'] as String?,
+      sourceOrganization: map['source_organization'] as String? ?? map['sourceOrganization'] as String?,
+    );
+  }
 }
 
 /// Mô hình nhóm loại tổn thương được hệ thống hỗ trợ (Admin CRUD)
@@ -150,6 +203,56 @@ class SupportedInjuryTypeModel {
       totalScansRecorded: totalScansRecorded ?? this.totalScansRecorded,
     );
   }
+
+  /// Chuyển đổi Model sang Map JSON tương thích với bảng 'supported_injury_types' trong Supabase (PostgreSQL)
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'topic_id': topicId,
+      'default_severity': defaultSeverity.name,
+      'sensitivity_mode': sensitivityMode.name,
+      'is_ai_detection_enabled': isAiDetectionEnabled,
+      'description': description,
+      'total_scans_recorded': totalScansRecorded,
+    };
+  }
+
+  /// Khởi tạo Model từ dữ liệu truy vấn Supabase (hỗ trợ cả snake_case và camelCase)
+  factory SupportedInjuryTypeModel.fromMap(Map<String, dynamic> map) {
+    final rawSeverity = map['default_severity'] as String? ?? map['defaultSeverity'] as String?;
+    RuleSeverityLevel severity = RuleSeverityLevel.normal;
+    if (rawSeverity != null) {
+      for (final s in RuleSeverityLevel.values) {
+        if (s.name.toLowerCase() == rawSeverity.toLowerCase()) {
+          severity = s;
+          break;
+        }
+      }
+    }
+
+    final rawSensitivity = map['sensitivity_mode'] as String? ?? map['sensitivityMode'] as String?;
+    AiSensitivityMode sensitivity = AiSensitivityMode.balanced;
+    if (rawSensitivity != null) {
+      for (final sm in AiSensitivityMode.values) {
+        if (sm.name.toLowerCase() == rawSensitivity.toLowerCase()) {
+          sensitivity = sm;
+          break;
+        }
+      }
+    }
+
+    return SupportedInjuryTypeModel(
+      id: map['id']?.toString() ?? '',
+      name: map['name'] as String? ?? '',
+      topicId: map['topic_id'] as String? ?? map['topicId'] as String? ?? 'abrasion',
+      defaultSeverity: severity,
+      sensitivityMode: sensitivity,
+      isAiDetectionEnabled: map['is_ai_detection_enabled'] as bool? ?? map['isAiDetectionEnabled'] as bool? ?? true,
+      description: map['description'] as String? ?? '',
+      totalScansRecorded: (map['total_scans_recorded'] as num?)?.toInt() ?? (map['totalScansRecorded'] as num?)?.toInt() ?? 0,
+    );
+  }
 }
 
 /// Mô hình cấu hình hệ thống (Admin Settings)
@@ -204,6 +307,55 @@ class AdminSystemConfigModel {
       yoloModelVersion: yoloModelVersion ?? this.yoloModelVersion,
       aiServerEndpoint: aiServerEndpoint ?? this.aiServerEndpoint,
       isMaintenanceMode: isMaintenanceMode ?? this.isMaintenanceMode,
+    );
+  }
+
+  /// Chuyển đổi Model sang Map JSON tương thích với bảng 'admin_system_config' trong Supabase (PostgreSQL)
+  Map<String, dynamic> toMap() {
+    return {
+      'global_sensitivity_mode': globalSensitivityMode.name,
+      'is_emergency_115_alert_enabled': isEmergency115AlertEnabled,
+      'is_auto_guide_enabled': isAutoGuideEnabled,
+      'emergency_phone': emergencyPhone,
+      'yolo_model_version': yoloModelVersion,
+      'ai_server_endpoint': aiServerEndpoint,
+      'is_maintenance_mode': isMaintenanceMode,
+    };
+  }
+
+  /// Khởi tạo Model từ dữ liệu truy vấn Supabase (hỗ trợ cả snake_case và camelCase)
+  factory AdminSystemConfigModel.fromMap(Map<String, dynamic> map) {
+    final rawSensitivity = map['global_sensitivity_mode'] as String? ?? map['globalSensitivityMode'] as String?;
+    AiSensitivityMode sensitivity = AiSensitivityMode.balanced;
+    if (rawSensitivity != null) {
+      for (final sm in AiSensitivityMode.values) {
+        if (sm.name.toLowerCase() == rawSensitivity.toLowerCase()) {
+          sensitivity = sm;
+          break;
+        }
+      }
+    }
+
+    return AdminSystemConfigModel(
+      globalSensitivityMode: sensitivity,
+      isEmergency115AlertEnabled: map['is_emergency_115_alert_enabled'] as bool? ??
+          map['isEmergency115AlertEnabled'] as bool? ??
+          true,
+      isAutoGuideEnabled: map['is_auto_guide_enabled'] as bool? ??
+          map['isAutoGuideEnabled'] as bool? ??
+          true,
+      emergencyPhone: map['emergency_phone'] as String? ??
+          map['emergencyPhone'] as String? ??
+          '115',
+      yoloModelVersion: map['yolo_model_version'] as String? ??
+          map['yoloModelVersion'] as String? ??
+          'YOLOv8 Wound Detection (best.pt)',
+      aiServerEndpoint: map['ai_server_endpoint'] as String? ??
+          map['aiServerEndpoint'] as String? ??
+          'http://127.0.0.1:8000',
+      isMaintenanceMode: map['is_maintenance_mode'] as bool? ??
+          map['isMaintenanceMode'] as bool? ??
+          false,
     );
   }
 }

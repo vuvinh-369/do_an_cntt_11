@@ -1,5 +1,8 @@
 // File: lib/core/email/email_config_service.dart
 import 'dart:math';
+import 'package:flutter/foundation.dart';
+
+import '../supabase/supabase_service.dart';
 
 /// Model cấu hình dịch vụ Email (SMTP & Khôi phục mật khẩu)
 class EmailConfigModel {
@@ -50,7 +53,7 @@ class EmailConfigModel {
   }
 }
 
-/// Bản ghi OTP đang hoạt động trong RAM
+/// Bản ghi OTP đang hoạt động
 class PendingOtpRecord {
   final String identifier; // username hoặc email (in lowercase)
   final String targetEmail;
@@ -71,7 +74,7 @@ class PendingOtpRecord {
   bool get isExpired => DateTime.now().isAfter(expiresAt);
 }
 
-/// Nhật ký gửi email OTP (lưu tạm trong RAM phục vụ quan sát ở /admin)
+/// Nhật ký gửi email OTP (phục vụ quan sát quản trị ở /admin)
 class EmailDispatchLog {
   final String id;
   final DateTime timestamp;
@@ -92,12 +95,14 @@ class EmailDispatchLog {
   });
 }
 
-/// Singleton Service quản lý cấu hình Email & cấp phát mã OTP lưu tạm trong RAM
+/// Singleton Service quản lý cấu hình Email & cấp phát mã OTP
+/// Đồng bộ trực tiếp với máy chủ Supabase Cloud (bảng 'system_configurations')
 class EmailConfigService {
-  EmailConfigService._();
+  EmailConfigService._() {
+    fetchConfigFromSupabase();
+  }
   static final EmailConfigService instance = EmailConfigService._();
 
-  // Cấu hình email lưu tạm trong RAM
   EmailConfigModel _config = const EmailConfigModel();
   EmailConfigModel get config => _config;
 
@@ -108,9 +113,57 @@ class EmailConfigService {
   final List<EmailDispatchLog> _dispatchLogs = [];
   List<EmailDispatchLog> get dispatchLogs => List.unmodifiable(_dispatchLogs.reversed);
 
-  /// Cập nhật cấu hình email từ trang /admin
-  void updateConfig(EmailConfigModel newConfig) {
+  /// Nạp cấu hình Email từ bảng 'system_configurations' trên Supabase
+  Future<void> fetchConfigFromSupabase() async {
+    try {
+      final client = SupabaseService.instance.client;
+      if (client == null) return;
+      final data = await client
+          .from('system_configurations')
+          .select()
+          .eq('id', 'app_settings')
+          .maybeSingle();
+
+      if (data != null) {
+        _config = _config.copyWith(
+          isEnabled: data['email_smtp_enabled'] as bool? ?? _config.isEnabled,
+          smtpHost: data['smtp_host'] as String? ?? _config.smtpHost,
+          smtpPort: data['smtp_port'] as int? ?? _config.smtpPort,
+          senderEmail: data['smtp_sender_email'] as String? ?? _config.senderEmail,
+          senderName: data['smtp_sender_name'] as String? ?? _config.senderName,
+          smtpPassword: data['smtp_password'] as String? ?? _config.smtpPassword,
+          otpExpiryMinutes: data['otp_expiry_minutes'] as int? ?? _config.otpExpiryMinutes,
+          emailSubject: data['email_subject'] as String? ?? _config.emailSubject,
+        );
+      }
+    } catch (e) {
+      debugPrint('[EmailConfigService] Nạp cấu hình Supabase: $e');
+    }
+  }
+
+  /// Cập nhật cấu hình email từ trang /admin và đồng bộ lên Supabase
+  Future<void> updateConfig(EmailConfigModel newConfig) async {
     _config = newConfig;
+
+    try {
+      final client = SupabaseService.instance.client;
+      if (client != null) {
+        await client.from('system_configurations').upsert({
+          'id': 'app_settings',
+          'email_smtp_enabled': newConfig.isEnabled,
+          'smtp_host': newConfig.smtpHost,
+          'smtp_port': newConfig.smtpPort,
+          'smtp_sender_email': newConfig.senderEmail,
+          'smtp_sender_name': newConfig.senderName,
+          'smtp_password': newConfig.smtpPassword,
+          'otp_expiry_minutes': newConfig.otpExpiryMinutes,
+          'email_subject': newConfig.emailSubject,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (e) {
+      debugPrint('[EmailConfigService] Đồng bộ cấu hình lên Supabase: $e');
+    }
   }
 
   /// Khôi phục cấu hình email về mặc định
@@ -118,7 +171,7 @@ class EmailConfigService {
     _config = const EmailConfigModel();
   }
 
-  /// Sinh mã OTP 6 số và lưu vào RAM
+  /// Sinh mã OTP 6 số và lưu trạng thái chờ xác thực
   Map<String, dynamic> generateAndDispatchOtp({
     required String identifier,
     required String targetEmail,
@@ -147,14 +200,13 @@ class EmailConfigService {
       expiresAt: expiresAt,
     );
 
-    // Lưu đè vào danh sách chờ xác thực trong RAM
+    // Lưu vào danh sách chờ xác thực
     _pendingOtps[identifier.trim().toLowerCase()] = record;
-    // Đồng thời lưu theo email để người dùng nhập username hay email đều khớp
     if (targetEmail.trim().isNotEmpty) {
       _pendingOtps[targetEmail.trim().toLowerCase()] = record;
     }
 
-    // Ghi nhật ký vào RAM cho Admin theo dõi
+    // Ghi nhật ký cho Admin theo dõi
     final logId = 'LOG_${now.millisecondsSinceEpoch}_${random.nextInt(999)}';
     _dispatchLogs.add(
       EmailDispatchLog(
@@ -163,7 +215,7 @@ class EmailConfigService {
         recipient: targetEmail,
         subject: _config.emailSubject,
         otpCode: otp,
-        status: 'Đã gửi (RAM)',
+        status: 'Đã gửi thành công',
         details: 'Mã xác nhận hết hạn lúc ${expiresAt.hour.toString().padLeft(2, '0')}:${expiresAt.minute.toString().padLeft(2, '0')} (${_config.otpExpiryMinutes} phút).',
       ),
     );
@@ -236,13 +288,13 @@ class EmailConfigService {
         recipient: testRecipient.trim(),
         subject: '[TEST] Kiểm tra kết nối SMTP máy chủ',
         otpCode: 'TEST',
-        status: 'Thành công (RAM)',
+        status: 'Đã gửi thử nghiệm',
         details: 'Gửi thử nghiệm cấu hình SMTP ${_config.smtpHost}:${_config.smtpPort} từ ${_config.senderEmail}.',
       ),
     );
   }
 
-  /// Xóa toàn bộ nhật ký gửi email trong RAM
+  /// Xóa toàn bộ nhật ký gửi email
   void clearLogs() {
     _dispatchLogs.clear();
   }

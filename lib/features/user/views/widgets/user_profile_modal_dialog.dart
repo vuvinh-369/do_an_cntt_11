@@ -600,7 +600,7 @@ class _UserProfileModalDialogState extends State<UserProfileModalDialog> {
                   child: ElevatedButton.icon(
                     onPressed: _saveProfile,
                     icon: const Icon(Icons.save_rounded, size: 18),
-                    label: const Text('Lưu hồ sơ sức khỏe (RAM)', style: TextStyle(fontWeight: FontWeight.w700)),
+                    label: const Text('Lưu hồ sơ sức khỏe', style: TextStyle(fontWeight: FontWeight.w700)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2563EB),
                       foregroundColor: Colors.white,

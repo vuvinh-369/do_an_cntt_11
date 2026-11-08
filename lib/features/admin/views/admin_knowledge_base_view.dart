@@ -11,8 +11,15 @@ import 'widgets/admin_pagination_footer.dart';
 // =============================================================================
 // 1. VIEW QUẢN LÝ KNOWLEDGE BASE (Tùy chỉnh sâu kiến thức & phác đồ sơ cứu)
 // =============================================================================
-class AdminKnowledgeBaseView extends StatelessWidget {
+class AdminKnowledgeBaseView extends StatefulWidget {
   const AdminKnowledgeBaseView({super.key});
+
+  @override
+  State<AdminKnowledgeBaseView> createState() => _AdminKnowledgeBaseViewState();
+}
+
+class _AdminKnowledgeBaseViewState extends State<AdminKnowledgeBaseView> {
+  int _selectedTab = 0; // 0: Cẩm nang bài viết sơ cứu, 1: Nguồn trích xuất y khoa chi tiết
 
   @override
   Widget build(BuildContext context) {
@@ -29,183 +36,15 @@ class AdminKnowledgeBaseView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Quản lý Knowledge Base & Kiến thức sơ cứu',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0D2B6B),
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Kho cẩm nang & phác đồ chuẩn y khoa (Bộ - Tổ chức Y tế) – Cung cấp nội dung sơ cứu các bước chuẩn',
-                      style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: () => _showAddOrEditArticleDialog(context, viewModel),
-                icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                label: const Text('Thêm bài viết mới'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  elevation: 2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // Banner phân biệt vai trò: Knowledge Base vs Rule Engine
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFBFDBFE)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Icon(Icons.menu_book_rounded, color: Color(0xFF2563EB), size: 20),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Cơ sở Tri thức Y khoa (Knowledge Base) – Phác đồ điều trị chuẩn',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1D4ED8)),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Knowledge Base lưu trữ các bài viết, cẩm nang và quy trình sơ cứu 4 bước chuẩn theo bệnh học. Rule Engine sẽ tự động trích xuất các phác đồ này khi điều kiện lâm sàng thực tế của người dùng được kích hoạt.',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF1E40AF), height: 1.35),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-
-          // Thanh lọc theo Phạm trù vết thương (Chips)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildTopicFilterChip(context, viewModel, 'all', 'Tất cả (${viewModel.knowledgeArticles.length})'),
-                const SizedBox(width: 8),
-                _buildTopicFilterChip(context, viewModel, 'abrasion', '🩹 Trầy xước'),
-                const SizedBox(width: 8),
-                _buildTopicFilterChip(context, viewModel, 'cut_laceration', '✂️ Vết cắt / rách'),
-                const SizedBox(width: 8),
-                _buildTopicFilterChip(context, viewModel, 'burn', '🔥 Bỏng'),
-                const SizedBox(width: 8),
-                _buildTopicFilterChip(context, viewModel, 'bruise', '🟣 Bầm tím'),
-                const SizedBox(width: 8),
-                _buildTopicFilterChip(context, viewModel, 'other_wounds', '🩺 Vết thương khác'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Ô tìm kiếm
-          TextField(
-            onChanged: (val) => viewModel.setKbSearchQuery(val),
-            decoration: InputDecoration(
-              hintText: 'Tìm kiếm bài viết theo tiêu đề, phạm trù vết thương, nội dung...',
-              prefixIcon: const Icon(Icons.search, color: Color(0xFF64748B)),
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-              ),
-            ),
-          ),
+          _buildHeaderRow(context, viewModel, isMobile),
           const SizedBox(height: 16),
-
-          // Danh sách bài viết
-          if (articles.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(40),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              alignment: Alignment.center,
-              child: Column(
-                children: [
-                  const Icon(Icons.menu_book_outlined, size: 48, color: Color(0xFF94A3B8)),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Không tìm thấy bài viết kiến thức nào cho phạm trù này.',
-                    style: TextStyle(fontSize: 14, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () => _showAddOrEditArticleDialog(
-                      context,
-                      viewModel,
-                      initialTopicId: viewModel.selectedInjuryTopicFilter != 'all'
-                          ? viewModel.selectedInjuryTopicFilter
-                          : 'other_wounds',
-                    ),
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Thêm bài viết cho phạm trù này'),
-                  ),
-                ],
-              ),
-            )
-          else
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: paginatedArticles.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 14),
-                  itemBuilder: (context, index) {
-                    final article = paginatedArticles[index];
-                    return _buildArticleItemCard(context, viewModel, article);
-                  },
-                ),
-                const SizedBox(height: 16),
-                buildAdminPaginationFooter(
-                  currentPage: viewModel.currentKbPage,
-                  totalPages: viewModel.totalKbPages,
-                  totalItems: articles.length,
-                  pageSize: AdminManagementViewModel.kbPageSize,
-                  itemLabel: 'bài viết phác đồ',
-                  onPageSelected: (page) => viewModel.selectKbPage(page),
-                  onPrevious: () => viewModel.goToPreviousKbPage(),
-                  onNext: () => viewModel.goToNextKbPage(),
-                  isMobile: isMobile,
-                ),
-              ],
-            ),
+          _buildTabSelector(viewModel),
+          const SizedBox(height: 16),
+          if (_selectedTab == 0) ...[
+            _buildArticlesTab(context, viewModel, articles, paginatedArticles, isMobile),
+          ] else ...[
+            _buildMedicalSourcesTab(context, viewModel, isMobile),
+          ],
         ],
       ),
     );
@@ -1128,6 +967,875 @@ class AdminKnowledgeBaseView extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: Text(isEditing ? 'Lưu thay đổi' : 'Thêm bài viết'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // CÁC COMPONENT TAB & NGUỒN TRÍCH XUẤT Y KHOA CHI TIẾT
+  // ===========================================================================
+  Widget _buildHeaderRow(
+    BuildContext context,
+    AdminViewModel viewModel,
+    bool isMobile,
+  ) {
+    if (_selectedTab == 0) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Quản lý Knowledge Base & Kiến thức sơ cứu',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0D2B6B),
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Kho cẩm nang & phác đồ chuẩn y khoa (Bộ - Tổ chức Y tế) – Cung cấp nội dung sơ cứu các bước chuẩn',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          ElevatedButton.icon(
+            onPressed: () => _showAddOrEditArticleDialog(context, viewModel),
+            icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+            label: const Text('Thêm bài viết mới'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 2,
+            ),
+          ),
+        ],
+      );
+    } else {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Nguồn trích xuất hướng dẫn y khoa chi tiết',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0D2B6B),
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Tùy chỉnh danh sách liên kết tài liệu y khoa tham chiếu hiển thị trực tiếp ở chân trang sơ cứu của người dùng',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () {
+                  viewModel.resetMedicalSourcesToDefault();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã khôi phục 4 nguồn trích xuất y khoa mặc định!'),
+                      backgroundColor: Color(0xFF2563EB),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.restore_rounded, size: 17),
+                label: const Text('Mặc định'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton.icon(
+                onPressed: () => _showAddOrEditSourceDialog(context, viewModel),
+                icon: const Icon(Icons.add_link_rounded, size: 18),
+                label: const Text('Thêm nguồn mới'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 2,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+  }
+
+  Widget _buildTabSelector(AdminViewModel viewModel) {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1.5)),
+      ),
+      child: Row(
+        children: [
+          _buildTabButton(
+            title: 'Cẩm nang bài viết sơ cứu (${viewModel.knowledgeArticles.length})',
+            icon: Icons.menu_book_rounded,
+            isSelected: _selectedTab == 0,
+            onTap: () => setState(() => _selectedTab = 0),
+          ),
+          const SizedBox(width: 8),
+          _buildTabButton(
+            title: 'Nguồn trích xuất y khoa chi tiết (${viewModel.adminMedicalSources.length})',
+            icon: Icons.link_rounded,
+            isSelected: _selectedTab == 1,
+            onTap: () => setState(() => _selectedTab = 1),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabButton({
+    required String title,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isSelected ? const Color(0xFF2563EB) : Colors.transparent,
+              width: 3,
+            ),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildArticlesTab(
+    BuildContext context,
+    AdminViewModel viewModel,
+    List<KnowledgeArticleModel> articles,
+    List<KnowledgeArticleModel> paginatedArticles,
+    bool isMobile,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Banner phân biệt vai trò: Knowledge Base vs Rule Engine
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEFF6FF),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFBFDBFE)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Icon(Icons.menu_book_rounded, color: Color(0xFF2563EB), size: 20),
+              SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cơ sở Tri thức Y khoa (Knowledge Base) – Phác đồ điều trị chuẩn',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1D4ED8)),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Knowledge Base lưu trữ các bài viết, cẩm nang và quy trình sơ cứu 4 bước chuẩn theo bệnh học. Rule Engine sẽ tự động trích xuất các phác đồ này khi điều kiện lâm sàng thực tế của người dùng được kích hoạt.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF1E40AF), height: 1.35),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // Thanh lọc theo Phạm trù vết thương (Chips)
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildTopicFilterChip(context, viewModel, 'all', 'Tất cả (${viewModel.knowledgeArticles.length})'),
+              const SizedBox(width: 8),
+              _buildTopicFilterChip(context, viewModel, 'abrasion', '🩹 Trầy xước'),
+              const SizedBox(width: 8),
+              _buildTopicFilterChip(context, viewModel, 'cut_laceration', '✂️ Vết cắt / rách'),
+              const SizedBox(width: 8),
+              _buildTopicFilterChip(context, viewModel, 'burn', '🔥 Bỏng'),
+              const SizedBox(width: 8),
+              _buildTopicFilterChip(context, viewModel, 'bruise', '🟣 Bầm tím'),
+              const SizedBox(width: 8),
+              _buildTopicFilterChip(context, viewModel, 'other_wounds', '🩺 Vết thương khác'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Ô tìm kiếm
+        TextField(
+          onChanged: (val) => viewModel.setKbSearchQuery(val),
+          decoration: InputDecoration(
+            hintText: 'Tìm kiếm bài viết theo tiêu đề, phạm trù vết thương, nội dung...',
+            prefixIcon: const Icon(Icons.search, color: Color(0xFF64748B)),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Danh sách bài viết
+        if (articles.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(40),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            alignment: Alignment.center,
+            child: Column(
+              children: [
+                const Icon(Icons.menu_book_outlined, size: 48, color: Color(0xFF94A3B8)),
+                const SizedBox(height: 12),
+                const Text(
+                  'Không tìm thấy bài viết kiến thức nào cho phạm trù này.',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => _showAddOrEditArticleDialog(
+                    context,
+                    viewModel,
+                    initialTopicId: viewModel.selectedInjuryTopicFilter != 'all'
+                        ? viewModel.selectedInjuryTopicFilter
+                        : 'other_wounds',
+                  ),
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Thêm bài viết cho phạm trù này'),
+                ),
+              ],
+            ),
+          )
+        else
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: paginatedArticles.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 14),
+                itemBuilder: (context, index) {
+                  final article = paginatedArticles[index];
+                  return _buildArticleItemCard(context, viewModel, article);
+                },
+              ),
+              const SizedBox(height: 16),
+              buildAdminPaginationFooter(
+                currentPage: viewModel.currentKbPage,
+                totalPages: viewModel.totalKbPages,
+                totalItems: articles.length,
+                pageSize: AdminManagementViewModel.kbPageSize,
+                itemLabel: 'bài viết phác đồ',
+                onPageSelected: (page) => viewModel.selectKbPage(page),
+                onPrevious: () => viewModel.goToPreviousKbPage(),
+                onNext: () => viewModel.goToNextKbPage(),
+                isMobile: isMobile,
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMedicalSourcesTab(
+    BuildContext context,
+    AdminViewModel viewModel,
+    bool isMobile,
+  ) {
+    final sources = viewModel.adminMedicalSources;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Banner thông tin giải thích
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEFF6FF),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFBFDBFE)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Icon(Icons.link_rounded, color: Color(0xFF2563EB), size: 22),
+              SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tùy chỉnh danh sách nguồn trích xuất hướng dẫn y khoa chi tiết',
+                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: Color(0xFF1D4ED8)),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Các liên kết này hiển thị trực tiếp ở chân trang của người dùng khi xem hướng dẫn sơ cứu tổn thương. Bạn có thể thêm link mới, sửa tổ chức / URL, hoặc bật/tắt hiển thị từng nguồn.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF1E40AF), height: 1.35),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        if (sources.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(40),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.link_off_rounded, size: 48, color: Color(0xFF94A3B8)),
+                const SizedBox(height: 12),
+                const Text(
+                  'Chưa có nguồn trích xuất y khoa nào được cấu hình.',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Người dùng sẽ không thấy khối "Nguồn trích xuất hướng dẫn y khoa chi tiết" ở chân trang.',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => viewModel.resetMedicalSourcesToDefault(),
+                  icon: const Icon(Icons.restore_rounded, size: 16),
+                  label: const Text('Khôi phục danh sách mặc định (4 nguồn chuẩn)'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...sources.map((src) => _buildMedicalSourceCard(context, viewModel, src, isMobile)),
+      ],
+    );
+  }
+
+  Widget _buildMedicalSourceCard(
+    BuildContext context,
+    AdminViewModel viewModel,
+    MedicalSourceLink src,
+    bool isMobile,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: src.isEnabled ? const Color(0xFFE2E8F0) : const Color(0xFFF1F5F9),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Icon tròn
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: src.isEnabled ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.link_rounded,
+              size: 20,
+              color: src.isEnabled ? const Color(0xFF2563EB) : const Color(0xFF94A3B8),
+            ),
+          ),
+          const SizedBox(width: 14),
+
+          // Nội dung chi tiết
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        src.organization,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: src.isEnabled ? const Color(0xFF1E40AF) : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: src.isEnabled ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        src.isEnabled ? 'Đang hiển thị' : 'Đã ẩn',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: src.isEnabled ? const Color(0xFF166534) : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  src.title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: src.isEnabled ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: () => UrlLauncherHelper.launchWebUrl(context, src.url, fallbackTitle: src.title),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.open_in_new_rounded, size: 14, color: Color(0xFF2563EB)),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            src.url,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF2563EB),
+                              decoration: TextDecoration.underline,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    _buildSourceTag(
+                      label: 'Phạm vi: ${src.targetTopicId == "all" ? "Tất cả hướng dẫn sơ cứu" : getInjuryTopicName(src.targetTopicId)}',
+                      icon: Icons.category_outlined,
+                    ),
+                    _buildSourceTag(
+                      label: 'Năm: ${src.publishYear}',
+                      icon: Icons.calendar_today_outlined,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Action buttons
+          Column(
+            children: [
+              Switch(
+                value: src.isEnabled,
+                activeThumbColor: const Color(0xFF2563EB),
+                onChanged: (val) {
+                  viewModel.toggleAdminMedicalSource(src.id);
+                },
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF2563EB)),
+                    tooltip: 'Chỉnh sửa nguồn này',
+                    onPressed: () => _showAddOrEditSourceDialog(context, viewModel, sourceToEdit: src),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFDC2626)),
+                    tooltip: 'Xóa nguồn này',
+                    onPressed: () => _confirmDeleteSource(context, viewModel, src),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSourceTag({required String label, required IconData icon}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: const Color(0xFF64748B)),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569), fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteSource(
+    BuildContext context,
+    AdminViewModel viewModel,
+    MedicalSourceLink src,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận xóa nguồn trích xuất'),
+        content: Text('Bạn có chắc chắn muốn xóa nguồn "${src.organization}: ${src.title}" không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              viewModel.deleteAdminMedicalSource(src.id);
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Đã xóa nguồn "${src.organization}"!'),
+                  backgroundColor: const Color(0xFFDC2626),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Xóa nguồn'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddOrEditSourceDialog(
+    BuildContext context,
+    AdminViewModel viewModel, {
+    MedicalSourceLink? sourceToEdit,
+  }) {
+    final isEditing = sourceToEdit != null;
+    final orgController = TextEditingController(text: sourceToEdit?.organization ?? '');
+    final titleController = TextEditingController(text: sourceToEdit?.title ?? '');
+    final urlController = TextEditingController(text: sourceToEdit?.url ?? '');
+    final yearController = TextEditingController(text: sourceToEdit?.publishYear ?? DateTime.now().year.toString());
+    String selectedTopic = sourceToEdit?.targetTopicId ?? 'all';
+    bool isEnabled = sourceToEdit?.isEnabled ?? true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(
+                isEditing ? Icons.edit_rounded : Icons.add_link_rounded,
+                color: const Color(0xFF2563EB),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                isEditing ? 'Chỉnh sửa nguồn trích xuất y khoa' : 'Thêm nguồn trích xuất y khoa mới',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 540,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Tên tổ chức y tế phát hành / Tham chiếu *',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: orgController,
+                    decoration: const InputDecoration(
+                      hintText: 'VD: Hội Chữ Thập Đỏ Việt Nam, Bộ Y Tế, WHO, Mayo Clinic...',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  const Text(
+                    'Tiêu đề tài liệu hướng dẫn y khoa *',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      hintText: 'VD: Tài liệu hướng dẫn sơ cấp cứu ban đầu',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  const Text(
+                    'Đường dẫn web (URL) đầy đủ *',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: urlController,
+                          decoration: const InputDecoration(
+                            hintText: 'https://...',
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        onPressed: () {
+                          if (urlController.text.trim().isNotEmpty) {
+                            UrlLauncherHelper.launchWebUrl(context, urlController.text.trim());
+                          }
+                        },
+                        icon: const Icon(Icons.open_in_browser_rounded),
+                        tooltip: 'Thử mở link kiểm tra',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 4,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Năm ban hành', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                            const SizedBox(height: 6),
+                            TextField(
+                              controller: yearController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                hintText: '2025',
+                                isDense: true,
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        flex: 6,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Áp dụng cho phạm trù', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                            const SizedBox(height: 6),
+                            DropdownButtonFormField<String>(
+                              initialValue: selectedTopic,
+                              isDense: true,
+                              decoration: const InputDecoration(border: OutlineInputBorder()),
+                              items: const [
+                                DropdownMenuItem(value: 'all', child: Text('Tất cả hướng dẫn sơ cứu')),
+                                DropdownMenuItem(value: 'abrasion', child: Text('Trầy xước ngoài da')),
+                                DropdownMenuItem(value: 'cut_laceration', child: Text('Vết cắt / rách da')),
+                                DropdownMenuItem(value: 'burn', child: Text('Bỏng nhiệt / hóa chất')),
+                                DropdownMenuItem(value: 'bruise', child: Text('Bầm tím phần mềm')),
+                                DropdownMenuItem(value: 'other_wounds', child: Text('Vết thương khác')),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setDialogState(() => selectedTopic = val);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Hiển thị nguồn này cho người dùng', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Tắt để tạm ẩn khỏi chân trang hướng dẫn sơ cứu', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                    value: isEnabled,
+                    activeThumbColor: const Color(0xFF2563EB),
+                    onChanged: (val) => setDialogState(() => isEnabled = val),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Hủy bỏ'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final org = orgController.text.trim();
+                final title = titleController.text.trim();
+                final url = urlController.text.trim();
+                final year = yearController.text.trim();
+
+                if (org.isEmpty || title.isEmpty || url.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Vui lòng điền đầy đủ Tổ chức, Tiêu đề và URL!')),
+                  );
+                  return;
+                }
+
+                if (isEditing) {
+                  viewModel.updateAdminMedicalSource(
+                    sourceToEdit.id,
+                    sourceToEdit.copyWith(
+                      organization: org,
+                      title: title,
+                      url: url,
+                      publishYear: year.isNotEmpty ? year : '2025',
+                      targetTopicId: selectedTopic,
+                      isEnabled: isEnabled,
+                    ),
+                  );
+                } else {
+                  final newSource = MedicalSourceLink(
+                    id: 'src_${DateTime.now().millisecondsSinceEpoch}',
+                    organization: org,
+                    title: title,
+                    url: url,
+                    publishYear: year.isNotEmpty ? year : '2025',
+                    targetTopicId: selectedTopic,
+                    isEnabled: isEnabled,
+                  );
+                  viewModel.addAdminMedicalSource(newSource);
+                }
+
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      isEditing
+                          ? 'Đã cập nhật nguồn trích xuất "$org" thành công!'
+                          : 'Đã thêm nguồn trích xuất "$org" thành công!',
+                    ),
+                    backgroundColor: const Color(0xFF16A34A),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+              ),
+              child: Text(isEditing ? 'Lưu thay đổi' : 'Thêm nguồn'),
             ),
           ],
         ),

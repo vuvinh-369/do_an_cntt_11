@@ -123,4 +123,85 @@ class AiFeedbackModel {
       'image_file': imageFileName,
     };
   }
+
+  /// Chuyển đổi Model sang Map JSON tương thích với bảng 'ai_feedbacks' trong Supabase (PostgreSQL)
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'analysis_id': analysisId,
+      'created_at': timestamp.toIso8601String(),
+      'user_display_name': userDisplayName,
+      'source_model': sourceModel.name,
+      'feedback_type': feedbackType.name,
+      'issue_category': issueCategory,
+      'user_comment': userComment,
+      'user_proposed_label': userProposedLabel,
+      'detected_wound_summary': detectedWoundSummary,
+      'wound_location': woundLocation,
+      'pain_level': painLevel,
+      'observed_symptoms': observedSymptoms,
+      'image_file_name': imageFileName,
+    };
+  }
+
+  /// Khởi tạo Model từ dữ liệu truy vấn Supabase (hỗ trợ cả snake_case và camelCase)
+  factory AiFeedbackModel.fromMap(Map<String, dynamic> map) {
+    final rawDate = map['created_at'] as String? ??
+        map['timestamp'] as String?;
+    final parsedDate = rawDate != null
+        ? (DateTime.tryParse(rawDate) ?? DateTime.now())
+        : DateTime.now();
+
+    final rawSource = map['source_model'] as String? ?? map['sourceModel'] as String?;
+    AiSourceModel resolvedSource = AiSourceModel.yoloVision;
+    if (rawSource != null) {
+      for (final sm in AiSourceModel.values) {
+        if (sm.name.toLowerCase() == rawSource.toLowerCase()) {
+          resolvedSource = sm;
+          break;
+        }
+      }
+    }
+
+    final rawType = map['feedback_type'] as String? ?? map['feedbackType'] as String?;
+    AiFeedbackType resolvedType = AiFeedbackType.helpful;
+    if (rawType != null && rawType.toLowerCase() == 'inaccurate') {
+      resolvedType = AiFeedbackType.inaccurate;
+    }
+
+    return AiFeedbackModel(
+      id: map['id']?.toString() ?? '',
+      analysisId: map['analysis_id'] as String? ?? map['analysisId'] as String?,
+      timestamp: parsedDate,
+      userDisplayName: map['user_display_name'] as String? ??
+          map['userDisplayName'] as String? ??
+          'Khách ẩn danh',
+      sourceModel: resolvedSource,
+      feedbackType: resolvedType,
+      issueCategory: map['issue_category'] as String? ??
+          map['issueCategory'] as String? ??
+          '',
+      userComment: map['user_comment'] as String? ??
+          map['userComment'] as String? ??
+          '',
+      userProposedLabel: map['user_proposed_label'] as String? ??
+          map['userProposedLabel'] as String?,
+      detectedWoundSummary: map['detected_wound_summary'] as String? ??
+          map['detectedWoundSummary'] as String? ??
+          '',
+      woundLocation: map['wound_location'] as String? ??
+          map['woundLocation'] as String?,
+      painLevel: map['pain_level'] as String? ??
+          map['painLevel'] as String?,
+      observedSymptoms: List<String>.from(
+        map['observed_symptoms'] as List? ??
+            map['observedSymptoms'] as List? ??
+            const [],
+      ),
+      imageFileName: map['image_file_name'] as String? ??
+          map['imageFileName'] as String? ??
+          map['image_url'] as String?,
+      imageBytes: null,
+    );
+  }
 }

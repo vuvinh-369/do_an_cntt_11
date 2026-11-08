@@ -13,7 +13,7 @@ class GeminiConfigModel {
     this.selectedModel = 'gemini-3.8-flash',
     this.systemInstruction = defaultWoundCareSystemInstruction,
     this.temperature = 0.4,
-    this.maxTokens = 1024,
+    this.maxTokens = 4096,
   });
 
   bool get hasValidApiKey => apiKey.trim().isNotEmpty && apiKey.trim().length > 15;
@@ -54,7 +54,7 @@ class GeminiConfigModel {
       selectedModel: json['selectedModel'] as String? ?? 'gemini-3.8-flash',
       systemInstruction: json['systemInstruction'] as String? ?? defaultWoundCareSystemInstruction,
       temperature: (json['temperature'] as num?)?.toDouble() ?? 0.4,
-      maxTokens: json['maxTokens'] as int? ?? 1024,
+      maxTokens: (json['maxTokens'] as int? ?? 4096) < 2048 ? 4096 : (json['maxTokens'] as int),
     );
   }
 }

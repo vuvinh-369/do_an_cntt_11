@@ -8,42 +8,100 @@ class RuleEngineService {
   factory RuleEngineService() => _instance;
   RuleEngineService._internal() {
     _initDefaultRules();
+    resetMedicalSourcesToDefault();
   }
 
-  // Danh sách các quy tắc lưu trong RAM (có thể thêm, sửa, bật/tắt từ Dashboard Admin)
+  // Danh sách các quy tắc lưu trên Supabase Cloud (có thể thêm, sửa, bật/tắt từ Dashboard Admin)
   final List<FirstAidRule> _rules = [];
 
   List<FirstAidRule> get allRules => List.unmodifiable(_rules);
   List<FirstAidRule> get activeRules =>
       _rules.where((r) => r.isEnabled).toList();
 
-  /// Danh sách nguồn tài liệu y tế chuẩn trích xuất cho hướng dẫn sơ cứu
+  /// Danh sách nguồn tài liệu y tế chuẩn trích xuất cho hướng dẫn sơ cứu (mặc định)
   static const List<MedicalSourceLink> standardMedicalSources = [
     MedicalSourceLink(
+      id: 'src_redcross',
       title: 'Tài liệu hướng dẫn sơ cấp cứu ban đầu',
       organization: 'Hội Chữ Thập Đỏ Việt Nam',
       url: 'https://redcross.org.vn/so-cap-cuu',
       publishYear: '2024',
+      targetTopicId: 'all',
+      isEnabled: true,
     ),
     MedicalSourceLink(
+      id: 'src_kcb',
       title: 'Hướng dẫn xử trí vết thương ngoài da và bỏng',
       organization: 'Cục Quản lý Khám chữa bệnh - Bộ Y Tế',
       url: 'https://kcb.vn/huong-dan-so-cuu',
       publishYear: '2023',
+      targetTopicId: 'all',
+      isEnabled: true,
     ),
     MedicalSourceLink(
+      id: 'src_who',
       title: 'First Aid Protocols and Wound Care Guidelines',
       organization: 'Tổ chức Y tế Thế giới (WHO)',
       url: 'https://www.who.int/emergencies/first-aid',
       publishYear: '2024',
+      targetTopicId: 'all',
+      isEnabled: true,
     ),
     MedicalSourceLink(
+      id: 'src_mayo',
       title: 'Cuts, scrapes and burns first aid care',
       organization: 'Mayo Clinic Health System',
       url: 'https://www.mayoclinic.org/first-aid',
       publishYear: '2025',
+      targetTopicId: 'all',
+      isEnabled: true,
     ),
   ];
+
+  // Danh sách các nguồn trích xuất y khoa động (Admin có thể tùy chỉnh)
+  final List<MedicalSourceLink> _medicalSources = [];
+  List<MedicalSourceLink> get medicalSources => List.unmodifiable(_medicalSources);
+
+  List<MedicalSourceLink> getSourceLinksForTopic(String? topicId) {
+    return _medicalSources.where((s) {
+      if (!s.isEnabled) return false;
+      if (topicId == null || topicId.isEmpty || topicId == 'all') return true;
+      return s.targetTopicId == 'all' || s.targetTopicId == topicId;
+    }).toList();
+  }
+
+  void addMedicalSource(MedicalSourceLink source) {
+    _medicalSources.add(source);
+  }
+
+  void updateMedicalSource(String id, MedicalSourceLink updated) {
+    final index = _medicalSources.indexWhere((s) => s.id == id);
+    if (index != -1) {
+      _medicalSources[index] = updated;
+    }
+  }
+
+  void deleteMedicalSource(String id) {
+    _medicalSources.removeWhere((s) => s.id == id);
+  }
+
+  void toggleMedicalSourceEnabled(String id) {
+    final index = _medicalSources.indexWhere((s) => s.id == id);
+    if (index != -1) {
+      final old = _medicalSources[index];
+      _medicalSources[index] = old.copyWith(isEnabled: !old.isEnabled);
+    }
+  }
+
+  void resetMedicalSourcesToDefault() {
+    _medicalSources.clear();
+    _medicalSources.addAll(standardMedicalSources);
+  }
+
+  void loadMedicalSources(List<MedicalSourceLink> items) {
+    _medicalSources.clear();
+    _medicalSources.addAll(items);
+  }
 
   /// Khởi tạo các luật sơ cứu nền tảng
   void _initDefaultRules() {
@@ -578,7 +636,7 @@ class RuleEngineService {
       emergencyHospitalAdvice: shouldCall115
           ? 'ĐƯA NẠN NHÂN ĐẾN CƠ SỞ Y TẾ HOẶC PHÒNG CẤP CỨU GẦN NHẤT NGAY!'
           : 'Đến cơ sở y tế nếu có bất kỳ dấu hiệu nhiễm trùng hoặc diễn biến bất thường.',
-      sourceLinks: standardMedicalSources,
+      sourceLinks: getSourceLinksForTopic(context.injuryTypeId),
       shouldCallEmergency115: shouldCall115,
     );
   }

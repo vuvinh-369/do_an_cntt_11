@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../features/user/models/chat_models.dart';
 import 'wound_prediction.dart';
+import 'yolo/offline_yolo_predictor.dart';
 
 class ChatApiException implements Exception {
   final String message;
@@ -137,6 +138,8 @@ class MedGemmaChatApi {
         'Hãy chọn ảnh có dung lượng từ 1 byte đến 10 MB.',
       );
     }
+
+    // 1. Nếu có server cục bộ đang chạy, gọi server để xử lý qua best.pt
     try {
       final value = await _request(
         'api/analyze-image',
@@ -145,15 +148,24 @@ class MedGemmaChatApi {
           'contrast': contrast,
           if (observations.isNotEmpty) 'observations': observations,
         },
+        requestTimeout: const Duration(seconds: 3),
       );
       return WoundImagePrediction.fromJson(value);
-    } on ChatApiException {
-      rethrow;
-    } catch (_) {
-      throw const ChatApiException(
-        'Kết quả nhận diện ảnh chưa hợp lệ. Hãy quét lại ảnh.',
-      );
+    } catch (_) {}
+
+    // 2. Chế độ OFFLINE trực tiếp: Chạy duy nhất từ mô hình đã train lib/AI_Model/best.pt
+    debugPrint('[MedGemmaChatApi] Nhận diện vết thương bằng mô hình offline duy nhất: lib/AI_Model/best.pt...');
+    final offlinePrediction = await OfflineYoloPredictor.predictOffline(
+      bytes,
+      contrast: contrast,
+    );
+    if (offlinePrediction != null) {
+      return offlinePrediction;
     }
+
+    throw const ChatApiException(
+      'Không thể nhận diện hình ảnh bằng mô hình best.pt. Vui lòng kiểm tra Python trên máy.',
+    );
   }
 
   Future<ChatMessageModel> ask(

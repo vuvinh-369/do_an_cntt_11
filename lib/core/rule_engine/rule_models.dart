@@ -119,17 +119,73 @@ extension PainLevelExt on PainLevel {
 
 /// Nguồn trích xuất y khoa có link tham chiếu chi tiết
 class MedicalSourceLink {
+  final String id;
   final String title;
   final String organization; // 'Hội Chữ Thập Đỏ Việt Nam', 'Bộ Y Tế', 'WHO', 'Mayo Clinic'
   final String url;
   final String publishYear;
+  final String targetTopicId; // 'all' hoặc 'abrasion', 'cut_laceration', 'burn', 'bruise', 'other_wounds'
+  final bool isEnabled;
 
   const MedicalSourceLink({
+    this.id = '',
     required this.title,
     required this.organization,
     required this.url,
     this.publishYear = '2025',
+    this.targetTopicId = 'all',
+    this.isEnabled = true,
   });
+
+  MedicalSourceLink copyWith({
+    String? id,
+    String? title,
+    String? organization,
+    String? url,
+    String? publishYear,
+    String? targetTopicId,
+    bool? isEnabled,
+  }) {
+    return MedicalSourceLink(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      organization: organization ?? this.organization,
+      url: url ?? this.url,
+      publishYear: publishYear ?? this.publishYear,
+      targetTopicId: targetTopicId ?? this.targetTopicId,
+      isEnabled: isEnabled ?? this.isEnabled,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'organization': organization,
+      'url': url,
+      'publish_year': publishYear,
+      'target_topic_id': targetTopicId,
+      'is_enabled': isEnabled,
+    };
+  }
+
+  factory MedicalSourceLink.fromMap(Map<String, dynamic> map) {
+    return MedicalSourceLink(
+      id: map['id']?.toString() ?? '',
+      title: map['title'] as String? ?? '',
+      organization: map['organization'] as String? ?? '',
+      url: map['url'] as String? ?? '',
+      publishYear: map['publish_year'] as String? ??
+          map['publishYear'] as String? ??
+          '2025',
+      targetTopicId: map['target_topic_id'] as String? ??
+          map['targetTopicId'] as String? ??
+          'all',
+      isEnabled: map['is_enabled'] as bool? ??
+          map['isEnabled'] as bool? ??
+          true,
+    );
+  }
 }
 
 /// Ngữ cảnh đánh giá tổn thương đưa vào Rule Engine

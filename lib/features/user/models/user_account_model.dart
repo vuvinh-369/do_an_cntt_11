@@ -28,6 +28,11 @@ class UserAccountModel {
   // 5. Ghi chú y tế bổ sung khác
   final String? otherNotes;
 
+  // 6. Trạng thái hoạt động & Quản trị tài khoản
+  final bool isLocked;
+  final String? lockReason;
+  final DateTime? lastActiveAt;
+
   const UserAccountModel({
     required this.username,
     required this.password,
@@ -42,6 +47,9 @@ class UserAccountModel {
     this.allergies = const [],
     this.medicalConditions = const [],
     this.otherNotes,
+    this.isLocked = false,
+    this.lockReason,
+    this.lastActiveAt,
   });
 
   /// Tên hiển thị ẩn danh (ưu tiên username bảo vệ danh tính)
@@ -213,6 +221,19 @@ class UserAccountModel {
     return lines.join('\n');
   }
 
+  Map<String, dynamic> toMedicalProfileMap() {
+    return {
+      'gender': gender,
+      'weight_kg': weightKg,
+      'height_cm': heightCm,
+      'blood_type': bloodType,
+      'rh_factor': rhFactor,
+      'allergies': allergies,
+      'medical_conditions': medicalConditions,
+      'other_notes': otherNotes,
+    };
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'username': username,
@@ -228,6 +249,9 @@ class UserAccountModel {
       'allergies': allergies,
       'medicalConditions': medicalConditions,
       'otherNotes': otherNotes,
+      'is_locked': isLocked,
+      'lock_reason': lockReason,
+      'last_active_at': lastActiveAt?.toIso8601String(),
     };
   }
 
@@ -238,16 +262,21 @@ class UserAccountModel {
       fullName: map['fullName'] as String? ?? '',
       createdAt: map['createdAt'] != null
           ? DateTime.tryParse(map['createdAt'] as String) ?? DateTime.now()
-          : DateTime.now(),
-      emailOrPhone: map['emailOrPhone'] as String?,
+          : (map['created_at'] != null ? DateTime.tryParse(map['created_at'] as String) ?? DateTime.now() : DateTime.now()),
+      emailOrPhone: map['emailOrPhone'] as String? ?? map['email_or_phone'] as String?,
       gender: map['gender'] as String?,
-      weightKg: (map['weightKg'] as num?)?.toDouble(),
-      heightCm: (map['heightCm'] as num?)?.toDouble(),
-      bloodType: map['bloodType'] as String?,
-      rhFactor: map['rhFactor'] as String?,
+      weightKg: (map['weightKg'] as num?)?.toDouble() ?? (map['weight_kg'] as num?)?.toDouble(),
+      heightCm: (map['heightCm'] as num?)?.toDouble() ?? (map['height_cm'] as num?)?.toDouble(),
+      bloodType: map['bloodType'] as String? ?? map['blood_type'] as String?,
+      rhFactor: map['rhFactor'] as String? ?? map['rh_factor'] as String?,
       allergies: List<String>.from(map['allergies'] as List? ?? []),
-      medicalConditions: List<String>.from(map['medicalConditions'] as List? ?? []),
-      otherNotes: map['otherNotes'] as String?,
+      medicalConditions: List<String>.from(map['medicalConditions'] as List? ?? map['medical_conditions'] as List? ?? []),
+      otherNotes: map['otherNotes'] as String? ?? map['other_notes'] as String?,
+      isLocked: map['is_locked'] as bool? ?? map['isLocked'] as bool? ?? false,
+      lockReason: map['lock_reason'] as String? ?? map['lockReason'] as String?,
+      lastActiveAt: map['last_active_at'] != null
+          ? DateTime.tryParse(map['last_active_at'] as String)
+          : (map['lastActiveAt'] != null ? DateTime.tryParse(map['lastActiveAt'] as String) : null),
     );
   }
 
@@ -265,6 +294,9 @@ class UserAccountModel {
     List<String>? allergies,
     List<String>? medicalConditions,
     String? otherNotes,
+    bool? isLocked,
+    String? lockReason,
+    DateTime? lastActiveAt,
   }) {
     return UserAccountModel(
       username: username ?? this.username,
@@ -280,6 +312,95 @@ class UserAccountModel {
       allergies: allergies ?? this.allergies,
       medicalConditions: medicalConditions ?? this.medicalConditions,
       otherNotes: otherNotes ?? this.otherNotes,
+      isLocked: isLocked ?? this.isLocked,
+      lockReason: lockReason ?? this.lockReason,
+      lastActiveAt: lastActiveAt ?? this.lastActiveAt,
+    );
+  }
+
+
+}
+
+/// Mô hình yêu cầu mở khóa tài khoản người dùng gửi lên Quản trị viên
+class UserUnlockAppealModel {
+  final String id;
+  final String username;
+  final String reason;
+  final DateTime createdAt;
+  final String status; // 'pending' (Chờ duyệt), 'approved' (Đã mở khóa), 'rejected' (Đã từ chối)
+  final String? adminNote;
+  final DateTime? resolvedAt;
+
+  const UserUnlockAppealModel({
+    required this.id,
+    required this.username,
+    required this.reason,
+    required this.createdAt,
+    this.status = 'pending',
+    this.adminNote,
+    this.resolvedAt,
+  });
+
+  bool get isPending => status == 'pending';
+  bool get isApproved => status == 'approved';
+  bool get isRejected => status == 'rejected';
+
+  String get statusLabel {
+    switch (status) {
+      case 'approved':
+        return 'Đã mở khóa';
+      case 'rejected':
+        return 'Đã từ chối';
+      default:
+        return 'Chờ duyệt';
+    }
+  }
+
+  UserUnlockAppealModel copyWith({
+    String? id,
+    String? username,
+    String? reason,
+    DateTime? createdAt,
+    String? status,
+    String? adminNote,
+    DateTime? resolvedAt,
+  }) {
+    return UserUnlockAppealModel(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      reason: reason ?? this.reason,
+      createdAt: createdAt ?? this.createdAt,
+      status: status ?? this.status,
+      adminNote: adminNote ?? this.adminNote,
+      resolvedAt: resolvedAt ?? this.resolvedAt,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'username': username,
+      'reason': reason,
+      'created_at': createdAt.toIso8601String(),
+      'status': status,
+      'admin_note': adminNote,
+      'resolved_at': resolvedAt?.toIso8601String(),
+    };
+  }
+
+  factory UserUnlockAppealModel.fromMap(Map<String, dynamic> map) {
+    return UserUnlockAppealModel(
+      id: map['id']?.toString() ?? '',
+      username: map['username'] as String? ?? '',
+      reason: map['reason'] as String? ?? '',
+      createdAt: map['created_at'] != null
+          ? DateTime.tryParse(map['created_at'] as String) ?? DateTime.now()
+          : (map['createdAt'] != null ? DateTime.tryParse(map['createdAt'] as String) ?? DateTime.now() : DateTime.now()),
+      status: map['status'] as String? ?? 'pending',
+      adminNote: map['admin_note'] as String? ?? map['adminNote'] as String?,
+      resolvedAt: map['resolved_at'] != null
+          ? DateTime.tryParse(map['resolved_at'] as String)
+          : (map['resolvedAt'] != null ? DateTime.tryParse(map['resolvedAt'] as String) : null),
     );
   }
 }

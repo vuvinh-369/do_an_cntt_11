@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'core/app_scroll_behavior.dart';
+import 'core/supabase/supabase_service.dart';
 import 'features/admin/viewmodels/admin_viewmodel.dart';
 import 'features/admin/views/admin_shell_view.dart';
 import 'features/user/viewmodels/user_viewmodel.dart';
@@ -10,6 +11,7 @@ import 'features/user/views/user_shell_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SupabaseService.instance.initialize();
   runApp(const MyApp());
 }
 
@@ -49,10 +51,13 @@ class MyApp extends StatelessWidget {
 
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => UserViewModel()),
         ChangeNotifierProvider(
-          create: (_) =>
-              AdminViewModel()..syncPortalWithUrl(isAdminUrl: startInAdminMode),
+          create: (_) => UserViewModel()..restoreSavedUserSession(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AdminViewModel()
+            ..syncPortalWithUrl(isAdminUrl: startInAdminMode)
+            ..loadSavedAdminCredentials(),
         ),
       ],
       child: MaterialApp(

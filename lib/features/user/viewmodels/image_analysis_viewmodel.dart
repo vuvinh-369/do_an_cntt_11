@@ -549,7 +549,7 @@ mixin PhanTichAnhViewModel
         _stagedImageName = null;
         notifyListeners();
 
-        // Ghi lại lịch sử phân tích trong RAM
+        // Ghi lại lịch sử phân tích trên Supabase Cloud
         onNewAnalysisRecorded(
           imageSourceName: fileName,
           injuryType: isDetected
@@ -608,7 +608,7 @@ mixin PhanTichAnhViewModel
     await startAnalysis(context, contrast: newContrast);
   }
 
-  /// Hiển thị hộp thoại hướng dẫn nếu người dùng chưa kết nối Python AI Server
+  /// Hiển thị hộp thoại hướng dẫn nếu không thể khởi chạy mô hình nhận diện AI
   void _showServerUnavailableDialog(
     BuildContext context,
     String fileName,
@@ -626,7 +626,7 @@ mixin PhanTichAnhViewModel
               size: 28,
             ),
             SizedBox(width: 10),
-            Text('Chưa kết nối AI Server'),
+            Text('Chưa thể quét hình ảnh'),
           ],
         ),
         content: Column(
@@ -634,44 +634,30 @@ mixin PhanTichAnhViewModel
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Ứng dụng đã nhận được ảnh thật của bạn, nhưng chưa thể kết nối tới server AI cục bộ tại:',
+              'Ứng dụng đã nhận được ảnh của bạn, nhưng chưa thể khởi chạy mô hình nhận diện offline (best.pt) hoặc kết nối server AI cục bộ.',
               style: TextStyle(fontSize: 14, height: 1.4),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
+                color: const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: const Text(
-                'Mở web từ địa chỉ của máy chạy server.',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2563EB),
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Trên máy chủ, mở terminal tại thư mục dự án và chạy:\n',
-              style: TextStyle(fontSize: 13, color: Color(0xFF475569)),
-            ),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                '.\\Run-Server.ps1 -Lan',
-                style: TextStyle(
-                  color: Color(0xFF38BDF8),
-                  fontFamily: 'monospace',
-                  fontSize: 13,
-                ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Kiểm tra môi trường:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    '1. File mô hình: lib/AI_Model/best.pt\n2. Python có thư viện: ultralytics, torch\n3. Hoặc mở server cục bộ nếu muốn tăng tốc.',
+                    style: TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
+                  ),
+                ],
               ),
             ),
           ],
@@ -685,14 +671,14 @@ mixin PhanTichAnhViewModel
             onPressed: () {
               Navigator.pop(ctx);
               final fallbackResult = AiAnalysisResultModel(
-                bannerTitle: 'Ảnh đã chọn (Chưa có kết nối AI)',
+                bannerTitle: 'Ảnh đã chọn (Chưa có kết quả quét)',
                 confidencePercent: 0,
-                injuryType: 'Chưa phân tích (Server offline)',
-                boundingBoxLabel: 'Chờ bật server',
+                injuryType: 'Chưa phân tích được',
+                boundingBoxLabel: 'Chưa phát hiện',
                 infoCardTitle: 'Thông tin tệp ảnh',
                 injuryTypeLabel: 'Trạng thái:',
                 confidenceRowLabel: 'Kết nối:',
-                bottomNoticeText: 'Vui lòng chạy Run-Server.ps1 trên máy chủ để phân tích ảnh.',
+                bottomNoticeText: 'Không thể nhận diện tổn thương từ ảnh. Bạn có thể tra cứu sơ cứu thủ công theo danh mục bên dưới.',
                 primaryActionLabel: 'Tra cứu sơ cứu',
                 rawImageBytes: imageBytes,
                 imageFileName: fileName,

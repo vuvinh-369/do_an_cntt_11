@@ -453,13 +453,28 @@ class _AdminShellViewState extends State<AdminShellView> {
       offset: const Offset(0, 44),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (value) {
-        if (value == 'user_app') {
+        if (value == 'profile') {
+          final idx = viewModel.adminSidebarItems.indexWhere((i) => i.id == 'admin_profile');
+          if (idx != -1) {
+            viewModel.selectAdminSidebarIndex(idx);
+          }
+        } else if (value == 'user_app') {
           viewModel.exitAdminPortalToUserApp();
         } else if (value == 'logout') {
           viewModel.logoutAdmin();
         }
       },
       itemBuilder: (context) => const [
+        PopupMenuItem<String>(
+          value: 'profile',
+          child: Row(
+            children: [
+              Icon(Icons.badge_outlined, size: 18, color: Color(0xFF2563EB)),
+              SizedBox(width: 10),
+              Text('Hồ sơ tài khoản'),
+            ],
+          ),
+        ),
         PopupMenuItem<String>(
           value: 'user_app',
           child: Row(
@@ -541,6 +556,10 @@ class _AdminShellViewState extends State<AdminShellView> {
         return const AdminRuleEngineView();
       case 'history_analytics':
         return const AdminHistoryAnalyticsView();
+      case 'user_management':
+        return const AdminUserManagementView();
+      case 'admin_profile':
+        return const AdminProfileView();
       case 'settings':
         return const AdminSettingsView();
       default:

@@ -1,3 +1,4 @@
+import '../supabase/supabase_service.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -21,16 +22,60 @@ class GeminiTestResult {
 
 /// Dịch vụ kết nối và xử lý gọi Google Gemini API
 class GeminiService {
-  GeminiService._internal();
+  GeminiService._internal() {
+    fetchConfigFromSupabase();
+  }
   static final GeminiService instance = GeminiService._internal();
 
   GeminiConfigModel _config = const GeminiConfigModel();
   GeminiConfigModel get config => _config;
 
-  /// Cập nhật cấu hình Gemini
-  void updateConfig(GeminiConfigModel newConfig) {
+  /// Nạp cấu hình Gemini từ bảng 'system_configurations' trên Supabase
+  Future<void> fetchConfigFromSupabase() async {
+    try {
+      final client = SupabaseService.instance.client;
+      if (client == null) return;
+      final data = await client
+          .from('system_configurations')
+          .select()
+          .eq('id', 'app_settings')
+          .maybeSingle();
+
+      if (data != null) {
+        _config = _config.copyWith(
+          apiKey: data['gemini_api_key'] as String? ?? _config.apiKey,
+          isEnabled: data['gemini_enabled'] as bool? ?? _config.isEnabled,
+          systemInstruction: data['gemini_system_prompt'] as String? ?? _config.systemInstruction,
+          maxTokens: (data['gemini_max_tokens'] as int? ?? 4096) < 2048
+              ? 4096
+              : (data['gemini_max_tokens'] as int),
+        );
+      }
+    } catch (e) {
+      debugPrint('[GeminiService] Nạp cấu hình Gemini từ Supabase: $e');
+    }
+  }
+
+  /// Cập nhật cấu hình Gemini và đồng bộ lên Supabase
+  Future<void> updateConfig(GeminiConfigModel newConfig) async {
     _config = newConfig;
     debugPrint('[GeminiService] Đã cập nhật cấu hình: Model=${newConfig.selectedModel}, Enabled=${newConfig.isEnabled}, HasKey=${newConfig.hasValidApiKey}');
+
+    try {
+      final client = SupabaseService.instance.client;
+      if (client != null) {
+        await client.from('system_configurations').upsert({
+          'id': 'app_settings',
+          'gemini_api_key': newConfig.apiKey,
+          'gemini_enabled': newConfig.isEnabled,
+          'gemini_system_prompt': newConfig.systemInstruction,
+          'gemini_max_tokens': newConfig.maxTokens,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (e) {
+      debugPrint('[GeminiService] Lỗi đồng bộ cấu hình Gemini lên Supabase: $e');
+    }
   }
 
   /// Kiểm tra tính hợp lệ và kết nối tới Google Gemini API
@@ -255,9 +300,12 @@ class GeminiService {
           'contents': contents,
           'generationConfig': {
             'temperature': _config.temperature,
-            'maxOutputTokens': _config.maxTokens,
+            'maxOutputTokens': _config.maxTokens < 2048 ? 4096 : _config.maxTokens,
             'topP': 0.95,
             'topK': 40,
+            'thinkingConfig': {
+              'thinkingBudget': 0,
+            },
           },
         };
 
@@ -278,7 +326,7 @@ class GeminiService {
               final parts = content['parts'] as List;
               final textBuffer = StringBuffer();
               for (final part in parts) {
-                if (part['text'] != null) {
+                if (part['text'] != null && part['thought'] != true) {
                   textBuffer.write(part['text']);
                 }
               }
@@ -417,7 +465,6 @@ class GeminiService {
         '• ✂️ **Vết cắt / rách:** Kỹ thuật ấn ép cầm máu, khâu thẩm mỹ.\n'
         '• 🔥 **Bỏng nhiệt / nước sôi:** Làm mát hạ nhiệt, chăm sóc bọng nước.\n'
         '• 🟣 **Bầm tím phần mềm:** Quy trình chườm lạnh 4 bước R.I.C.E.\n'
-        '• ⚠️ **Dị vật / Chảy máu nặng:** Cố định dị vật và chuyển viện cấp cứu.\n\n'
-        '*(Gợi ý: Quản trị viên có thể nhập Google Gemini API Key trong `/admin -> Cấu hình` để trợ lý phân tích và trò chuyện chi tiết bằng trí tuệ nhân tạo)*';
+        '• ⚠️ **Dị vật / Chảy máu nặng:** Cố định dị vật và chuyển viện cấp cứu.\n\n';
   }
 }

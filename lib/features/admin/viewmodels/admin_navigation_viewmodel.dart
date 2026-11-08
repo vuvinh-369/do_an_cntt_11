@@ -60,6 +60,16 @@ mixin DieuHuongQuanTriViewModel on ChangeNotifier {
       icon: Icons.analytics_outlined,
     ),
     AdminSidebarItemModel(
+      id: 'user_management',
+      title: 'Quản lý người dùng',
+      icon: Icons.people_alt_outlined,
+    ),
+    AdminSidebarItemModel(
+      id: 'admin_profile',
+      title: 'Hồ sơ tài khoản',
+      icon: Icons.badge_outlined,
+    ),
+    AdminSidebarItemModel(
       id: 'settings',
       title: 'Cấu hình',
       icon: Icons.settings_outlined,
