@@ -65,7 +65,8 @@ def read_image(payload):
         return image
     except ImageAnalysisError:
         raise
-    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+    # Ultralytics can try an optional HEIF plugin for unrecognized input.
+    except (UnidentifiedImageError, OSError, ValueError, ImportError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
         raise ImageAnalysisError('Không đọc được ảnh. Hãy chọn lại ảnh JPG, PNG hoặc WEBP còn nguyên vẹn.', 415) from exc
 
 

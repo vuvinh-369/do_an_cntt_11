@@ -588,14 +588,21 @@ mixin PhanTichAnhViewModel
         // Chuyển sang màn hình Kết quả phân tích
         navigateToAnalysisResult(imageSourceName: fileName);
       }
-    } catch (networkError) {
+    } catch (error) {
       progressTimer.cancel();
       if (_imageDisposed) return;
       _isAnalyzing = false;
       notifyListeners();
 
       if (context.mounted) {
-        _showServerUnavailableDialog(context, fileName, imageBytes);
+        _showAnalysisErrorDialog(
+          context,
+          fileName,
+          imageBytes,
+          error is ChatApiException
+              ? error.message
+              : 'Có lỗi khi xử lý kết quả phân tích. Hãy thử lại.',
+        );
       }
     }
   }
@@ -608,11 +615,11 @@ mixin PhanTichAnhViewModel
     await startAnalysis(context, contrast: newContrast);
   }
 
-  /// Hiển thị hộp thoại hướng dẫn nếu không thể khởi chạy mô hình nhận diện AI
-  void _showServerUnavailableDialog(
+  void _showAnalysisErrorDialog(
     BuildContext context,
     String fileName,
     Uint8List imageBytes,
+    String message,
   ) {
     showDialog(
       context: context,
@@ -629,38 +636,9 @@ mixin PhanTichAnhViewModel
             Text('Chưa thể quét hình ảnh'),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Ứng dụng đã nhận được ảnh của bạn, nhưng chưa thể khởi chạy mô hình nhận diện offline (best.pt) hoặc kết nối server AI cục bộ.',
-              style: TextStyle(fontSize: 14, height: 1.4),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Kiểm tra môi trường:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    '1. File mô hình: lib/AI_Model/best.pt\n2. Python có thư viện: ultralytics, torch\n3. Hoặc mở server cục bộ nếu muốn tăng tốc.',
-                    style: TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
-                  ),
-                ],
-              ),
-            ),
-          ],
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 14, height: 1.4),
         ),
         actions: [
           TextButton(

@@ -139,7 +139,6 @@ class MedGemmaChatApi {
       );
     }
 
-    // 1. Nếu có server cục bộ đang chạy, gọi server để xử lý qua best.pt
     try {
       final value = await _request(
         'api/analyze-image',
@@ -148,12 +147,21 @@ class MedGemmaChatApi {
           'contrast': contrast,
           if (observations.isNotEmpty) 'observations': observations,
         },
-        requestTimeout: const Duration(seconds: 3),
+        // Web needs to wait for the server to load YOLO on the first scan.
+        requestTimeout: const Duration(seconds: kIsWeb ? 60 : 3),
       );
       return WoundImagePrediction.fromJson(value);
-    } catch (_) {}
+    } on ChatApiException {
+      if (kIsWeb) rethrow;
+    } catch (_) {
+      if (kIsWeb) {
+        throw const ChatApiException(
+          'Server trả về kết quả nhận diện chưa hợp lệ. Hãy thử lại.',
+        );
+      }
+    }
 
-    // 2. Chế độ OFFLINE trực tiếp: Chạy duy nhất từ mô hình đã train lib/AI_Model/best.pt
+    // Desktop can run the local predictor when the server request fails.
     debugPrint('[MedGemmaChatApi] Nhận diện vết thương bằng mô hình offline duy nhất: lib/AI_Model/best.pt...');
     final offlinePrediction = await OfflineYoloPredictor.predictOffline(
       bytes,
