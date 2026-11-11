@@ -24,6 +24,7 @@ from json_constraints import constrain_json, interpretation_options
 from reference_relevance import eligible_references
 from answer_generation import clean_answer, complete_answer, retry_token_ids
 from conversation_shortcuts import social_reply
+from nearby_places import NearbyPlacesError, search_nearby
 from wound_images import WoundImageService, ImageAnalysisError, image_context, image_reference_queries
 
 ROOT = Path(__file__).resolve().parent
@@ -480,7 +481,8 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
             pass
         def public_path(self):
             path = urlsplit(self.path).path
-            return path in {'/api/chat', '/api/status', '/api/warmup', '/api/knowledge', '/api/analyze-image'} or bool(
+            return path in {'/api/chat', '/api/status', '/api/warmup', '/api/knowledge',
+                            '/api/analyze-image', '/api/nearby-places'} or bool(
                 re.fullmatch(r'/api/(knowledge/[0-9]+|source/[^/]+)', path))
 
         def allowed_origin(self, origin):
@@ -511,7 +513,7 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
             origin = self.headers.get('Origin')
             method = self.headers.get('Access-Control-Request-Method', '').upper()
             path = urlsplit(self.path).path
-            expected = 'POST' if path in {'/api/chat', '/api/warmup', '/api/analyze-image'} else 'GET'
+            expected = 'POST' if path in {'/api/chat', '/api/warmup', '/api/analyze-image', '/api/nearby-places'} else 'GET'
             requested = {x.strip().lower() for x in self.headers.get('Access-Control-Request-Headers', '').split(',') if x.strip()}
             if (not self.trusted_host() or not origin or not self.public_path()
                     or not self.allowed_origin(origin) or method != expected
@@ -629,6 +631,8 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
                     self.send_json(service.chat(payload))
                 elif path == '/api/analyze-image':
                     self.send_json(service.images.analyze(payload))
+                elif path == '/api/nearby-places':
+                    self.send_json(search_nearby(payload))
                 elif path == "/api/warmup":
                     self.send_json({"accepted": service.runner.warmup()})
                 elif re.fullmatch(r'/api/admin/entries/\d+/(save|action)',path):
@@ -643,7 +647,7 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
                     self.send_json({"error": "Không tìm thấy."}, 404)
             except (ValueError, UnicodeError):
                 self.send_json({"error": "JSON không hợp lệ."}, 400)
-            except (RequestError,StoreError,ImageAnalysisError) as exc:
+            except (RequestError,StoreError,ImageAnalysisError,NearbyPlacesError) as exc:
                 self.send_json({"error": str(exc)}, exc.status)
             except Exception:
                 self.send_json({"error": "Không xử lý được yêu cầu. Kiểm tra kho hướng dẫn hoặc khởi động lại máy chủ."}, 500)

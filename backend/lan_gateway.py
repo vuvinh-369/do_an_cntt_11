@@ -24,11 +24,23 @@ def local_ipv4_addresses():
 class GatewayServer(ThreadingHTTPServer):
     allow_reuse_address = os.name != 'nt'
     daemon_threads = True
+    tls_context = None
 
     def server_bind(self):
         if os.name == 'nt':
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
         super().server_bind()
+
+    def get_request(self):
+        connection, address = super().get_request()
+        if self.tls_context is not None:
+            try:
+                connection = self.tls_context.wrap_socket(
+                    connection, server_side=True, do_handshake_on_connect=False)
+            except OSError:
+                connection.close()
+                raise
+        return connection, address
 
 
 def make_gateway(web_root, api_port, allowed_hosts):
@@ -64,15 +76,17 @@ def make_gateway(web_root, api_port, allowed_hosts):
         def check_request(self):
             try:
                 address = ipaddress.ip_address(self.client_address[0])
-                authority = urlsplit('http://' + self.headers.get('Host', ''))
+                scheme = 'https' if self.server.tls_context is not None else 'http'
+                authority = urlsplit(scheme + '://' + self.headers.get('Host', ''))
+                default_port = 443 if scheme == 'https' else 80
                 valid = (address.is_private and authority.hostname in hosts
-                         and (authority.port or 80) == self.server.server_port
+                         and (authority.port or default_port) == self.server.server_port
                          and not authority.username and not authority.password
                          and not authority.path and not authority.query and not authority.fragment
                          and len(self.headers.get_all('Host', [])) == 1)
                 origin = self.headers.get('Origin')
                 if origin:
-                    valid = valid and origin == 'http://' + self.headers['Host']
+                    valid = valid and origin == scheme + '://' + self.headers['Host']
                 valid = valid and self.headers.get('Sec-Fetch-Site') != 'cross-site'
                 parsed = urlsplit(self.path)
                 valid = valid and not parsed.scheme and not parsed.netloc and self.path.startswith('/')
@@ -83,7 +97,7 @@ def make_gateway(web_root, api_port, allowed_hosts):
             return valid
 
         def api_method(self, path):
-            if path in {'/api/chat', '/api/warmup', '/api/analyze-image'}:
+            if path in {'/api/chat', '/api/warmup', '/api/analyze-image', '/api/nearby-places'}:
                 return 'POST'
             if path in {'/api/status', '/api/knowledge'} or re.fullmatch(
                     r'/api/(knowledge/[0-9]+|source/[A-Za-z0-9_.-]+)', path):

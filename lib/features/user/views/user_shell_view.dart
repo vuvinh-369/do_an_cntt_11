@@ -12,6 +12,7 @@ import 'history_view.dart';
 import 'image_analysis_view.dart';
 import 'knowledge_view.dart';
 import 'home_view.dart';
+import 'widgets/emergency_actions.dart';
 import 'widgets/user_painters.dart';
 import 'widgets/user_auth_modal_dialog.dart';
 import 'widgets/user_profile_modal_dialog.dart';
@@ -88,10 +89,27 @@ class UserShellView extends StatelessWidget {
     return Scaffold(
       backgroundColor: isHome ? const Color(0xFFF6F9FC) : Colors.white,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(58),
-        child: isHome
-            ? _buildMobileHomeHeader(context, viewModel)
-            : _buildMobileInnerAppBar(context, viewModel),
+        preferredSize: const Size.fromHeight(112),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: isHome
+                  ? _buildMobileHomeHeader(context, viewModel)
+                  : _buildMobileInnerAppBar(context, viewModel),
+            ),
+            Container(
+              height: 54,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(bottom: BorderSide(color: Color(0xFFE8EEF5))),
+              ),
+              child: const EmergencyActions(),
+            ),
+          ],
+        ),
       ),
       body: isChatScreen
           ? const ChatBoxAiView()
@@ -682,6 +700,8 @@ class UserShellView extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  const EmergencyActions(),
+                  const SizedBox(width: 8),
                   if (isHomeScreen) ...[
                     IconButton(
                       onPressed: () =>

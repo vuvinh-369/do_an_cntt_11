@@ -33,6 +33,18 @@ Nếu điện thoại timeout sau khi script báo `Allowed LocalSubnet`, kiểm 
 
 Chat và tải ảnh từ tệp dùng được qua HTTP LAN. Camera/clipboard có thể yêu cầu HTTPS được thiết bị tin cậy; xem [giới hạn secure context của trình duyệt](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia). Với demo HTTP, dùng **Chọn ảnh từ máy**.
 
+### Định vị và tra cứu cơ sở y tế
+
+Web qua HTTP LAN nhận địa chỉ hoặc tọa độ nhập tay. Để điện thoại tự định vị, mở web bằng HTTPS với chứng chỉ PEM khớp địa chỉ truy cập và được điện thoại tin cậy. Dùng tệp chứng chỉ và khóa riêng của máy chủ khi chạy:
+
+```powershell
+.\Run-Server.ps1 -Lan -TlsCert "D:\certs\lan-cert.pem" -TlsKey "D:\certs\lan-key.pem"
+```
+
+Mở đường dẫn `https://...` in trong terminal bằng trình duyệt điện thoại và cấp quyền vị trí khi được hỏi. Chứng chỉ và khóa riêng để ngoài thư mục web và Git.
+
+Danh sách bệnh viện, trung tâm y tế và nhà thuốc lấy dữ liệu OpenStreetMap qua Overpass và Photon. Hai nguồn được tra song song và kết quả phù hợp được sắp xếp theo khoảng cách đường chim bay. Nút **Chỉ đường trên Google Maps** mở tuyến đường từ vị trí dùng để tra cứu đến cơ sở đã chọn. Nếu danh sách trống, nút **Tra thêm trên Google Maps** mở trang tìm kiếm bản đồ.
+
 ## Model và dữ liệu
 
 - Máy hiện tại đặt MedGemma ở `D:\DATA\.CODEX\DoAnVinhPhatNam\medgemma-1.5-4b-it` và trỏ `MEDGEMMA_MODEL_PATH` đến đó trong `backend/.env.local`. Thành viên dùng máy khác tự tải model bằng tài khoản Hugging Face của mình và đặt đường dẫn theo [hướng dẫn backend](backend/README.md).
