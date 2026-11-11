@@ -8,7 +8,14 @@ param(
     [string]$TlsKey
 )
 $ErrorActionPreference = 'Stop'
-if (-not (Test-Path -LiteralPath $Python)) { throw 'Chon Python co thu vien AI bang -Python.' }
+if (-not (Test-Path -LiteralPath $Python)) {
+    $venvPython = Join-Path $PSScriptRoot '.venv\Scripts\python.exe'
+    if (Test-Path -LiteralPath $venvPython) {
+        $Python = $venvPython
+    } else {
+        throw 'Chon Python co thu vien AI bang -Python.'
+    }
+}
 $serverArguments = @('-X','utf8','-B',(Join-Path $PSScriptRoot 'backend\run_local_server.py'),'--port',"$Port")
 if ($Lan) { $serverArguments += '--lan' }
 if ($NoPreload) { $serverArguments += '--no-preload' }

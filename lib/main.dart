@@ -1,8 +1,10 @@
 // File: lib/main.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'core/app_scroll_behavior.dart';
+import 'core/serper/serper_config_service.dart';
 import 'core/supabase/supabase_service.dart';
 import 'features/admin/viewmodels/admin_viewmodel.dart';
 import 'features/admin/views/admin_shell_view.dart';
@@ -12,6 +14,7 @@ import 'features/user/views/user_shell_view.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseService.instance.initialize();
+  unawaited(SerperConfigService.instance.fetchConfigFromSupabase());
   runApp(const MyApp());
 }
 

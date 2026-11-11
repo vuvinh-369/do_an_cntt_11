@@ -24,7 +24,7 @@ from json_constraints import constrain_json, interpretation_options
 from reference_relevance import eligible_references
 from answer_generation import clean_answer, complete_answer, retry_token_ids
 from conversation_shortcuts import social_reply
-from nearby_places import NearbyPlacesError, search_nearby
+from nearby_places import NearbyPlacesError, refresh_serper_config, search_nearby, test_serper_api_key
 from wound_images import WoundImageService, ImageAnalysisError, image_context, image_reference_queries
 
 ROOT = Path(__file__).resolve().parent
@@ -482,7 +482,8 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
         def public_path(self):
             path = urlsplit(self.path).path
             return path in {'/api/chat', '/api/status', '/api/warmup', '/api/knowledge',
-                            '/api/analyze-image', '/api/nearby-places'} or bool(
+                            '/api/analyze-image', '/api/nearby-places',
+                            '/api/serper-refresh', '/api/serper-test'} or bool(
                 re.fullmatch(r'/api/(knowledge/[0-9]+|source/[^/]+)', path))
 
         def allowed_origin(self, origin):
@@ -513,7 +514,7 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
             origin = self.headers.get('Origin')
             method = self.headers.get('Access-Control-Request-Method', '').upper()
             path = urlsplit(self.path).path
-            expected = 'POST' if path in {'/api/chat', '/api/warmup', '/api/analyze-image', '/api/nearby-places'} else 'GET'
+            expected = 'POST' if path in {'/api/chat', '/api/warmup', '/api/analyze-image', '/api/nearby-places', '/api/serper-refresh', '/api/serper-test'} else 'GET'
             requested = {x.strip().lower() for x in self.headers.get('Access-Control-Request-Headers', '').split(',') if x.strip()}
             if (not self.trusted_host() or not origin or not self.public_path()
                     or not self.allowed_origin(origin) or method != expected
@@ -633,6 +634,10 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
                     self.send_json(service.images.analyze(payload))
                 elif path == '/api/nearby-places':
                     self.send_json(search_nearby(payload))
+                elif path == '/api/serper-refresh':
+                    self.send_json(refresh_serper_config())
+                elif path == '/api/serper-test':
+                    self.send_json(test_serper_api_key(payload.get('api_key', '')))
                 elif path == "/api/warmup":
                     self.send_json({"accepted": service.runner.warmup()})
                 elif re.fullmatch(r'/api/admin/entries/\d+/(save|action)',path):
@@ -655,6 +660,16 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
 
 
 if __name__ == "__main__":
+    try:
+        sys.path.insert(0, str(ROOT.parent))
+    except NameError:
+        import sys
+        sys.path.insert(0, str(ROOT.parent))
+    try:
+        from local_config import load_config
+        load_config()
+    except ImportError:
+        pass
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--cli", action="store_true", help="Use the optimized chat in PowerShell")

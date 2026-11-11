@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/email/email_config_service.dart';
 import '../../../core/gemini/gemini_config_model.dart';
 import '../../../core/gemini/gemini_service.dart';
+import '../../../core/serper/serper_config_service.dart';
 import '../../../core/config/supabase_config.dart';
 import '../../../core/supabase/supabase_service.dart';
 import '../../../core/url_launcher_helper.dart';
@@ -30,6 +31,14 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
   bool _obscureApiKey = true;
 
   bool _isTestingGemini = false;
+  late TextEditingController _serperKeyController;
+  bool _obscureSerperKey = true;
+  bool _serperKeyEdited = false;
+  bool _isTestingSerper = false;
+  bool _isSavingSerper = false;
+  bool _isRefreshingSerper = false;
+  SerperTestResult? _serperTestResult;
+  SerperSaveResult? _serperSaveResult;
   bool _isPingingSupabase = false;
   String? _supabasePingMessage;
   bool? _supabasePingSuccess;
@@ -85,6 +94,11 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
     _otpExpiryController = TextEditingController(text: emailCfg.otpExpiryMinutes.toString());
     _emailSubjectController = TextEditingController(text: emailCfg.emailSubject);
     _emailEnabled = emailCfg.isEnabled;
+
+    _serperKeyController = TextEditingController(
+      text: SerperConfigService.instance.apiKey,
+    );
+    _syncSerperFromSupabase(silent: true);
   }
 
   @override
@@ -92,6 +106,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
     _apiKeyController.dispose();
     _promptController.dispose();
     _maxTokensController.dispose();
+    _serperKeyController.dispose();
     _smtpHostController.dispose();
     _smtpPortController.dispose();
     _senderEmailController.dispose();
@@ -102,11 +117,15 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
     super.dispose();
   }
 
-  Future<void> _pasteApiKeyFromClipboard() async {
+  Future<void> _pasteKeyFromClipboard(
+    TextEditingController controller, {
+    VoidCallback? onPasted,
+  }) async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data?.text != null && data!.text!.trim().isNotEmpty) {
       setState(() {
-        _apiKeyController.text = data.text!.trim();
+        controller.text = data.text!.trim();
+        onPasted?.call();
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -128,6 +147,142 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
         );
       }
     }
+  }
+
+  Future<void> _syncSerperFromSupabase({bool silent = false}) async {
+    if (!silent && mounted) {
+      setState(() {
+        _isRefreshingSerper = true;
+      });
+    }
+    final ok = await SerperConfigService.instance.fetchConfigFromSupabase();
+    if (!mounted) return;
+    setState(() {
+      _isRefreshingSerper = false;
+      if (!_serperKeyEdited || !silent) {
+        _serperKeyController.text = SerperConfigService.instance.apiKey;
+        _serperKeyEdited = false;
+      }
+    });
+    if (!silent) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ok
+                ? 'Đã tải Serper API Key mới nhất từ Supabase!'
+                : 'Không thể đọc cấu hình từ Supabase (đang dùng key hiện tại).',
+          ),
+          backgroundColor: ok ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _copySerperKey() async {
+    final cleanKey = _serperKeyController.text.trim();
+    if (cleanKey.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: cleanKey));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Đã sao chép Serper API Key vào Clipboard.'),
+        backgroundColor: Color(0xFF10B981),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _testSerperConnection(AdminViewModel viewModel) async {
+    final cleanKey = _serperKeyController.text.trim();
+    if (cleanKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng nhập Serper API Key trước khi kiểm tra!'),
+          backgroundColor: Color(0xFFEF4444),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isTestingSerper = true;
+      _serperTestResult = null;
+    });
+
+    final result = await viewModel.testSerperConnection(cleanKey);
+    if (!mounted) return;
+    setState(() {
+      _isTestingSerper = false;
+      _serperTestResult = result;
+    });
+  }
+
+  Future<void> _saveSerperConfiguration(AdminViewModel viewModel) async {
+    final cleanKey = _serperKeyController.text.trim();
+    if (cleanKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Serper API Key không được để trống. Hãy dán key mới hoặc nhấn Khôi phục key mặc định.',
+          ),
+          backgroundColor: Color(0xFFEF4444),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSavingSerper = true;
+      _serperSaveResult = null;
+    });
+
+    final result = await viewModel.updateSerperApiKey(cleanKey);
+    if (!mounted) return;
+    setState(() {
+      _isSavingSerper = false;
+      _serperKeyEdited = false;
+      _serperSaveResult = result;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: result.syncedToSupabase
+            ? const Color(0xFF10B981)
+            : const Color(0xFFF59E0B),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  Future<void> _resetSerperKey(AdminViewModel viewModel) async {
+    setState(() {
+      _isSavingSerper = true;
+      _serperTestResult = null;
+      _serperSaveResult = null;
+    });
+
+    final result = await viewModel.resetSerperApiKeyToDefault();
+    if (!mounted) return;
+    setState(() {
+      _isSavingSerper = false;
+      _serperKeyEdited = false;
+      _serperKeyController.text = SerperConfigService.instance.apiKey;
+      _serperSaveResult = result;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: result.syncedToSupabase
+            ? const Color(0xFF10B981)
+            : const Color(0xFFF59E0B),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   void _resetSystemPromptToStandard() {
@@ -357,7 +512,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Quản lý các thiết lập vận hành của Google Gemini API cho ChatBox sơ cứu và dịch vụ Email khôi phục mật khẩu',
+            'Quản lý các thiết lập vận hành của Google Gemini API, Google Maps (Serper.dev) và dịch vụ Email khôi phục mật khẩu',
             style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 20),
@@ -720,7 +875,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                     ),
                     const SizedBox(width: 10),
                     ElevatedButton.icon(
-                      onPressed: _pasteApiKeyFromClipboard,
+                      onPressed: () => _pasteKeyFromClipboard(_apiKeyController),
                       icon: const Icon(Icons.paste_rounded, size: 17),
                       label: const Text('Dán từ Clipboard'),
                       style: ElevatedButton.styleFrom(
@@ -930,7 +1085,13 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
           const SizedBox(height: 24),
 
           // ===================================================================
-          // CARD 2: CẤU HÌNH DỊCH VỤ GỬI EMAIL KHÔI PHỤC MẬT KHẨU (SMTP / OTP)
+          // CARD 2: CẤU HÌNH GOOGLE MAPS (SERPER.DEV API)
+          // ===================================================================
+          _buildSerperSettingsCard(viewModel),
+          const SizedBox(height: 24),
+
+          // ===================================================================
+          // CARD 3: CẤU HÌNH DỊCH VỤ GỬI EMAIL KHÔI PHỤC MẬT KHẨU (SMTP / OTP)
           // ===================================================================
           Container(
             padding: const EdgeInsets.all(22),
@@ -965,17 +1126,19 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 8,
+                            runSpacing: 6,
                             children: [
                               const Text(
-                                '2. Cấu hình Gửi Email Khôi phục Mật khẩu (SMTP & OTP)',
+                                '3. Cấu hình Gửi Email Khôi phục Mật khẩu (SMTP & OTP)',
                                 style: TextStyle(
                                   fontSize: 16.5,
                                   fontWeight: FontWeight.w800,
                                   color: Color(0xFF0D2B6B),
                                 ),
                               ),
-                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
@@ -1457,7 +1620,397 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
     );
   }
 
+  Widget _buildSerperSettingsCard(AdminViewModel viewModel) {
+    final isUsingDefault = _serperKeyController.text.trim() == kDefaultSerperApiKey;
+    final hasKey = _serperKeyController.text.trim().isNotEmpty;
 
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFBFDBFE)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x082563EB),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFDBEAFE)),
+                ),
+                child: const Icon(Icons.map_rounded, color: Color(0xFF2563EB), size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        const Text(
+                          '2. Cấu hình Google Maps (Serper.dev API)',
+                          style: TextStyle(
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0D2B6B),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: !hasKey
+                                ? const Color(0xFFFEE2E2)
+                                : (isUsingDefault
+                                      ? const Color(0xFFF1F5F9)
+                                      : const Color(0xFFDCFCE7)),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: !hasKey
+                                  ? const Color(0xFFFCA5A5)
+                                  : (isUsingDefault
+                                        ? const Color(0xFFCBD5E1)
+                                        : const Color(0xFF86EFAC)),
+                            ),
+                          ),
+                          child: Text(
+                            !hasKey
+                                ? 'Chưa có key'
+                                : (isUsingDefault
+                                      ? 'Key mặc định'
+                                      : 'Key tùy chỉnh (Supabase)'),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: !hasKey
+                                  ? const Color(0xFFB91C1C)
+                                  : (isUsingDefault
+                                        ? const Color(0xFF475569)
+                                        : const Color(0xFF15803D)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Quản lý khóa API Serper.dev dùng cho tính năng tìm Bệnh viện & Nhà thuốc gần nhất (Đồng bộ Supabase Cloud).',
+                      style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 28),
+
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F9FF),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFBAE6FD)),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline_rounded, color: Color(0xFF0284C7), size: 18),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Đồng bộ Supabase: Lưu trên cột "serper_api_key" của bảng "system_configurations". Khi key gần hết 2.500 credit miễn phí, bạn chỉ cần dán key mới rồi bấm "Lưu & Áp dụng ngay" — cả Chrome Web lẫn Windows App sẽ tự cập nhật mà không cần sửa code.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF075985), fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 10,
+            runSpacing: 6,
+            children: [
+              const Text(
+                'Khóa API Key của Serper.dev:',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+              ),
+              InkWell(
+                onTap: () => UrlLauncherHelper.launchWebUrl(
+                  context,
+                  'https://serper.dev/api-key',
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Lấy API Key miễn phí tại Serper.dev',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: Color(0xFF2563EB),
+                        fontWeight: FontWeight.w700,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                    SizedBox(width: 3),
+                    Icon(Icons.open_in_new_rounded, size: 14, color: Color(0xFF2563EB)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _serperKeyController,
+                  obscureText: _obscureSerperKey,
+                  onChanged: (_) {
+                    if (!_serperKeyEdited) {
+                      setState(() => _serperKeyEdited = true);
+                    } else {
+                      setState(() {});
+                    }
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Dán Serper API Key mới (ví dụ: 49caf79f...)',
+                    hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                    prefixIcon: const Icon(Icons.vpn_key_rounded, color: Color(0xFF64748B), size: 20),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.copy_rounded, color: Color(0xFF64748B), size: 18),
+                          onPressed: _copySerperKey,
+                          tooltip: 'Sao chép key',
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            _obscureSerperKey ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                            color: const Color(0xFF64748B),
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureSerperKey = !_obscureSerperKey;
+                            });
+                          },
+                          tooltip: _obscureSerperKey ? 'Hiện khóa API' : 'Ẩn khóa API',
+                        ),
+                      ],
+                    ),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton.icon(
+                onPressed: () => _pasteKeyFromClipboard(
+                  _serperKeyController,
+                  onPasted: () {
+                    _serperKeyEdited = true;
+                    _serperTestResult = null;
+                  },
+                ),
+                icon: const Icon(Icons.paste_rounded, size: 17),
+                label: const Text('Dán nhanh'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  foregroundColor: const Color(0xFF1E293B),
+                  elevation: 0,
+                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+
+          if (_serperTestResult != null) ...[
+            const SizedBox(height: 14),
+            _buildStatusAlertBox(
+              isSuccess: _serperTestResult!.isSuccess,
+              title: _serperTestResult!.isSuccess
+                  ? 'Kiểm tra Serper thành công!'
+                  : 'Kiểm tra Serper thất bại:',
+              message: _serperTestResult!.message,
+            ),
+          ],
+
+          if (_serperSaveResult != null) ...[
+            const SizedBox(height: 12),
+            _buildStatusAlertBox(
+              isSuccess: _serperSaveResult!.syncedToSupabase,
+              isWarning: _serperSaveResult!.isSuccess && !_serperSaveResult!.syncedToSupabase,
+              title: _serperSaveResult!.syncedToSupabase
+                  ? 'Đã đồng bộ lên Supabase:'
+                  : 'Chưa lưu lên Supabase:',
+              message: _serperSaveResult!.message,
+            ),
+          ],
+
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 12,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _isTestingSerper ? null : () => _testSerperConnection(viewModel),
+                icon: _isTestingSerper
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF2563EB)),
+                      )
+                    : const Icon(Icons.network_check_rounded, size: 18),
+                label: Text(_isTestingSerper ? 'Đang kiểm tra...' : 'Kiểm tra kết nối Serper'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF2563EB),
+                  side: const BorderSide(color: Color(0xFF2563EB)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: _isSavingSerper ? null : () => _saveSerperConfiguration(viewModel),
+                icon: _isSavingSerper
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.save_rounded, size: 18),
+                label: Text(_isSavingSerper ? 'Đang lưu...' : 'Lưu & Áp dụng ngay'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  elevation: 0,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _isRefreshingSerper ? null : () => _syncSerperFromSupabase(),
+                icon: const Icon(Icons.cloud_download_outlined, size: 17),
+                label: Text(_isRefreshingSerper ? 'Đang tải...' : 'Tải từ Supabase'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF0F766E),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _isSavingSerper ? null : () => _resetSerperKey(viewModel),
+                icon: const Icon(Icons.restart_alt_rounded, size: 17),
+                label: const Text('Khôi phục key mặc định'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF64748B),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusAlertBox({
+    required bool isSuccess,
+    bool isWarning = false,
+    required String title,
+    required String message,
+  }) {
+    final bgColor = isWarning
+        ? const Color(0xFFFFFBEB)
+        : (isSuccess ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2));
+    final borderColor = isWarning
+        ? const Color(0xFFFDE68A)
+        : (isSuccess ? const Color(0xFFA7F3D0) : const Color(0xFFFECACA));
+    final iconColor = isWarning
+        ? const Color(0xFFD97706)
+        : (isSuccess ? const Color(0xFF059669) : const Color(0xFFDC2626));
+    final titleColor = isWarning
+        ? const Color(0xFF92400E)
+        : (isSuccess ? const Color(0xFF065F46) : const Color(0xFF991B1B));
+    final textColor = isWarning
+        ? const Color(0xFFB45309)
+        : (isSuccess ? const Color(0xFF047857) : const Color(0xFFB91C1C));
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isWarning
+                ? Icons.warning_amber_rounded
+                : (isSuccess ? Icons.check_circle_rounded : Icons.error_rounded),
+            color: iconColor,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: titleColor,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  message,
+                  style: TextStyle(fontSize: 12.5, color: textColor),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 
