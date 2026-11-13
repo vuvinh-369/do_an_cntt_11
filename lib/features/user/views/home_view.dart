@@ -374,6 +374,13 @@ class _TrangChuViewState extends State<TrangChuView> {
         'onTap': () => viewModel.navigateToChatBoxAi(),
       },
       {
+        'title': 'Tư vấn\nBác sĩ',
+        'icon': Icons.medical_services_outlined,
+        'color': const Color(0xFF0284C7),
+        'bgColor': const Color(0xFFE0F2FE),
+        'onTap': () => viewModel.navigateToDoctorConsultation(),
+      },
+      {
         'title': 'Chăm sóc\nhằng ngày',
         'icon': Icons.spa_outlined,
         'color': const Color(0xFF047857),

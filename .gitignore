@@ -57,3 +57,12 @@ backend/runtime/
 *.safetensors
 *.gguf
 
+# Temporary Dart analysis & cache directories
+.dartServer/
+.dart_cache/
+.dart_local/
+.dart_tmp/
+.tmp/
+.tmp_localappdata/
+
+

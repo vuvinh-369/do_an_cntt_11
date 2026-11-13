@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'analysis_result_viewmodel.dart';
 import 'chat_viewmodel.dart';
+import 'doctor_consultation_viewmodel.dart';
 import 'document_viewmodel.dart';
 import 'first_aid_viewmodel.dart';
 import 'history_viewmodel.dart';
@@ -20,7 +21,8 @@ class UserViewModel extends ChangeNotifier
         TraCuuKienThucViewModel,
         ChatBoxAiViewModel,
         KhoTaiLieuViewModel,
-        LichSuPhanTichViewModel {
+        LichSuPhanTichViewModel,
+        BacSiTuVanViewModel {
   @override
   void onViewFirstAidGuidePressed() {
     // Tự động đồng bộ các dấu hiệu quan sát kèm theo (checkbox), mức độ đau và đa tổn thương sang Rule Engine
@@ -57,6 +59,7 @@ class UserViewModel extends ChangeNotifier
   void dispose() {
     disposeChat();
     disposeImageAnalysis();
+    disposeDoctorConsultation();
     chatInputController.dispose();
     chatScrollController.dispose();
     documentSearchController.dispose();

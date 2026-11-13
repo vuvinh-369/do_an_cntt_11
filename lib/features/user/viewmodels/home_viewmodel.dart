@@ -39,6 +39,14 @@ mixin TrangChuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       iconColor: Color(0xFF7C3AED), // Tím (Purple)
       iconBackgroundColor: Color(0xFFF2EBFE),
     ),
+    FeatureCardModel(
+      id: 'doctor_consultation',
+      title: 'Tư vấn Bác sĩ',
+      description: 'Trao đổi trực tiếp 1-1 với bác sĩ chuyên khoa',
+      icon: Icons.medical_services_outlined,
+      iconColor: Color(0xFF0284C7), // Xanh chuyên khoa
+      iconBackgroundColor: Color(0xFFE0F2FE),
+    ),
   ];
 
   // Danh sách dữ liệu cho 5 thẻ "Tình huống thường gặp" trên Trang chủ
@@ -101,6 +109,8 @@ mixin TrangChuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       navigateToMedicalDocuments();
     } else if (card.id == 'ai_chatbox') {
       navigateToChatBoxAi();
+    } else if (card.id == 'doctor_consultation') {
+      navigateToDoctorConsultation();
     }
   }
 

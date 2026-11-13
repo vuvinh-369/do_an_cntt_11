@@ -1,4 +1,5 @@
 // File: lib/views/admin_view.dart
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +8,7 @@ import 'admin_login_view.dart';
 import 'admin_dashboard_view.dart';
 import 'admin_feedback_audit_view.dart';
 import 'admin_management_views.dart';
+import '../../user/services/doctor_consultation_service.dart';
 
 class AdminShellView extends StatefulWidget {
   const AdminShellView({super.key});
@@ -135,7 +137,13 @@ class _AdminShellViewState extends State<AdminShellView> {
               child: _buildAdminLeftSidebar(context, viewModel, isWide: false),
             ),
             const Divider(height: 1, color: Color(0xFFE8EEF5)),
-            _buildSelectedAdminContent(viewModel),
+            _buildSelectedAdminContent(
+              viewModel,
+              contentHeight: math.max(
+                650.0,
+                MediaQuery.sizeOf(context).height - 130,
+              ),
+            ),
           ],
         ),
       ),
@@ -211,7 +219,11 @@ class _AdminShellViewState extends State<AdminShellView> {
                               thickness: 1,
                               color: Color(0xFFE8EEF5),
                             ),
-                            _buildSelectedAdminContent(viewModel),
+                            _buildSelectedAdminContent(
+                              viewModel,
+                              contentHeight:
+                                  math.max(680.0, minShellHeight - 65),
+                            ),
                           ],
                         ),
                       ),
@@ -248,7 +260,16 @@ class _AdminShellViewState extends State<AdminShellView> {
                   const Divider(height: 1, color: Color(0xFFE8EEF5)),
                   _buildAdminLeftSidebar(context, viewModel, isWide: false),
                   const Divider(height: 1, color: Color(0xFFE8EEF5)),
-                  _buildSelectedAdminContent(viewModel),
+                  _buildSelectedAdminContent(
+                    viewModel,
+                    contentHeight: math.max(
+                      680.0,
+                      (constraints.maxHeight.isFinite
+                              ? constraints.maxHeight
+                              : MediaQuery.sizeOf(context).height) -
+                          160,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -415,6 +436,8 @@ class _AdminShellViewState extends State<AdminShellView> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (item.id == 'doctor_consultation')
+                _buildDoctorUnreadBadge(),
               if (item.hasTrailingChevron) ...[
                 const SizedBox(width: 6),
                 Icon(
@@ -532,7 +555,38 @@ class _AdminShellViewState extends State<AdminShellView> {
     );
   }
 
-  Widget _buildSelectedAdminContent(AdminViewModel viewModel) {
+  Widget _buildDoctorUnreadBadge() {
+    return ListenableBuilder(
+      listenable: DoctorConsultationService.instance,
+      builder: (context, _) {
+        final unread = DoctorConsultationService.instance.totalDoctorUnreadCount;
+        if (unread <= 0) return const SizedBox.shrink();
+        final label = unread > 99 ? '99+' : '$unread';
+
+        return Container(
+          margin: const EdgeInsets.only(left: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEF4444),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSelectedAdminContent(
+    AdminViewModel viewModel, {
+    double? contentHeight,
+  }) {
     final items = viewModel.adminSidebarItems;
     final selectedIndex = viewModel.selectedAdminSidebarIndex;
 
@@ -558,6 +612,16 @@ class _AdminShellViewState extends State<AdminShellView> {
         return const AdminHistoryAnalyticsView();
       case 'user_management':
         return const AdminUserManagementView();
+      case 'doctor_management':
+        return const AdminDoctorManagementView();
+      case 'doctor_consultation':
+        if (contentHeight != null && contentHeight > 0) {
+          return SizedBox(
+            height: contentHeight,
+            child: const AdminDoctorConsultationView(),
+          );
+        }
+        return const AdminDoctorConsultationView();
       case 'admin_profile':
         return const AdminProfileView();
       case 'settings':
