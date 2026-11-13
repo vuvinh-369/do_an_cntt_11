@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/feedback/ai_feedback_model.dart';
+import '../../../core/feedback/ai_feedback_service.dart';
 import '../viewmodels/admin_viewmodel.dart';
 
 /// Màn hình xem các đánh giá đúng / sai và phản hồi của người dùng về kết quả AI
@@ -22,6 +23,23 @@ class _AdminAiFeedbackAuditViewState extends State<AdminAiFeedbackAuditView> {
   String _selectedSourceFilter = 'all'; // 'all', 'yoloVision', 'medgemma', 'gemini'
   int _currentPage = 1;
   static const int _pageSize = 5;
+
+  @override
+  void initState() {
+    super.initState();
+    AiFeedbackService.instance.addListener(_onFeedbackServiceChanged);
+    AiFeedbackService.instance.fetchFeedbacksFromSupabase();
+  }
+
+  @override
+  void dispose() {
+    AiFeedbackService.instance.removeListener(_onFeedbackServiceChanged);
+    super.dispose();
+  }
+
+  void _onFeedbackServiceChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,17 +158,38 @@ class _AdminAiFeedbackAuditViewState extends State<AdminAiFeedbackAuditView> {
             ],
           ),
         ),
-        ElevatedButton.icon(
-          onPressed: () => _showExportDatasetDialog(context, viewModel),
-          icon: const Icon(Icons.download_rounded, size: 18),
-          label: Text('Xuất dữ liệu phản hồi (${viewModel.totalAiFeedbackCount})'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF2563EB),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            elevation: 1,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded, color: Color(0xFF2563EB)),
+              tooltip: 'Làm mới & Đồng bộ từ Supabase',
+              onPressed: () async {
+                await AiFeedbackService.instance.fetchFeedbacksFromSupabase();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã đồng bộ lại danh sách đánh giá từ Supabase'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              onPressed: () => _showExportDatasetDialog(context, viewModel),
+              icon: const Icon(Icons.download_rounded, size: 18),
+              label: Text('Xuất dữ liệu phản hồi (${viewModel.totalAiFeedbackCount})'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 1,
+              ),
+            ),
+          ],
         ),
       ],
     );

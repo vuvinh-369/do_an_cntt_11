@@ -75,6 +75,11 @@ mixin DieuHuongQuanTriViewModel on ChangeNotifier {
       icon: Icons.forum_outlined,
     ),
     AdminSidebarItemModel(
+      id: 'daily_care_management',
+      title: 'Chăm sóc sức khỏe',
+      icon: Icons.spa_outlined,
+    ),
+    AdminSidebarItemModel(
       id: 'admin_profile',
       title: 'Hồ sơ tài khoản',
       icon: Icons.badge_outlined,

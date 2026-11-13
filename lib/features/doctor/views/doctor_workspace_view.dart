@@ -967,6 +967,7 @@ class _DoctorWorkspaceViewState extends State<DoctorWorkspaceView> {
         // Room Header
         _buildConversationTopBar(convId),
         const Divider(height: 1, color: Color(0xFFE8EEF5)),
+        _buildRetentionNoticeStrip(),
 
         // Message List
         Expanded(
@@ -1003,6 +1004,29 @@ class _DoctorWorkspaceViewState extends State<DoctorWorkspaceView> {
         // Message input bar
         _buildMessageInputBar(),
       ],
+    );
+  }
+
+  Widget _buildRetentionNoticeStrip() {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFFF8FAFC),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.auto_delete_outlined, size: 14, color: Color(0xFF64748B)),
+          SizedBox(width: 6),
+          Text(
+            'Tin nhắn tự động làm mới sau 1 ngày (24 giờ) theo quy định bảo mật hồ sơ.',
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF64748B),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

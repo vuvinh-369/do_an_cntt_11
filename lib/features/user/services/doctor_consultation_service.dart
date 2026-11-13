@@ -1,6 +1,6 @@
 // File: lib/features/user/services/doctor_consultation_service.dart
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/storage/local_storage_service.dart';
@@ -12,10 +12,33 @@ import '../models/doctor_consultation_models.dart';
 class DoctorConsultationService extends ChangeNotifier {
   DoctorConsultationService._() {
     _initSeedData();
+    cleanupOldChatHistory();
     subscribeRealtime();
+    _startPeriodicCleanup();
   }
 
   static final DoctorConsultationService instance = DoctorConsultationService._();
+
+  /// Thời hạn tự động xóa tin nhắn chat với bác sĩ (1 ngày / 24 giờ)
+  static const Duration chatRetentionPeriod = Duration(hours: 24);
+  Timer? _periodicCleanupTimer;
+
+  void _startPeriodicCleanup() {
+    _periodicCleanupTimer?.cancel();
+    final isRunningTest = WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (isRunningTest) return;
+
+    _periodicCleanupTimer = Timer.periodic(const Duration(minutes: 30), (_) {
+      cleanupOldChatHistory();
+    });
+  }
+
+  /// Tắt bộ đếm định kỳ phục vụ kiểm thử đơn vị
+  @visibleForTesting
+  void stopPeriodicCleanup() {
+    _periodicCleanupTimer?.cancel();
+    _periodicCleanupTimer = null;
+  }
 
   // In-Memory Data Store (Fail-Safe Local Storage)
   final Map<String, List<DoctorChatMessage>> _messagesStore = {};
@@ -216,18 +239,103 @@ class DoctorConsultationService extends ChangeNotifier {
     return _queueController.stream;
   }
 
+  /// Tự động xóa lịch sử chat cũ hơn 1 ngày (24 giờ) trên cả RAM, LocalStorage và Supabase Cloud
+  Future<int> cleanupOldChatHistory({
+    Duration retention = chatRetentionPeriod,
+    bool syncRemote = true,
+  }) async {
+    final threshold = DateTime.now().subtract(retention);
+    int removedMessagesCount = 0;
+    bool hasQueueChanged = false;
+
+    // 1. Dọn dẹp trong bộ nhớ RAM (_messagesStore)
+    final convKeys = _messagesStore.keys.toList();
+    for (final convId in convKeys) {
+      final messages = _messagesStore[convId];
+      if (messages != null && messages.isNotEmpty) {
+        final remaining = messages.where((m) => m.timestamp.isAfter(threshold)).toList();
+        final prunedCount = messages.length - remaining.length;
+        if (prunedCount > 0) {
+          removedMessagesCount += prunedCount;
+          if (remaining.isEmpty) {
+            _messagesStore.remove(convId);
+            _messageControllers[convId]?.add(const []);
+          } else {
+            _messagesStore[convId] = remaining;
+            _messageControllers[convId]?.add(List.unmodifiable(remaining));
+          }
+        }
+      }
+    }
+
+    // 2. Dọn dẹp hàng đợi cuộc trò chuyện (_queue)
+    final initialQueueLen = _queue.length;
+    _queue.removeWhere((item) {
+      final isStaleTime = item.lastMessageTime.isBefore(threshold);
+      final hasNoMessages = !_messagesStore.containsKey(item.conversationId) ||
+          (_messagesStore[item.conversationId]?.isEmpty ?? true);
+      return isStaleTime && hasNoMessages;
+    });
+    if (_queue.length != initialQueueLen) {
+      hasQueueChanged = true;
+      _queueController.add(List.unmodifiable(_queue));
+    }
+
+    if (removedMessagesCount > 0 || hasQueueChanged) {
+      notifyListeners();
+    }
+
+    // 3. Dọn dẹp bộ nhớ đệm LocalStorage
+    try {
+      await LocalStorageService.instance.cleanExpiredChatMessages(retention: retention);
+    } catch (e) {
+      debugPrint('[DoctorConsultationService] LocalStorage cleanExpiredChatMessages error: $e');
+    }
+
+    // 4. Đồng bộ xóa các tin nhắn cũ hơn 1 ngày trên Supabase Cloud
+    if (syncRemote) {
+      final client = SupabaseService.instance.client;
+      if (client != null) {
+        try {
+          final thresholdIso = threshold.toIso8601String();
+          await client
+              .from('doctor_chat_messages')
+              .delete()
+              .lt('created_at', thresholdIso);
+
+          await client
+              .from('conversations')
+              .delete()
+              .lt('last_message_time', thresholdIso);
+
+          debugPrint('[DoctorConsultationService] Đã đồng bộ xóa tin nhắn cũ hơn 1 ngày trên Supabase Cloud.');
+        } catch (e) {
+          debugPrint('[DoctorConsultationService] Supabase remote cleanup fallback: $e');
+        }
+      }
+    }
+
+    return removedMessagesCount;
+  }
+
   Future<List<ConversationQueueItem>> getDoctorConversations(String doctorId) async {
+    final threshold = DateTime.now().subtract(chatRetentionPeriod);
+
     // 1. Nạp từ LocalStorage cache trước (Fail-safe khi tải lại trang web)
     try {
-      final cachedQueueMaps = await LocalStorageService.instance.loadConversationQueue();
+      final cachedQueueMaps = await LocalStorageService.instance.loadConversationQueue(
+        retention: chatRetentionPeriod,
+      );
       if (cachedQueueMaps.isNotEmpty) {
         for (final map in cachedQueueMaps) {
           final item = ConversationQueueItem.fromMap(map);
-          final idx = _queue.indexWhere((q) => q.conversationId == item.conversationId);
-          if (idx == -1) {
-            _queue.add(item);
-          } else {
-            _queue[idx] = item;
+          if (item.lastMessageTime.isAfter(threshold)) {
+            final idx = _queue.indexWhere((q) => q.conversationId == item.conversationId);
+            if (idx == -1) {
+              _queue.add(item);
+            } else {
+              _queue[idx] = item;
+            }
           }
         }
       }
@@ -243,12 +351,14 @@ class DoctorConsultationService extends ChangeNotifier {
         if (doctorId.isNotEmpty && doctorId != 'all') {
           query = query.eq('doctor_id', doctorId);
         }
+        query = query.gte('last_message_time', threshold.toIso8601String());
         final res = await query.order('last_message_time', ascending: false);
 
-        if (res is List && res.isNotEmpty) {
+        if (res.isNotEmpty) {
           final items = res
               .whereType<Map>()
               .map((m) => ConversationQueueItem.fromMap(Map<String, dynamic>.from(m)))
+              .where((item) => item.lastMessageTime.isAfter(threshold))
               .toList();
 
           for (final rItem in items) {
@@ -283,28 +393,38 @@ class DoctorConsultationService extends ChangeNotifier {
   }
 
   /// Nạp tin nhắn của một cuộc hội thoại từ bộ nhớ đệm LocalStorage (tức thời)
-  /// và sau đó đồng bộ delta từ Supabase Cloud
+  /// và sau đó đồng bộ delta từ Supabase Cloud (tự động loại bỏ tin nhắn cũ hơn 1 ngày)
   Future<List<DoctorChatMessage>> fetchMessages(String conversationId) async {
+    final threshold = DateTime.now().subtract(chatRetentionPeriod);
+
     // 1. Nạp tức thời từ LocalStorage nếu RAM chưa có hoặc trống
     if (_messagesStore[conversationId] == null || _messagesStore[conversationId]!.isEmpty) {
       try {
-        final cachedMaps = await LocalStorageService.instance.loadConversationMessages(conversationId);
+        final cachedMaps = await LocalStorageService.instance.loadConversationMessages(
+          conversationId,
+          retention: chatRetentionPeriod,
+        );
         if (cachedMaps.isNotEmpty) {
-          final cachedList = cachedMaps.map((m) => DoctorChatMessage.fromMap(m)).toList();
-          _messagesStore[conversationId] = cachedList;
-          final controller = _messageControllers.putIfAbsent(
-            conversationId,
-            () => StreamController<List<DoctorChatMessage>>.broadcast(),
-          );
-          controller.add(List.unmodifiable(cachedList));
-          notifyListeners();
+          final cachedList = cachedMaps
+              .map((m) => DoctorChatMessage.fromMap(m))
+              .where((m) => m.timestamp.isAfter(threshold))
+              .toList();
+          if (cachedList.isNotEmpty) {
+            _messagesStore[conversationId] = cachedList;
+            final controller = _messageControllers.putIfAbsent(
+              conversationId,
+              () => StreamController<List<DoctorChatMessage>>.broadcast(),
+            );
+            controller.add(List.unmodifiable(cachedList));
+            notifyListeners();
+          }
         }
       } catch (e) {
         debugPrint('[DoctorConsultationService] LocalStorage load messages fallback: $e');
       }
     }
 
-    // 2. Đồng bộ các tin nhắn từ xa trên Supabase Cloud
+    // 2. Đồng bộ các tin nhắn từ xa trên Supabase Cloud (chỉ lấy tin nhắn trong vòng 1 ngày)
     final client = SupabaseService.instance.client;
     if (client != null) {
       try {
@@ -312,12 +432,14 @@ class DoctorConsultationService extends ChangeNotifier {
             .from('doctor_chat_messages')
             .select()
             .eq('conversation_id', conversationId)
+            .gte('created_at', threshold.toIso8601String())
             .order('created_at', ascending: true);
 
-        if (res is List && res.isNotEmpty) {
+        if (res.isNotEmpty) {
           final remoteList = res
               .whereType<Map>()
               .map((m) => DoctorChatMessage.fromMap(Map<String, dynamic>.from(m)))
+              .where((m) => m.timestamp.isAfter(threshold))
               .toList();
 
           if (remoteList.isNotEmpty) {
@@ -798,6 +920,7 @@ class DoctorConsultationService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _periodicCleanupTimer?.cancel();
     unsubscribeRealtime();
     for (final c in _messageControllers.values) {
       c.close();

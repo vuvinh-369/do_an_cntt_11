@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../models/first_aid_models.dart';
 import '../models/navigation_model.dart';
 import '../models/user_account_model.dart';
+import '../services/daily_health_service.dart';
 import '../../../core/email/email_config_service.dart';
 import '../../../core/user_management/user_account_service.dart';
 
@@ -136,6 +137,9 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     if (err != null) return err;
 
     _currentUser = UserAccountService.instance.findByUsername(username);
+    if (_currentUser != null) {
+      DailyHealthService.instance.setActiveUserId(_currentUser!.username);
+    }
     notifyListeners();
     return null;
   }
@@ -228,6 +232,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     if (res['success'] == true) {
       final account = res['account'] as UserAccountModel;
       _currentUser = account;
+      DailyHealthService.instance.setActiveUserId(account.username);
       if (account.isDoctor) {
         await LocalStorageService.instance.saveDoctorSession(
           username: account.username,
@@ -259,6 +264,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     if (syncResult['success'] == true) {
       final account = syncResult['account'] as UserAccountModel;
       _currentUser = account;
+      DailyHealthService.instance.setActiveUserId(account.username);
       if (account.isDoctor) {
         await LocalStorageService.instance.saveDoctorSession(
           username: account.username,
@@ -297,6 +303,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
   /// Đăng xuất tài khoản người dùng về chế độ Khách (Guest)
   Future<void> logoutUser() async {
     _currentUser = null;
+    DailyHealthService.instance.setActiveUserId(null);
     await LocalStorageService.instance.clearUserSession();
     await LocalStorageService.instance.clearDoctorSession();
     notifyListeners();

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'core/app_scroll_behavior.dart';
 import 'core/doctor_management/doctor_management_service.dart';
+import 'core/feedback/ai_feedback_service.dart';
 import 'core/serper/serper_config_service.dart';
 import 'core/storage/local_storage_service.dart';
 import 'core/supabase/supabase_service.dart';
@@ -28,6 +29,7 @@ void main() async {
   await UserAccountService.instance.loadFromLocalStorage();
   DoctorManagementService.instance.subscribeRealtime();
   DoctorConsultationService.instance.subscribeRealtime();
+  unawaited(AiFeedbackService.instance.fetchFeedbacksFromSupabase());
   runApp(const MyApp());
 }
 

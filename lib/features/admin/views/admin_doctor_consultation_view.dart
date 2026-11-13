@@ -948,6 +948,26 @@ class _AdminDoctorConsultationViewState
         // Inspector Top Header
         _buildInspectorTopBar(convId),
         const Divider(height: 1, color: Color(0xFFE8EEF5)),
+        Container(
+          width: double.infinity,
+          color: const Color(0xFFF8FAFC),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.auto_delete_outlined, size: 14, color: Color(0xFF64748B)),
+              SizedBox(width: 6),
+              Text(
+                'Lịch sử chat tự động dọn dẹp sau 1 ngày (24 giờ) để tối ưu lưu trữ hệ thống.',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+        ),
 
         // Message List Stream
         Expanded(

@@ -8,6 +8,7 @@ class FeatureCardModel {
   final IconData icon;
   final Color iconColor;
   final Color iconBackgroundColor;
+  final String? badge;
 
   const FeatureCardModel({
     required this.id,
@@ -16,6 +17,7 @@ class FeatureCardModel {
     required this.icon,
     required this.iconColor,
     required this.iconBackgroundColor,
+    this.badge,
   });
 }
 

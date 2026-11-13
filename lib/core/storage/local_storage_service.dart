@@ -1,4 +1,5 @@
 // File: lib/core/storage/local_storage_service.dart
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
@@ -440,10 +441,12 @@ class LocalStorageService {
     }
   }
 
-  /// Nạp lịch sử tin nhắn của một cuộc hội thoại từ SharedPreferences
+  /// Nạp lịch sử tin nhắn của một cuộc hội thoại từ SharedPreferences (tự động loại bỏ tin nhắn cũ hơn 1 ngày)
   Future<List<Map<String, dynamic>>> loadConversationMessages(
-    String conversationId,
-  ) async {
+    String conversationId, {
+    Duration retention = const Duration(days: 1),
+    bool autoPrune = true,
+  }) async {
     try {
       final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
       _cachedPrefs = prefs;
@@ -451,10 +454,28 @@ class LocalStorageService {
       if (raw != null && raw.trim().isNotEmpty) {
         final decoded = jsonDecode(raw);
         if (decoded is List) {
-          return decoded
-              .whereType<Map>()
-              .map((m) => Map<String, dynamic>.from(m))
-              .toList();
+          final threshold = DateTime.now().subtract(retention);
+          final validList = <Map<String, dynamic>>[];
+          bool hasExpired = false;
+
+          for (final item in decoded) {
+            if (item is Map) {
+              final m = Map<String, dynamic>.from(item);
+              final rawTime = m['created_at'] ?? m['createdAt'] ?? m['timestamp'];
+              final time = rawTime != null ? DateTime.tryParse(rawTime.toString()) : null;
+              if (time == null || time.isAfter(threshold)) {
+                validList.add(m);
+              } else {
+                hasExpired = true;
+              }
+            }
+          }
+
+          if (hasExpired && autoPrune) {
+            // Tự động cập nhật lại LocalStorage chỉ giữ tin nhắn hợp lệ trong 1 ngày
+            unawaited(saveConversationMessages(conversationId, validList));
+          }
+          return validList;
         }
       }
     } catch (e) {
@@ -478,8 +499,10 @@ class LocalStorageService {
     }
   }
 
-  /// Nạp danh sách các cuộc hội thoại trong hàng đợi từ SharedPreferences
-  Future<List<Map<String, dynamic>>> loadConversationQueue() async {
+  /// Nạp danh sách các cuộc hội thoại trong hàng đợi từ SharedPreferences (tự động lọc tin cũ hơn 1 ngày)
+  Future<List<Map<String, dynamic>>> loadConversationQueue({
+    Duration retention = const Duration(days: 1),
+  }) async {
     try {
       final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
       _cachedPrefs = prefs;
@@ -487,9 +510,15 @@ class LocalStorageService {
       if (raw != null && raw.trim().isNotEmpty) {
         final decoded = jsonDecode(raw);
         if (decoded is List) {
+          final threshold = DateTime.now().subtract(retention);
           return decoded
               .whereType<Map>()
               .map((m) => Map<String, dynamic>.from(m))
+              .where((m) {
+                final rawTime = m['last_message_time'] ?? m['lastMessageTime'];
+                final time = rawTime != null ? DateTime.tryParse(rawTime.toString()) : null;
+                return time == null || time.isAfter(threshold);
+              })
               .toList();
         }
       }
@@ -497,6 +526,96 @@ class LocalStorageService {
       debugPrint('[LocalStorage] Lỗi nạp queue hội thoại: $e');
     }
     return [];
+  }
+
+  /// Tự động dọn dẹp các tin nhắn và cuộc trò chuyện cũ hơn 1 ngày (24 giờ) trong SharedPreferences
+  Future<int> cleanExpiredChatMessages({
+    Duration retention = const Duration(days: 1),
+  }) async {
+    int removedCount = 0;
+    try {
+      final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
+      _cachedPrefs = prefs;
+      final threshold = DateTime.now().subtract(retention);
+
+      final messageKeys = prefs.getKeys().where((k) => k.startsWith(_keyChatMessagesPrefix)).toList();
+      final activeConversationIds = <String>{};
+
+      for (final key in messageKeys) {
+        final conversationId = key.substring(_keyChatMessagesPrefix.length);
+        final raw = prefs.getString(key);
+        if (raw == null || raw.trim().isEmpty) {
+          await prefs.remove(key);
+          continue;
+        }
+
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is List) {
+            final validMessages = <Map<String, dynamic>>[];
+            for (final item in decoded) {
+              if (item is Map) {
+                final m = Map<String, dynamic>.from(item);
+                final rawTime = m['created_at'] ?? m['createdAt'] ?? m['timestamp'];
+                final time = rawTime != null ? DateTime.tryParse(rawTime.toString()) : null;
+                if (time == null || time.isAfter(threshold)) {
+                  validMessages.add(m);
+                } else {
+                  removedCount++;
+                }
+              }
+            }
+
+            if (validMessages.isEmpty) {
+              await prefs.remove(key);
+            } else {
+              activeConversationIds.add(conversationId);
+              if (validMessages.length != decoded.length) {
+                await prefs.setString(key, jsonEncode(validMessages));
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('[LocalStorage] Lỗi xử lý key $key khi dọn dẹp tin nhắn: $e');
+        }
+      }
+
+      // Dọn dẹp hàng đợi hội thoại quá 1 ngày
+      final rawQueue = prefs.getString(_keyConversationsQueue);
+      if (rawQueue != null && rawQueue.trim().isNotEmpty) {
+        try {
+          final decodedQueue = jsonDecode(rawQueue);
+          if (decodedQueue is List) {
+            final validQueue = <Map<String, dynamic>>[];
+            for (final item in decodedQueue) {
+              if (item is Map) {
+                final m = Map<String, dynamic>.from(item);
+                final rawTime = m['last_message_time'] ?? m['lastMessageTime'];
+                final time = rawTime != null ? DateTime.tryParse(rawTime.toString()) : null;
+                final convId = m['conversation_id'] ?? m['conversationId'] ?? m['id'];
+
+                final isRecent = time != null && time.isAfter(threshold);
+                final hasMessages = convId != null && activeConversationIds.contains(convId.toString());
+
+                if (isRecent || hasMessages) {
+                  validQueue.add(m);
+                }
+              }
+            }
+            if (validQueue.length != decodedQueue.length) {
+              await prefs.setString(_keyConversationsQueue, jsonEncode(validQueue));
+            }
+          }
+        } catch (e) {
+          debugPrint('[LocalStorage] Lỗi dọn dẹp hàng đợi queue: $e');
+        }
+      }
+
+      debugPrint('[LocalStorage] Đã dọn dẹp $removedCount tin nhắn chat cũ hơn 1 ngày.');
+    } catch (e) {
+      debugPrint('[LocalStorage] Lỗi cleanExpiredChatMessages: $e');
+    }
+    return removedCount;
   }
 
   /// Xóa bộ nhớ đệm tin nhắn và hàng đợi hội thoại (phục vụ test hoặc dọn dẹp)

@@ -97,6 +97,7 @@ class _DoctorConsultationViewState extends State<DoctorConsultationView> {
                 child: Column(
                   children: [
                     _buildDoctorHeader(context, doctor, isDesktop: true, viewModel: viewModel),
+                    _buildRetentionNoticeBanner(isDesktop: true),
                     Expanded(child: _buildChatTimeline(context, viewModel, isDesktop: true)),
                     if (viewModel.pendingAttachment != null)
                       _buildPendingAttachmentBar(viewModel),
@@ -135,6 +136,7 @@ class _DoctorConsultationViewState extends State<DoctorConsultationView> {
       child: Column(
         children: [
           _buildDoctorHeader(context, doctor, isDesktop: false, viewModel: viewModel),
+          _buildRetentionNoticeBanner(isDesktop: false),
           Expanded(child: _buildChatTimeline(context, viewModel, isDesktop: false)),
           if (viewModel.pendingAttachment != null)
             _buildPendingAttachmentBar(viewModel),
@@ -290,6 +292,54 @@ class _DoctorConsultationViewState extends State<DoctorConsultationView> {
             icon: const Icon(Icons.info_outline_rounded, size: 21, color: Color(0xFF2563EB)),
             tooltip: 'Thông tin bác sĩ',
             onPressed: () => _showDoctorBioModal(context, doctor),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Banner thông báo chính sách tự động xóa tin nhắn sau 1 ngày (24 giờ)
+  Widget _buildRetentionNoticeBanner({required bool isDesktop}) {
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.fromLTRB(
+        isDesktop ? 24 : 12,
+        6,
+        isDesktop ? 24 : 12,
+        4,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE0E7FF),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(
+              Icons.auto_delete_outlined,
+              size: 15,
+              color: Color(0xFF2563EB),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Lịch sử tư vấn tự động làm mới sau 1 ngày (24 giờ) để bảo mật thông tin y tế và tối ưu hiệu năng.',
+              style: TextStyle(
+                fontSize: isDesktop ? 12 : 11,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF475569),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),

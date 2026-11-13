@@ -57,8 +57,6 @@ class _TrangChuViewState extends State<TrangChuView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildFeatureCardsSection(context, viewModel),
-              const SizedBox(height: 20),
-              _buildDailyCareBanner(viewModel),
               const SizedBox(height: 36),
               _buildCommonSituationsSection(context, viewModel),
             ],
@@ -358,13 +356,6 @@ class _TrangChuViewState extends State<TrangChuView> {
         'color': const Color(0xFF16A34A),
         'bgColor': const Color(0xFFE8F7EE),
         'onTap': () => viewModel.navigateToMedicalDocuments(),
-      },
-      {
-        'title': 'Lịch sử\nphân tích',
-        'icon': Icons.history_outlined,
-        'color': const Color(0xFF0D9488),
-        'bgColor': const Color(0xFFE6F4F1),
-        'onTap': () => viewModel.navigateToAnalysisHistory(),
       },
       {
         'title': 'ChatBox AI\ntrợ giúp',
@@ -786,131 +777,84 @@ class _TrangChuViewState extends State<TrangChuView> {
     BuildContext context,
     UserViewModel viewModel,
   ) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth;
-        int crossAxisCount = 4;
-        if (maxWidth < 560) {
-          crossAxisCount = 1;
-        } else if (maxWidth < 920) {
-          crossAxisCount = 2;
-        }
-
-        const double spacing = 20;
-        final double cardWidth =
-            (maxWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: viewModel.featureCards.map((card) {
-            return SizedBox(
-              width: cardWidth,
-              child: _buildSingleFeatureCard(context, card),
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-
-  Widget _buildDailyCareBanner(UserViewModel viewModel) {
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(14),
-      side: const BorderSide(color: Color(0xFFCCEBDB)),
-    );
-    return Material(
-      color: const Color(0xFFF0FAF5),
-      shape: shape,
-      child: InkWell(
-        customBorder: shape,
-        onTap: viewModel.navigateToDailyCare,
-        child: const Padding(
-          padding: EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Icon(Icons.spa_outlined, color: Color(0xFF047857), size: 28),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Chăm sóc sức khỏe hằng ngày',
-                      style: TextStyle(
-                        color: Color(0xFF124A38),
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text('Bài học về vận động, uống nước, ăn uống và nghỉ ngơi.'),
-                  ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              SizedBox(width: 12),
-              Icon(Icons.arrow_forward_rounded, color: Color(0xFF047857)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSingleFeatureCard(BuildContext context, FeatureCardModel card) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => context.read<UserViewModel>().onFeatureCardTapped(card),
-        child: Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFEFF4FB), width: 1.5),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0A0D2B6B),
-                blurRadius: 16,
-                offset: Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: card.iconBackgroundColor,
-                  borderRadius: BorderRadius.circular(12),
+                const SizedBox(width: 10),
+                const Text(
+                  'Dịch vụ & Tính năng chính',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0D2B6B),
+                    letterSpacing: -0.2,
+                  ),
                 ),
-                child: Icon(card.icon, color: card.iconColor, size: 26),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFDBEAFE)),
               ),
-              const SizedBox(height: 18),
-              Text(
-                card.title,
+              child: Text(
+                '${viewModel.featureCards.length} tiện ích y tế',
                 style: const TextStyle(
-                  fontSize: 17,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF0D2B6B),
+                  color: Color(0xFF2563EB),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                card.description,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  height: 1.45,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
+        const SizedBox(height: 18),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final maxWidth = constraints.maxWidth;
+            int crossAxisCount = 3;
+            if (maxWidth < 640) {
+              crossAxisCount = 1;
+            } else if (maxWidth < 980) {
+              crossAxisCount = 2;
+            }
+
+            const double spacing = 20;
+            final double cardWidth =
+                (maxWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
+
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: viewModel.featureCards.map((card) {
+                return SizedBox(
+                  width: cardWidth,
+                  child: _DesktopFeatureCardItem(
+                    card: card,
+                    onTap: () => viewModel.onFeatureCardTapped(card),
+                  ),
+                );
+              }).toList(),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -1074,6 +1018,169 @@ class _TrangChuViewState extends State<TrangChuView> {
             size: 22,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DesktopFeatureCardItem extends StatefulWidget {
+  final FeatureCardModel card;
+  final VoidCallback onTap;
+
+  const _DesktopFeatureCardItem({
+    required this.card,
+    required this.onTap,
+  });
+
+  @override
+  State<_DesktopFeatureCardItem> createState() => _DesktopFeatureCardItemState();
+}
+
+class _DesktopFeatureCardItemState extends State<_DesktopFeatureCardItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = widget.card;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _isHovered
+                ? card.iconColor.withValues(alpha: 0.45)
+                : const Color(0xFFEFF4FB),
+            width: _isHovered ? 1.8 : 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _isHovered
+                  ? card.iconColor.withValues(alpha: 0.12)
+                  : const Color(0x0A0D2B6B),
+              blurRadius: _isHovered ? 20 : 14,
+              offset: Offset(0, _isHovered ? 8 : 4),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: widget.onTap,
+            splashColor: card.iconColor.withValues(alpha: 0.08),
+            highlightColor: card.iconColor.withValues(alpha: 0.04),
+            child: Padding(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: _isHovered
+                              ? card.iconColor.withValues(alpha: 0.18)
+                              : card.iconBackgroundColor,
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                        child: Icon(
+                          card.icon,
+                          color: card.iconColor,
+                          size: 26,
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (card.badge != null) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: card.iconBackgroundColor,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: card.iconColor.withValues(alpha: 0.25),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                card.badge!,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: card.iconColor,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: _isHovered
+                                  ? card.iconColor
+                                  : const Color(0xFFF1F5F9),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 16,
+                              color: _isHovered
+                                  ? Colors.white
+                                  : const Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    card.title,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0D2B6B),
+                      letterSpacing: -0.2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    card.description,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      height: 1.45,
+                      color: Color(0xFF64748B),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

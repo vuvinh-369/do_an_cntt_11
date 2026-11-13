@@ -1034,7 +1034,7 @@ class UserShellView extends StatelessWidget {
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.medical_services_outlined, color: Color(0xFF2563EB)),
-                  title: const Text('Cổng Bác sĩ tư vấn (/doctor)'),
+                  title: const Text('Cổng Bác sĩ tư vấn'),
                   subtitle: const Text('Đăng nhập tài khoản Bác sĩ để tiếp nhận & chat với bệnh nhân'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {

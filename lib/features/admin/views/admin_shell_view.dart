@@ -622,6 +622,8 @@ class _AdminShellViewState extends State<AdminShellView> {
           );
         }
         return const AdminDoctorConsultationView();
+      case 'daily_care_management':
+        return const AdminDailyCareManagementView();
       case 'admin_profile':
         return const AdminProfileView();
       case 'settings':

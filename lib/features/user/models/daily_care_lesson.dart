@@ -30,6 +30,8 @@ class DailyCareLesson {
     required this.steps,
     required this.sourceName,
     required this.sourceUrl,
+    this.sortOrder = 0,
+    this.isPublished = true,
   });
 
   factory DailyCareLesson.fromRow(Map<String, dynamic> row) {
@@ -44,6 +46,8 @@ class DailyCareLesson {
       steps: List<String>.unmodifiable(row['steps'] as List<dynamic>),
       sourceName: row['source_name'] as String,
       sourceUrl: row['source_url'] as String,
+      sortOrder: (row['sort_order'] as num?)?.toInt() ?? 0,
+      isPublished: row['is_published'] as bool? ?? true,
     );
   }
 
@@ -55,6 +59,61 @@ class DailyCareLesson {
   final List<String> steps;
   final String sourceName;
   final String sourceUrl;
+  final int sortOrder;
+  final bool isPublished;
+
+  DailyCareLesson copyWith({
+    String? slug,
+    DailyCareFrequency? frequency,
+    DailyCareTopic? topic,
+    String? title,
+    String? summary,
+    List<String>? steps,
+    String? sourceName,
+    String? sourceUrl,
+    int? sortOrder,
+    bool? isPublished,
+  }) {
+    return DailyCareLesson(
+      slug: slug ?? this.slug,
+      frequency: frequency ?? this.frequency,
+      topic: topic ?? this.topic,
+      title: title ?? this.title,
+      summary: summary ?? this.summary,
+      steps: steps ?? this.steps,
+      sourceName: sourceName ?? this.sourceName,
+      sourceUrl: sourceUrl ?? this.sourceUrl,
+      sortOrder: sortOrder ?? this.sortOrder,
+      isPublished: isPublished ?? this.isPublished,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'slug': slug,
+        'frequency': frequency.value,
+        'topic': topic.name,
+        'title': title,
+        'summary': summary,
+        'steps': steps,
+        'source_name': sourceName,
+        'source_url': sourceUrl,
+        'sort_order': sortOrder,
+        'is_published': isPublished,
+      };
+
+  Map<String, dynamic> toSupabaseRow() => {
+        'slug': slug,
+        'frequency': frequency.value,
+        'topic': topic.name,
+        'title': title,
+        'summary': summary,
+        'steps': steps,
+        'source_name': sourceName,
+        'source_url': sourceUrl,
+        'sort_order': sortOrder,
+        'is_published': isPublished,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
 
   Uri? get sourceUri {
     final uri = Uri.tryParse(sourceUrl);

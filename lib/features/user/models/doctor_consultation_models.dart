@@ -342,6 +342,13 @@ class DoctorChatMessage {
   bool get hasAttachment =>
       attachment != null || (attachmentUrl != null && attachmentUrl!.isNotEmpty);
 
+  /// Kiểm tra tin nhắn đã quá hạn lưu trữ 1 ngày (24 giờ)
+  bool get isExpired => isOlderThan(const Duration(days: 1));
+
+  /// Kiểm tra tin nhắn đã cũ hơn khoảng thời gian chỉ định
+  bool isOlderThan(Duration duration) =>
+      DateTime.now().difference(timestamp) > duration;
+
   String get formattedTime {
     final h = timestamp.hour.toString().padLeft(2, '0');
     final m = timestamp.minute.toString().padLeft(2, '0');

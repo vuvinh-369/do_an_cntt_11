@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/doctor_consultation_models.dart';
-import '../models/image_analysis_models.dart';
 import '../services/doctor_ai_fallback_service.dart';
 import '../services/doctor_consultation_service.dart';
 import '../services/doctor_response_simulator.dart';
@@ -114,22 +112,27 @@ mixin BacSiTuVanViewModel on DieuHuongCoSoViewModel {
     _chatSubscription?.cancel();
     DoctorConsultationService.instance.patientViewingConversationId = activeConversationId;
 
+    final threshold = DateTime.now().subtract(DoctorConsultationService.chatRetentionPeriod);
     final stored = DoctorConsultationService.instance.getStoredMessages(activeConversationId);
+    final validStored = stored.where((m) => m.timestamp.isAfter(threshold)).toList();
     _doctorChatMessages.clear();
-    if (stored.isNotEmpty) {
-      _doctorChatMessages.addAll(stored);
+    if (validStored.isNotEmpty) {
+      _doctorChatMessages.addAll(validStored);
     } else {
       _setupInitialDoctorWelcome();
     }
     notifyListeners();
 
-    // Tự động nạp tin nhắn từ LocalStorage / Supabase nếu có lịch sử trước đó
+    // Tự động nạp tin nhắn từ LocalStorage / Supabase nếu có lịch sử trước đó (trong vòng 1 ngày)
     unawaited(DoctorConsultationService.instance.fetchMessages(activeConversationId).then((loaded) {
-      if (!_isDisposed && loaded.isNotEmpty) {
-        _doctorChatMessages.clear();
-        _doctorChatMessages.addAll(loaded);
-        notifyListeners();
-        _scrollToBottom();
+      if (!_isDisposed) {
+        final validLoaded = loaded.where((m) => m.timestamp.isAfter(threshold)).toList();
+        if (validLoaded.isNotEmpty) {
+          _doctorChatMessages.clear();
+          _doctorChatMessages.addAll(validLoaded);
+          notifyListeners();
+          _scrollToBottom();
+        }
       }
     }));
 
@@ -137,15 +140,16 @@ mixin BacSiTuVanViewModel on DieuHuongCoSoViewModel {
         .getMessagesStream(activeConversationId)
         .listen((updatedList) {
       if (_isDisposed) return;
-      if (updatedList.isNotEmpty) {
+      final validUpdated = updatedList.where((m) => m.timestamp.isAfter(threshold)).toList();
+      if (validUpdated.isNotEmpty) {
         _doctorChatMessages.clear();
-        _doctorChatMessages.addAll(updatedList);
-        final hasDoctorReply = updatedList.any((m) => m.senderType == ChatSenderType.doctor);
+        _doctorChatMessages.addAll(validUpdated);
+        final hasDoctorReply = validUpdated.any((m) => m.senderType == ChatSenderType.doctor);
         if (hasDoctorReply) {
           DoctorAiFallbackService.instance.onDoctorReplyReceived(activeConversationId);
         }
         // CHỈ gọi markMessagesAsRead nếu có tin nhắn từ Bác sĩ chưa được đánh dấu đã đọc
-        final hasUnreadDoctorMsg = updatedList.any(
+        final hasUnreadDoctorMsg = validUpdated.any(
           (m) => m.senderType == ChatSenderType.doctor && m.status != MessageDeliveryStatus.read,
         );
         if (hasUnreadDoctorMsg) {
@@ -266,7 +270,7 @@ mixin BacSiTuVanViewModel on DieuHuongCoSoViewModel {
       message: patientMessage.content,
       isDoctorOnline: _activeDoctorProfile.isOnline,
       doctor: _activeDoctorProfile,
-      woundContext: clinicalContext != null ? clinicalContext.toString() : null,
+      woundContext: clinicalContext?.toString(),
     );
 
     // CHỈ chạy bộ mô phỏng nếu đang ở chế độ FastMode phục vụ kiểm thử đơn vị

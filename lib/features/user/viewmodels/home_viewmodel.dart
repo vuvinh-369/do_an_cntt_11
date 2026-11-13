@@ -5,7 +5,7 @@ import 'user_navigation_viewmodel.dart';
 import 'first_aid_viewmodel.dart';
 
 mixin TrangChuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
-  // Danh sách dữ liệu cho 4 Thẻ Tính năng (Feature Cards) trên Trang chủ (Đã loại bỏ Hướng dẫn sơ cứu trùng lặp)
+  // Danh sách dữ liệu cho 6 Thẻ Tính năng (Feature Cards) trên Trang chủ
   final List<FeatureCardModel> featureCards = const [
     FeatureCardModel(
       id: 'ai_image_analysis',
@@ -14,6 +14,7 @@ mixin TrangChuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       icon: Icons.camera_enhance_outlined,
       iconColor: Color(0xFF0D9488), // Xanh ngọc (Teal)
       iconBackgroundColor: Color(0xFFE6F4F1),
+      badge: 'Thị giác AI',
     ),
     FeatureCardModel(
       id: 'knowledge_lookup',
@@ -22,6 +23,7 @@ mixin TrangChuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       icon: Icons.menu_book_outlined,
       iconColor: Color(0xFF2563EB), // Xanh dương (Blue)
       iconBackgroundColor: Color(0xFFEBF2FE),
+      badge: 'Chuẩn y tế',
     ),
     FeatureCardModel(
       id: 'medical_documents',
@@ -30,6 +32,7 @@ mixin TrangChuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       icon: Icons.description_outlined,
       iconColor: Color(0xFF16A34A), // Xanh lá (Green)
       iconBackgroundColor: Color(0xFFE8F7EE),
+      badge: 'Offline',
     ),
     FeatureCardModel(
       id: 'ai_chatbox',
@@ -38,6 +41,7 @@ mixin TrangChuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       icon: Icons.smart_toy_outlined,
       iconColor: Color(0xFF7C3AED), // Tím (Purple)
       iconBackgroundColor: Color(0xFFF2EBFE),
+      badge: 'Hỗ trợ 24/7',
     ),
     FeatureCardModel(
       id: 'doctor_consultation',
@@ -46,6 +50,16 @@ mixin TrangChuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       icon: Icons.medical_services_outlined,
       iconColor: Color(0xFF0284C7), // Xanh chuyên khoa
       iconBackgroundColor: Color(0xFFE0F2FE),
+      badge: 'Trực tuyến 1-1',
+    ),
+    FeatureCardModel(
+      id: 'daily_care',
+      title: 'Chăm sóc sức khỏe hằng ngày',
+      description: 'Bài học về vận động, uống nước, ăn uống và nghỉ ngơi',
+      icon: Icons.spa_outlined,
+      iconColor: Color(0xFF059669), // Xanh ngọc lục bảo (Emerald)
+      iconBackgroundColor: Color(0xFFE6F7F0),
+      badge: 'Sống khỏe',
     ),
   ];
 
@@ -111,6 +125,8 @@ mixin TrangChuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       navigateToChatBoxAi();
     } else if (card.id == 'doctor_consultation') {
       navigateToDoctorConsultation();
+    } else if (card.id == 'daily_care') {
+      navigateToDailyCare();
     }
   }
 

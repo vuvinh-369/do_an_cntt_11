@@ -10,5 +10,6 @@ export 'admin_history_analytics_view.dart';
 export 'admin_user_management_view.dart';
 export 'admin_doctor_management_view.dart';
 export 'admin_doctor_consultation_view.dart';
+export 'admin_daily_care_management_view.dart';
 export 'admin_profile_view.dart';
 export 'admin_settings_view.dart';
