@@ -1,5 +1,12 @@
 // File: lib/features/user/models/user_account_model.dart
 
+/// Định nghĩa các vai trò trong hệ thống
+class UserRole {
+  static const String patient = 'patient';
+  static const String doctor = 'doctor';
+  static const String admin = 'admin';
+}
+
 /// Mô hình tài khoản & Hồ sơ sức khỏe cá nhân (Zero-Knowledge / Bảo mật cục bộ)
 /// Tuyệt đối KHÔNG lưu trữ tên thật, số điện thoại hay địa chỉ nhà của người dùng.
 class UserAccountModel {
@@ -8,6 +15,8 @@ class UserAccountModel {
   final String fullName; // Giữ để tương thích hiển thị, mặc định dùng username
   final DateTime createdAt;
   final String? emailOrPhone; // Tùy chọn: dùng khi cần nhận OTP khôi phục mật khẩu
+  final String role; // 'patient', 'doctor', 'admin'
+  final String? doctorId; // Tham chiếu DoctorProfile.id khi role == 'doctor'
 
   // 1. Chỉ số thể chất
   final String? gender; // 'male', 'female', 'other'
@@ -39,6 +48,8 @@ class UserAccountModel {
     this.fullName = '',
     required this.createdAt,
     this.emailOrPhone,
+    this.role = UserRole.patient,
+    this.doctorId,
     this.gender,
     this.weightKg,
     this.heightCm,
@@ -51,6 +62,12 @@ class UserAccountModel {
     this.lockReason,
     this.lastActiveAt,
   });
+
+  /// Kiểm tra vai trò tài khoản
+  bool get isDoctor =>
+      role == UserRole.doctor || (doctorId != null && doctorId!.isNotEmpty);
+  bool get isAdmin => role == UserRole.admin;
+  bool get isPatient => !isDoctor && !isAdmin;
 
   /// Tên hiển thị ẩn danh (ưu tiên username bảo vệ danh tính)
   String get displayName => fullName.isNotEmpty ? fullName : username;
@@ -241,6 +258,9 @@ class UserAccountModel {
       'fullName': fullName,
       'createdAt': createdAt.toIso8601String(),
       'emailOrPhone': emailOrPhone,
+      'role': role,
+      'doctorId': doctorId,
+      'doctor_id': doctorId,
       'gender': gender,
       'weightKg': weightKg,
       'heightCm': heightCm,
@@ -256,14 +276,39 @@ class UserAccountModel {
   }
 
   factory UserAccountModel.fromMap(Map<String, dynamic> map) {
+    Map<String, dynamic>? medProfile;
+    if (map['medical_profile'] is Map) {
+      try {
+        medProfile = Map<String, dynamic>.from(map['medical_profile'] as Map);
+      } catch (_) {}
+    }
+    final doctorIdRaw = (map['doctorId'] ?? map['doctor_id']) as String? ??
+        (medProfile?['doctor_id'] ?? medProfile?['doctorId']) as String?;
+    final roleRaw = (map['role'] as String?)?.isNotEmpty == true
+        ? map['role'] as String
+        : (medProfile?['role'] as String? ??
+            (doctorIdRaw != null && doctorIdRaw.isNotEmpty
+                ? UserRole.doctor
+                : UserRole.patient));
+    final passwordRaw = (map['password'] as String?)?.isNotEmpty == true
+        ? map['password'] as String
+        : (map['password_hash'] as String? ?? '');
+    final fullNameRaw = (map['fullName'] as String?)?.isNotEmpty == true
+        ? map['fullName'] as String
+        : ((map['full_name'] as String?)?.isNotEmpty == true
+            ? map['full_name'] as String
+            : (medProfile?['full_name'] as String? ?? medProfile?['fullName'] as String? ?? ''));
+
     return UserAccountModel(
       username: map['username'] as String? ?? '',
-      password: map['password'] as String? ?? '',
-      fullName: map['fullName'] as String? ?? '',
+      password: passwordRaw,
+      fullName: fullNameRaw,
       createdAt: map['createdAt'] != null
           ? DateTime.tryParse(map['createdAt'] as String) ?? DateTime.now()
           : (map['created_at'] != null ? DateTime.tryParse(map['created_at'] as String) ?? DateTime.now() : DateTime.now()),
       emailOrPhone: map['emailOrPhone'] as String? ?? map['email_or_phone'] as String?,
+      role: roleRaw,
+      doctorId: doctorIdRaw,
       gender: map['gender'] as String?,
       weightKg: (map['weightKg'] as num?)?.toDouble() ?? (map['weight_kg'] as num?)?.toDouble(),
       heightCm: (map['heightCm'] as num?)?.toDouble() ?? (map['height_cm'] as num?)?.toDouble(),
@@ -286,6 +331,8 @@ class UserAccountModel {
     String? fullName,
     DateTime? createdAt,
     String? emailOrPhone,
+    String? role,
+    String? doctorId,
     String? gender,
     double? weightKg,
     double? heightCm,
@@ -304,6 +351,8 @@ class UserAccountModel {
       fullName: fullName ?? this.fullName,
       createdAt: createdAt ?? this.createdAt,
       emailOrPhone: emailOrPhone ?? this.emailOrPhone,
+      role: role ?? this.role,
+      doctorId: doctorId ?? this.doctorId,
       gender: gender ?? this.gender,
       weightKg: weightKg ?? this.weightKg,
       heightCm: heightCm ?? this.heightCm,

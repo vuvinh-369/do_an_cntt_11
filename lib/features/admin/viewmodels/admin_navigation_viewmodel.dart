@@ -65,6 +65,16 @@ mixin DieuHuongQuanTriViewModel on ChangeNotifier {
       icon: Icons.people_alt_outlined,
     ),
     AdminSidebarItemModel(
+      id: 'doctor_management',
+      title: 'Quản lý Bác sĩ',
+      icon: Icons.medical_services_outlined,
+    ),
+    AdminSidebarItemModel(
+      id: 'doctor_consultation',
+      title: 'Tư vấn Bác sĩ',
+      icon: Icons.forum_outlined,
+    ),
+    AdminSidebarItemModel(
       id: 'admin_profile',
       title: 'Hồ sơ tài khoản',
       icon: Icons.badge_outlined,

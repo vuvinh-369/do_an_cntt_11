@@ -528,6 +528,28 @@ class KetQuaPhanTichView extends StatelessWidget {
         ),
         const SizedBox(height: 8),
 
+        // Nút Tư vấn Bác sĩ chuyên khoa (Zalo-style)
+        ElevatedButton.icon(
+          onPressed: () => context.read<UserViewModel>().consultDoctorWithCurrentAnalysis(),
+          icon: const Icon(Icons.medical_services_outlined, size: 16),
+          label: const Text(
+            'Tư vấn Bác sĩ chuyên khoa',
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.2,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0284C7),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+        const SizedBox(height: 8),
+
         // Hàng 2: Nút Quét ảnh khác & Quét lại với độ tương phản
         Row(
           children: [

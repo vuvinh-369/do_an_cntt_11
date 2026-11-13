@@ -203,6 +203,15 @@ class GeminiService {
     );
   }
 
+  /// Tạo lời khuyên sơ cứu y tế từ Gemini hoặc fallback
+  Future<String> generateFirstAidAdvice(String prompt, [String? woundContext]) async {
+    return sendChatMessage(
+      conversationHistory: const [],
+      userMessage: prompt,
+      woundContext: woundContext,
+    );
+  }
+
   /// Gửi tin nhắn tới Google Gemini API kèm lịch sử hội thoại
   Future<String> sendChatMessage({
     required List<Map<String, String>> conversationHistory,

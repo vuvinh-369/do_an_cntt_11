@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../admin/viewmodels/admin_viewmodel.dart';
 import '../viewmodels/user_viewmodel.dart';
 import 'chat_view.dart';
+import 'doctor_consultation_view.dart';
 import 'first_aid_view.dart';
 import 'analysis_result_view.dart';
 import 'document_view.dart';
@@ -34,9 +35,15 @@ class UserShellView extends StatelessWidget {
     // =========================================================================
     // GIAO DIỆN PC / DESKTOP (GIỮ NGUYÊN 100% BỐ CỤC HIỆN TẠI)
     // =========================================================================
+    final isFixedViewportScreen =
+        viewModel.currentScreenIndex == 8 || viewModel.currentScreenIndex == 5;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FB),
       body: SingleChildScrollView(
+        physics: isFixedViewportScreen
+            ? const NeverScrollableScrollPhysics()
+            : const ClampingScrollPhysics(),
         child: Center(
           child: Container(
             constraints: const BoxConstraints(maxWidth: 1240),
@@ -84,7 +91,7 @@ class UserShellView extends StatelessWidget {
     UserViewModel viewModel,
   ) {
     final isHome = viewModel.currentScreenIndex == 0;
-    final isChatScreen = viewModel.currentScreenIndex == 5;
+    final isChatScreen = viewModel.currentScreenIndex == 5 || viewModel.currentScreenIndex == 8;
 
     return Scaffold(
       backgroundColor: isHome ? const Color(0xFFF6F9FC) : Colors.white,
@@ -112,7 +119,9 @@ class UserShellView extends StatelessWidget {
         ),
       ),
       body: isChatScreen
-          ? const ChatBoxAiView()
+          ? (viewModel.currentScreenIndex == 8
+              ? const DoctorConsultationView()
+              : const ChatBoxAiView())
           : SingleChildScrollView(
               child: _buildSelectedMobileBodyContent(viewModel),
             ),
@@ -275,6 +284,8 @@ class UserShellView extends StatelessWidget {
         return 'Kho tài liệu y tế';
       case 7:
         return 'Lịch sử phân tích';
+      case 8:
+        return 'Tư vấn Bác sĩ';
       default:
         return 'Trợ lý Cứu hộ AI';
     }
@@ -298,6 +309,8 @@ class UserShellView extends StatelessWidget {
         return const KhoTaiLieuView();
       case 7:
         return const LichSuPhanTichView();
+      case 8:
+        return const DoctorConsultationView();
       default:
         return const TrangChuView();
     }
@@ -771,7 +784,9 @@ class UserShellView extends StatelessWidget {
         final isWide = constraints.maxWidth >= 780;
 
         final Widget rightContent;
-        if (viewModel.currentScreenIndex == 7) {
+        if (viewModel.currentScreenIndex == 8) {
+          rightContent = const DoctorConsultationView();
+        } else if (viewModel.currentScreenIndex == 7) {
           rightContent = const LichSuPhanTichView();
         } else if (viewModel.currentScreenIndex == 6) {
           rightContent = const KhoTaiLieuView();
@@ -1006,6 +1021,16 @@ class UserShellView extends StatelessWidget {
                   },
                 ),
                 const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.medical_services_outlined, color: Color(0xFF2563EB)),
+                  title: const Text('Cổng Bác sĩ tư vấn (/doctor)'),
+                  subtitle: const Text('Đăng nhập tài khoản Bác sĩ để tiếp nhận & chat với bệnh nhân'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showAuthModal(context, viewModel);
+                  },
+                ),
                 ListTile(
                   leading: const Icon(Icons.admin_panel_settings_outlined, color: Color(0xFFD97706)),
                   title: const Text('Cổng Quản trị hệ thống'),

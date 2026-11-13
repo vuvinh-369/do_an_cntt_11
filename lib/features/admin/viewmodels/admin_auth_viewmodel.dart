@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import '../../../core/email/email_config_service.dart';
 import '../../../core/storage/local_storage_service.dart';
 import '../../../core/supabase/supabase_service.dart';
+import '../../../core/user_management/user_account_service.dart';
+import '../../user/models/user_account_model.dart';
 import '../models/admin_login_models.dart';
 import 'admin_navigation_viewmodel.dart';
 
@@ -116,6 +118,28 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
     _loginFeedbackMessage = null;
     notifyListeners();
 
+    // 0. Kiểm tra nếu là tài khoản Bác sĩ đăng nhập từ cổng Quản trị / Bác sĩ
+    final docAuth = await UserAccountService.instance.authenticateAsync(
+      username: trimmedUser,
+      password: trimmedPass,
+    );
+    if (docAuth['success'] == true) {
+      final account = docAuth['account'] as UserAccountModel;
+      if (account.isDoctor) {
+        await LocalStorageService.instance.saveDoctorSession(
+          username: account.username,
+          doctorId: (account.doctorId != null && account.doctorId!.isNotEmpty)
+              ? account.doctorId!
+              : 'doc_an_nguyen',
+        );
+        _isLoginError = false;
+        _isLoggingIn = false;
+        _loginFeedbackMessage = 'Đăng nhập Bác sĩ tư vấn thành công!';
+        exitAdminPortalToUserApp();
+        return true;
+      }
+    }
+
     // 1. Thử xác thực trực tiếp qua Stored Procedure Bcrypt trên Supabase
     try {
       final client = SupabaseService.instance.client;
@@ -128,7 +152,9 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
         if (rpcRes is Map) {
           final isSuccess = rpcRes['success'] == true;
           if (isSuccess) {
-            final adminData = rpcRes['admin'] as Map<String, dynamic>?;
+            final adminData = rpcRes['admin'] is Map
+                ? Map<String, dynamic>.from(rpcRes['admin'] as Map)
+                : null;
             final now = DateTime.now();
 
             _adminProfile = _adminProfile.copyWith(
