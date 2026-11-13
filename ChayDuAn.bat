@@ -110,6 +110,7 @@ if defined FLUTTER_ROOT call :try_flutter_exe "%FLUTTER_ROOT%\bin\flutter.bat"
 if not defined FLUTTER_EXE (
     for /f "delims=" %%I in ('where flutter.bat 2^>nul') do call :try_flutter_exe "%%I"
 )
+call :try_flutter_exe "D:\fluter\flutter\bin\flutter.bat"
 call :try_flutter_exe "D:\IT\FlutterInstall\flutter\bin\flutter.bat"
 call :try_flutter_exe "C:\src\flutter\bin\flutter.bat"
 call :try_flutter_exe "C:\flutter\bin\flutter.bat"
