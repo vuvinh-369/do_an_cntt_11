@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/security/auth_brute_force_service.dart';
+import '../../../core/security/widgets/auth_captcha_box.dart';
 import '../viewmodels/admin_viewmodel.dart';
 import 'widgets/admin_painters.dart';
 
@@ -14,6 +16,7 @@ class DangNhapQuanTriView extends StatefulWidget {
 class _DangNhapQuanTriViewState extends State<DangNhapQuanTriView> {
   late final TextEditingController _usernameController;
   late final TextEditingController _passwordController;
+  late final TextEditingController _captchaController;
 
   @override
   void initState() {
@@ -21,6 +24,7 @@ class _DangNhapQuanTriViewState extends State<DangNhapQuanTriView> {
     final vm = context.read<AdminViewModel>();
     _usernameController = TextEditingController(text: vm.usernameInput);
     _passwordController = TextEditingController(text: vm.passwordInput);
+    _captchaController = TextEditingController();
     _loadSavedCredentials();
   }
 
@@ -42,6 +46,7 @@ class _DangNhapQuanTriViewState extends State<DangNhapQuanTriView> {
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _captchaController.dispose();
     super.dispose();
   }
 
@@ -273,7 +278,14 @@ class _DangNhapQuanTriViewState extends State<DangNhapQuanTriView> {
             controller: _passwordController,
             onChanged: viewModel.updatePassword,
             obscureText: viewModel.isPasswordObscured,
-            onSubmitted: (_) => viewModel.submitAdminLogin(),
+            onSubmitted: (_) {
+              if (!AuthBruteForceService.instance.isDelayActive(AuthBruteForceService.scopeAdmin)) {
+                viewModel.updateUsername(_usernameController.text);
+                viewModel.updatePassword(_passwordController.text);
+                viewModel.updateCaptchaInput(_captchaController.text);
+                viewModel.submitAdminLogin();
+              }
+            },
             style: const TextStyle(fontSize: 14.5, color: Color(0xFF1E293B)),
             decoration: InputDecoration(
               hintText: spec.passwordHint,
@@ -408,16 +420,24 @@ class _DangNhapQuanTriViewState extends State<DangNhapQuanTriView> {
               ),
             ),
           ],
+          AuthCaptchaBox(
+            scope: AuthBruteForceService.scopeAdmin,
+            controller: _captchaController,
+            onChanged: (val) => viewModel.updateCaptchaInput(val),
+          ),
           SizedBox(height: isMobile ? 18 : 24),
           SizedBox(
             width: double.infinity,
             height: 48,
             child: ElevatedButton(
-              onPressed: () {
-                viewModel.updateUsername(_usernameController.text);
-                viewModel.updatePassword(_passwordController.text);
-                viewModel.submitAdminLogin();
-              },
+              onPressed: AuthBruteForceService.instance.isDelayActive(AuthBruteForceService.scopeAdmin)
+                  ? null
+                  : () {
+                      viewModel.updateUsername(_usernameController.text);
+                      viewModel.updatePassword(_passwordController.text);
+                      viewModel.updateCaptchaInput(_captchaController.text);
+                      viewModel.submitAdminLogin();
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2563EB),
                 foregroundColor: Colors.white,

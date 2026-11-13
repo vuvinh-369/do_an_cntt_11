@@ -1,3 +1,4 @@
+import '../../../core/security/auth_brute_force_service.dart';
 import '../../../core/storage/local_storage_service.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -196,8 +197,28 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
   Future<String?> loginWithCredentials({
     required String username,
     required String password,
+    String? captchaAnswer,
     bool rememberMe = true,
   }) async {
+    final bfService = AuthBruteForceService.instance;
+
+    // A. Kiểm tra độ trễ lũy tiến (Progressive Rate Limiting Delay)
+    if (bfService.isDelayActive(AuthBruteForceService.scopeUser)) {
+      final remaining = bfService.getRemainingDelaySeconds(AuthBruteForceService.scopeUser);
+      return 'Đăng nhập sai quá nhiều lần. Vui lòng chờ $remaining giây trước khi thử lại.';
+    }
+
+    // B. Kiểm tra thử thách CAPTCHA bắt buộc (sau 5 lần sai liên tiếp)
+    if (bfService.isChallengeRequired(AuthBruteForceService.scopeUser)) {
+      if (!bfService.validateChallenge(AuthBruteForceService.scopeUser, captchaAnswer)) {
+        bfService.recordFailedAttempt(AuthBruteForceService.scopeUser);
+        final remaining = bfService.getRemainingDelaySeconds(AuthBruteForceService.scopeUser);
+        return remaining > 0
+            ? 'Mã xác thực không chính xác! Vui lòng chờ $remaining giây trước khi thử lại.'
+            : 'Mã xác thực không chính xác hoặc chưa nhập!';
+      }
+    }
+
     // 1. Thử xác thực trực tiếp qua Stored Procedure Bcrypt trên Supabase
     final res = await UserAccountService.instance.authenticateAsync(
       username: username,
@@ -215,6 +236,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
               : 'doc_an_nguyen',
         );
       }
+      bfService.recordSuccessfulLogin(AuthBruteForceService.scopeUser);
       await LocalStorageService.instance.saveUserCredentials(
         rememberMe: rememberMe,
         username: username,
@@ -245,6 +267,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
               : 'doc_an_nguyen',
         );
       }
+      bfService.recordSuccessfulLogin(AuthBruteForceService.scopeUser);
       await LocalStorageService.instance.saveUserCredentials(
         rememberMe: rememberMe,
         username: username,
@@ -254,6 +277,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
       return null;
     }
 
+    bfService.recordFailedAttempt(AuthBruteForceService.scopeUser);
     return res['message'] as String? ?? syncResult['message'] as String? ?? 'Đăng nhập không thành công.';
   }
 

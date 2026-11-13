@@ -1,3 +1,5 @@
+import '../../../../core/security/auth_brute_force_service.dart';
+import '../../../../core/security/widgets/auth_captcha_box.dart';
 import '../../../../core/storage/local_storage_service.dart';
 import 'package:flutter/material.dart';
 
@@ -40,6 +42,7 @@ class _UserAuthModalDialogState extends State<UserAuthModalDialog> {
   // Controllers cho Đăng nhập
   final _loginUserCtrl = TextEditingController();
   final _loginPassCtrl = TextEditingController();
+  final _loginCaptchaCtrl = TextEditingController();
   bool _obscureLoginPass = true;
 
   // Controllers cho Đăng ký (Tuyệt đối không thu thập họ tên, SĐT, địa chỉ)
@@ -74,6 +77,7 @@ class _UserAuthModalDialogState extends State<UserAuthModalDialog> {
   void dispose() {
     _loginUserCtrl.dispose();
     _loginPassCtrl.dispose();
+    _loginCaptchaCtrl.dispose();
     _regUserCtrl.dispose();
     _regEmailCtrl.dispose();
     _regPassCtrl.dispose();
@@ -103,6 +107,7 @@ class _UserAuthModalDialogState extends State<UserAuthModalDialog> {
     final error = await widget.viewModel.loginWithCredentials(
       username: user,
       password: pass,
+      captchaAnswer: _loginCaptchaCtrl.text,
       rememberMe: _rememberMe,
     );
     if (error != null) {
@@ -637,9 +642,13 @@ class _UserAuthModalDialogState extends State<UserAuthModalDialog> {
                     ),
                   ],
                 ),
+                AuthCaptchaBox(
+                  scope: AuthBruteForceService.scopeUser,
+                  controller: _loginCaptchaCtrl,
+                ),
                 const SizedBox(height: 18),
                 ElevatedButton(
-                  onPressed: _handleLogin,
+                  onPressed: AuthBruteForceService.instance.isDelayActive(AuthBruteForceService.scopeUser) ? null : _handleLogin,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2563EB),
                     foregroundColor: Colors.white,

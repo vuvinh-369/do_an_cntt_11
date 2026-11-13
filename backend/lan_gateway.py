@@ -7,7 +7,12 @@ import os
 from pathlib import Path
 import re
 import socket
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
+
+try:
+    from security_guard import SlidingWindowRateLimiter
+except ImportError:
+    from .security_guard import SlidingWindowRateLimiter
 
 
 def local_ipv4_addresses():
@@ -43,9 +48,11 @@ class GatewayServer(ThreadingHTTPServer):
         return connection, address
 
 
-def make_gateway(web_root, api_port, allowed_hosts):
+def make_gateway(web_root, api_port, allowed_hosts, rate_limiter=None):
     root = Path(web_root).resolve()
     hosts = frozenset(allowed_hosts) | {'127.0.0.1', 'localhost'}
+    if rate_limiter is None:
+        rate_limiter = SlidingWindowRateLimiter(max_requests=50, window_seconds=60.0)
 
     class Handler(SimpleHTTPRequestHandler):
         def __init__(self, *args, **kwargs):
@@ -179,10 +186,128 @@ def make_gateway(web_root, api_port, allowed_hosts):
             else:
                 super().do_GET()
 
+        def enforce_rate_limit(self):
+            client_ip = self.client_address[0]
+            allowed, challenge = rate_limiter.check_request(client_ip)
+            if allowed:
+                return True
+
+            path = urlsplit(self.path).path
+            accept = self.headers.get('Accept', '')
+            is_api = path.startswith('/api/') or 'application/json' in accept
+
+            self.send_response(429)
+            self.send_header('Retry-After', '60')
+            if is_api:
+                body = json.dumps({
+                    'error': 'Tần suất yêu cầu vượt quá giới hạn cho phép (tối đa 50 yêu cầu/phút). Vui lòng giải CAPTCHA.',
+                    'rate_limited': True,
+                    'challenge': challenge,
+                }, ensure_ascii=False).encode('utf-8')
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                if self.command != 'HEAD':
+                    self.wfile.write(body)
+            else:
+                html_bytes = rate_limiter.render_challenge_html(challenge, return_url=self.path).encode('utf-8')
+                self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.send_header('Content-Length', str(len(html_bytes)))
+                self.end_headers()
+                if self.command != 'HEAD':
+                    self.wfile.write(html_bytes)
+            return False
+
+        def handle_captcha_solve(self):
+            try:
+                length = int(self.headers.get('Content-Length', '0'))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > 65536:
+                self.json_error(400, 'Dữ liệu yêu cầu không hợp lệ.')
+                return
+            raw_body = self.rfile.read(length)
+            content_type = self.headers.get('Content-Type', '').split(';')[0].strip().lower()
+            challenge_id = ''
+            answer = ''
+            return_url = '/'
+            if content_type == 'application/json':
+                try:
+                    data = json.loads(raw_body.decode('utf-8'))
+                    challenge_id = data.get('challenge_id', '')
+                    answer = str(data.get('answer', ''))
+                    return_url = data.get('return_url', '/')
+                except Exception:
+                    self.json_error(400, 'Dữ liệu JSON không hợp lệ.')
+                    return
+            elif content_type == 'application/x-www-form-urlencoded':
+                parsed_form = parse_qs(raw_body.decode('utf-8', errors='replace'))
+                challenge_id = parsed_form.get('challenge_id', [''])[0]
+                answer = parsed_form.get('answer', [''])[0]
+                return_url = parsed_form.get('return_url', ['/'])[0]
+            else:
+                try:
+                    data = json.loads(raw_body.decode('utf-8'))
+                    challenge_id = data.get('challenge_id', '')
+                    answer = str(data.get('answer', ''))
+                except Exception:
+                    self.json_error(415, 'Định dạng dữ liệu không được hỗ trợ.')
+                    return
+
+            client_ip = self.client_address[0]
+            success = rate_limiter.verify_captcha(client_ip, challenge_id, answer)
+            if success:
+                if content_type == 'application/x-www-form-urlencoded':
+                    self.send_response(303)
+                    self.send_header('Location', return_url if return_url.startswith('/') else '/')
+                    self.end_headers()
+                    return
+                body = json.dumps({
+                    'success': True,
+                    'message': 'Xác thực thành công. Quyền truy cập đã được khôi phục.',
+                }, ensure_ascii=False).encode('utf-8')
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                new_challenge = rate_limiter.challenge_manager.generate_challenge(client_ip)
+                body = json.dumps({
+                    'success': False,
+                    'error': 'Mã xác thực không chính xác hoặc đã hết hạn.',
+                    'new_challenge': new_challenge,
+                }, ensure_ascii=False).encode('utf-8')
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+        def handle_captcha_new(self):
+            client_ip = self.client_address[0]
+            challenge = rate_limiter.challenge_manager.generate_challenge(client_ip)
+            body = json.dumps({
+                'success': True,
+                'challenge': challenge,
+            }, ensure_ascii=False).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            if self.command != 'HEAD':
+                self.wfile.write(body)
+
         def do_GET(self):
             if not self.check_request():
                 return
-            if urlsplit(self.path).path.startswith('/api/'):
+            path = urlsplit(self.path).path
+            if path in {'/api/captcha/new', '/api/captcha-challenge'}:
+                self.handle_captcha_new()
+                return
+            if not self.enforce_rate_limit():
+                return
+            if path.startswith('/api/'):
                 self.proxy_api()
             else:
                 self.serve_static()
@@ -190,14 +315,29 @@ def make_gateway(web_root, api_port, allowed_hosts):
         def do_HEAD(self):
             if not self.check_request():
                 return
-            if urlsplit(self.path).path.startswith('/api/'):
+            path = urlsplit(self.path).path
+            if path in {'/api/captcha/new', '/api/captcha-challenge'}:
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.end_headers()
+                return
+            if not self.enforce_rate_limit():
+                return
+            if path.startswith('/api/'):
                 self.json_error(405, 'Phương thức không được hỗ trợ.')
             else:
                 self.serve_static()
 
         def do_POST(self):
-            if self.check_request():
-                self.proxy_api()
+            if not self.check_request():
+                return
+            path = urlsplit(self.path).path
+            if path in {'/api/captcha/solve', '/api/verify-captcha'}:
+                self.handle_captcha_solve()
+                return
+            if not self.enforce_rate_limit():
+                return
+            self.proxy_api()
 
         def do_OPTIONS(self):
             if self.check_request():
@@ -207,4 +347,5 @@ def make_gateway(web_root, api_port, allowed_hosts):
             self.json_error(404, 'Không tìm thấy tệp.')
             return None
 
+    Handler.rate_limiter = rate_limiter
     return Handler

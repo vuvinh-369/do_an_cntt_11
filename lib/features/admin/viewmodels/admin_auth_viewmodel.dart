@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../../../core/email/email_config_service.dart';
+import '../../../core/security/auth_brute_force_service.dart';
 import '../../../core/storage/local_storage_service.dart';
 import '../../../core/supabase/supabase_service.dart';
 import '../../../core/user_management/user_account_service.dart';
@@ -43,6 +44,12 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
 
   bool _isLoggingIn = false;
   bool get isLoggingIn => _isLoggingIn;
+
+  String _captchaInput = '';
+  String get captchaInput => _captchaInput;
+  void updateCaptchaInput(String value) {
+    _captchaInput = value;
+  }
 
   // Hồ sơ quản trị viên (có thể thay đổi tên, mật khẩu, email nhận OTP trong /admin)
   AdminProfileModel _adminProfile = AdminProfileModel(
@@ -104,6 +111,31 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
 
   /// Xử lý khi bấm nút "Đăng nhập" trên Màn hình 9 (Tích hợp xác thực băm Bcrypt trên Supabase)
   Future<bool> submitAdminLogin() async {
+    final bfService = AuthBruteForceService.instance;
+
+    // A. Kiểm tra độ trễ lũy tiến (Progressive Rate Limiting Delay)
+    if (bfService.isDelayActive(AuthBruteForceService.scopeAdmin)) {
+      final remaining = bfService.getRemainingDelaySeconds(AuthBruteForceService.scopeAdmin);
+      _isLoginError = true;
+      _loginFeedbackMessage = 'Đăng nhập sai quá nhiều lần. Vui lòng chờ $remaining giây trước khi thử lại.';
+      notifyListeners();
+      return false;
+    }
+
+    // B. Kiểm tra thử thách CAPTCHA bắt buộc (sau 5 lần sai liên tiếp)
+    if (bfService.isChallengeRequired(AuthBruteForceService.scopeAdmin)) {
+      if (!bfService.validateChallenge(AuthBruteForceService.scopeAdmin, _captchaInput)) {
+        bfService.recordFailedAttempt(AuthBruteForceService.scopeAdmin);
+        final remaining = bfService.getRemainingDelaySeconds(AuthBruteForceService.scopeAdmin);
+        _isLoginError = true;
+        _loginFeedbackMessage = remaining > 0
+            ? 'Mã xác thực không chính xác! Vui lòng chờ $remaining giây trước khi thử lại.'
+            : 'Mã xác thực không chính xác hoặc chưa nhập!';
+        notifyListeners();
+        return false;
+      }
+    }
+
     final trimmedUser = _usernameInput.trim();
     final trimmedPass = _passwordInput.trim();
 
@@ -132,6 +164,7 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
               ? account.doctorId!
               : 'doc_an_nguyen',
         );
+        bfService.recordSuccessfulLogin(AuthBruteForceService.scopeAdmin);
         _isLoginError = false;
         _isLoggingIn = false;
         _loginFeedbackMessage = 'Đăng nhập Bác sĩ tư vấn thành công!';
@@ -172,6 +205,7 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
               loginTime: now,
             );
 
+            bfService.recordSuccessfulLogin(AuthBruteForceService.scopeAdmin);
             _isLoginError = false;
             _isLoggingIn = false;
             _loginFeedbackMessage = 'Đăng nhập quản trị thành công!';
@@ -186,6 +220,7 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
           } else {
             // Trường hợp tài khoản hoặc mật khẩu không khớp trên Supabase
             if (!(trimmedUser == '1' && trimmedPass == '1')) {
+              bfService.recordFailedAttempt(AuthBruteForceService.scopeAdmin);
               _isLoginError = true;
               _isLoggingIn = false;
               _loginFeedbackMessage = rpcRes['message'] as String? ?? 'Tài khoản hoặc mật khẩu không chính xác!';
@@ -206,12 +241,14 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
 
     _isLoggingIn = false;
     if (!isAuthorized) {
+      bfService.recordFailedAttempt(AuthBruteForceService.scopeAdmin);
       _isLoginError = true;
       _loginFeedbackMessage = 'Tài khoản hoặc mật khẩu không chính xác!';
       notifyListeners();
       return false;
     }
 
+    bfService.recordSuccessfulLogin(AuthBruteForceService.scopeAdmin);
     _isLoginError = false;
     _loginFeedbackMessage = 'Đăng nhập quản trị thành công!';
     await LocalStorageService.instance.saveAdminCredentials(

@@ -514,4 +514,78 @@ class LocalStorageService {
       debugPrint('[LocalStorage] Lỗi dọn dẹp chat cache: $e');
     }
   }
+
+  // ===========================================================================
+  // QUẢN LÝ BẢO VỆ BRUTE-FORCE VÀ TIẾN TRÌNH TRÌ HOÃN (Yêu cầu R2)
+  // ===========================================================================
+
+  static const String _keyBfAttemptsPrefix = 'auth_bf_attempts_';
+  static const String _keyBfLockPrefix = 'auth_bf_lock_';
+
+  final Map<String, int> _cachedBfAttempts = {};
+  final Map<String, DateTime> _cachedBfLocks = {};
+
+  /// Lưu số lần đăng nhập sai và mốc thời gian khóa lũy tiến cho từng portal
+  Future<void> saveFailedLoginAttempts(String scope, int count, DateTime? lockedUntil) async {
+    _cachedBfAttempts[scope] = count;
+    if (lockedUntil != null) {
+      _cachedBfLocks[scope] = lockedUntil;
+    } else {
+      _cachedBfLocks.remove(scope);
+    }
+    try {
+      final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
+      _cachedPrefs = prefs;
+      await prefs.setInt('$_keyBfAttemptsPrefix$scope', count);
+      if (lockedUntil != null) {
+        await prefs.setInt('$_keyBfLockPrefix$scope', lockedUntil.millisecondsSinceEpoch);
+      } else {
+        await prefs.remove('$_keyBfLockPrefix$scope');
+      }
+    } catch (e) {
+      debugPrint('[LocalStorage] Lỗi lưu brute-force attempts: $e');
+    }
+  }
+
+  /// Nạp thông tin số lần đăng nhập sai và mốc thời gian khóa lũy tiến
+  Future<Map<String, dynamic>> loadFailedLoginAttempts(String scope) async {
+    if (_cachedBfAttempts.containsKey(scope)) {
+      return {
+        'count': _cachedBfAttempts[scope] ?? 0,
+        'lockedUntil': _cachedBfLocks[scope],
+      };
+    }
+    try {
+      final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
+      _cachedPrefs = prefs;
+      final count = prefs.getInt('$_keyBfAttemptsPrefix$scope') ?? 0;
+      final lockMillis = prefs.getInt('$_keyBfLockPrefix$scope');
+      final lockedUntil = lockMillis != null ? DateTime.fromMillisecondsSinceEpoch(lockMillis) : null;
+      _cachedBfAttempts[scope] = count;
+      if (lockedUntil != null) {
+        _cachedBfLocks[scope] = lockedUntil;
+      }
+      return {
+        'count': count,
+        'lockedUntil': lockedUntil,
+      };
+    } catch (e) {
+      debugPrint('[LocalStorage] Lỗi load brute-force attempts: $e');
+      return {'count': 0, 'lockedUntil': null};
+    }
+  }
+
+  /// Xóa sạch bản ghi brute-force khi đăng nhập thành công
+  Future<void> clearFailedLoginAttempts(String scope) async {
+    _cachedBfAttempts.remove(scope);
+    _cachedBfLocks.remove(scope);
+    try {
+      final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
+      _cachedPrefs = prefs;
+      await prefs.remove('$_keyBfAttemptsPrefix$scope');
+      await prefs.remove('$_keyBfLockPrefix$scope');
+    } catch (e) {
+      debugPrint('[LocalStorage] Lỗi xóa brute-force attempts: $e');
+    }
+  }
 }

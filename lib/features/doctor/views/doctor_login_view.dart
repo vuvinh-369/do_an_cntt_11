@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/doctor_management/doctor_management_service.dart';
+import '../../../core/security/auth_brute_force_service.dart';
+import '../../../core/security/widgets/auth_captcha_box.dart';
 import '../../../core/storage/local_storage_service.dart';
 import '../../../core/user_management/user_account_service.dart';
 import '../../user/models/doctor_consultation_models.dart';
@@ -28,6 +30,7 @@ class _DoctorLoginViewState extends State<DoctorLoginView> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _usernameCtrl = TextEditingController();
   final TextEditingController _passwordCtrl = TextEditingController();
+  final TextEditingController _captchaCtrl = TextEditingController();
 
   bool _obscurePassword = true;
   bool _rememberMe = true;
@@ -44,6 +47,7 @@ class _DoctorLoginViewState extends State<DoctorLoginView> {
   void dispose() {
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
+    _captchaCtrl.dispose();
     super.dispose();
   }
 
@@ -56,6 +60,33 @@ class _DoctorLoginViewState extends State<DoctorLoginView> {
 
   Future<void> _submitLogin() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final bfService = AuthBruteForceService.instance;
+
+    // A. Kiểm tra độ trễ lũy tiến (Progressive Rate Limiting Delay)
+    if (bfService.isDelayActive(AuthBruteForceService.scopeDoctor)) {
+      final remaining = bfService.getRemainingDelaySeconds(AuthBruteForceService.scopeDoctor);
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Đăng nhập sai quá nhiều lần. Vui lòng chờ $remaining giây trước khi thử lại.';
+      });
+      return;
+    }
+
+    // B. Kiểm tra thử thách CAPTCHA bắt buộc (sau 5 lần sai liên tiếp)
+    if (bfService.isChallengeRequired(AuthBruteForceService.scopeDoctor)) {
+      if (!bfService.validateChallenge(AuthBruteForceService.scopeDoctor, _captchaCtrl.text)) {
+        bfService.recordFailedAttempt(AuthBruteForceService.scopeDoctor);
+        final remaining = bfService.getRemainingDelaySeconds(AuthBruteForceService.scopeDoctor);
+        setState(() {
+          _isLoading = false;
+          _errorMessage = remaining > 0
+              ? 'Mã xác thực không chính xác! Vui lòng chờ $remaining giây trước khi thử lại.'
+              : 'Mã xác thực không chính xác hoặc chưa nhập!';
+        });
+        return;
+      }
+    }
 
     final username = _usernameCtrl.text.trim();
     final password = _passwordCtrl.text.trim();
@@ -74,6 +105,7 @@ class _DoctorLoginViewState extends State<DoctorLoginView> {
       if (!mounted) return;
 
       if (authResult['success'] != true) {
+        bfService.recordFailedAttempt(AuthBruteForceService.scopeDoctor);
         setState(() {
           _isLoading = false;
           _errorMessage = authResult['message'] as String? ?? 'Đăng nhập không thành công. Vui lòng kiểm tra lại tài khoản và mật khẩu.';
@@ -177,6 +209,8 @@ class _DoctorLoginViewState extends State<DoctorLoginView> {
         doctorId: doctor.id,
       );
 
+      bfService.recordSuccessfulLogin(AuthBruteForceService.scopeDoctor);
+
       setState(() {
         _isLoading = false;
       });
@@ -193,7 +227,6 @@ class _DoctorLoginViewState extends State<DoctorLoginView> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isMobile = MediaQuery.sizeOf(context).width < 600;
 
     return Scaffold(
@@ -470,11 +503,17 @@ class _DoctorLoginViewState extends State<DoctorLoginView> {
                             ),
                           ],
                         ),
+                        AuthCaptchaBox(
+                          scope: AuthBruteForceService.scopeDoctor,
+                          controller: _captchaCtrl,
+                        ),
                         const SizedBox(height: 20),
 
                         // Nút Đăng nhập
                         ElevatedButton.icon(
-                          onPressed: _isLoading ? null : _submitLogin,
+                          onPressed: (_isLoading || AuthBruteForceService.instance.isDelayActive(AuthBruteForceService.scopeDoctor))
+                              ? null
+                              : _submitLogin,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2563EB),
                             foregroundColor: Colors.white,
