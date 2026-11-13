@@ -57,6 +57,8 @@ class _TrangChuViewState extends State<TrangChuView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildFeatureCardsSection(context, viewModel),
+              const SizedBox(height: 20),
+              _buildDailyCareBanner(viewModel),
               const SizedBox(height: 36),
               _buildCommonSituationsSection(context, viewModel),
             ],
@@ -149,7 +151,7 @@ class _TrangChuViewState extends State<TrangChuView> {
           ),
         ),
 
-        // 2. Lưới 5 ô tính năng (3 cột x 2 hàng) & Mục "Tình huống thường gặp"
+        // 2. Lưới tính năng và mục "Tình huống thường gặp"
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
           child: Column(
@@ -370,6 +372,13 @@ class _TrangChuViewState extends State<TrangChuView> {
         'color': const Color(0xFF7C3AED),
         'bgColor': const Color(0xFFF2EBFE),
         'onTap': () => viewModel.navigateToChatBoxAi(),
+      },
+      {
+        'title': 'Chăm sóc\nhằng ngày',
+        'icon': Icons.spa_outlined,
+        'color': const Color(0xFF047857),
+        'bgColor': const Color(0xFFE4F5EB),
+        'onTap': viewModel.navigateToDailyCare,
       },
     ];
 
@@ -795,6 +804,49 @@ class _TrangChuViewState extends State<TrangChuView> {
           }).toList(),
         );
       },
+    );
+  }
+
+  Widget _buildDailyCareBanner(UserViewModel viewModel) {
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+      side: const BorderSide(color: Color(0xFFCCEBDB)),
+    );
+    return Material(
+      color: const Color(0xFFF0FAF5),
+      shape: shape,
+      child: InkWell(
+        customBorder: shape,
+        onTap: viewModel.navigateToDailyCare,
+        child: const Padding(
+          padding: EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Icon(Icons.spa_outlined, color: Color(0xFF047857), size: 28),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Chăm sóc sức khỏe hằng ngày',
+                      style: TextStyle(
+                        color: Color(0xFF124A38),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text('Bài học về vận động, uống nước, ăn uống và nghỉ ngơi.'),
+                  ],
+                ),
+              ),
+              SizedBox(width: 12),
+              Icon(Icons.arrow_forward_rounded, color: Color(0xFF047857)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

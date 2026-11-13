@@ -117,7 +117,7 @@ class GroundedChat:
     def render(self,details,route,reason='',metrics=None):
         demo=any(detail.get('publication',{}).get('kind')=='source_reviewed_demo' for detail in details)
         lines=[('Nội dung tham khảo cho bản thử nghiệm đồ án: đã được AI đối chiếu nguồn, chưa duyệt chuyên môn. '
-                'Thông tin được lấy nguyên văn từ SQLite. Đọc điều kiện áp dụng và cảnh báo; kết quả tra cứu chưa xác nhận hướng dẫn phù hợp với tình trạng của bạn.')
+                'Thông tin được lấy nguyên văn từ kho sơ cứu. Đọc điều kiện áp dụng và cảnh báo; kết quả tra cứu chưa xác nhận hướng dẫn phù hợp với tình trạng của bạn.')
                if demo else 'Thông tin dưới đây lấy nguyên văn từ tài liệu đã duyệt. Đọc điều kiện áp dụng và cảnh báo; kết quả này chưa xác nhận hướng dẫn phù hợp với tình trạng của bạn.']
         citations=[]
         for detail in details:
@@ -175,7 +175,7 @@ class GroundedChat:
             interpretation={'intent':'first_aid'}
         if not self.store:
             return self.missing(query,[],[])
-        groups=self.store.summary()['injury_types']
+        groups=self.store.injury_groups()
         published=self.store.list_entries(published=True)
         eligible=eligible_references(published,query)
         if guide_id is not None:
@@ -249,7 +249,7 @@ class GroundedChat:
                         **understood['metrics'])
 
         # Metadata is sufficient for document selection. Full instructions and every
-        # warning are rendered from SQLite, outside model output/token truncation.
+        # warning are rendered from the knowledge store, outside model output/token truncation.
         candidates=matches[:3] if matches else eligible[:20]
         context=selection_prompt(candidates,titles_only=not matches)
         key=hashlib.sha256(json.dumps([query,guide_id,candidates],ensure_ascii=False,sort_keys=True).encode()).hexdigest()

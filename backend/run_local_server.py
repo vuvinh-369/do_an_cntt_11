@@ -34,9 +34,10 @@ def main():
         except OSError as error:
             parser.error(f'Could not load the HTTPS certificate or key: {error}')
     sys.path.insert(0, str(backend / 'medgemma'))
-    from server import ChatService, ThreadingHTTPServer, make_handler
+    from server import ChatService, ThreadingHTTPServer, configured_knowledge_store, make_handler
 
-    service = ChatService(preload_enabled=not args.no_preload)
+    store = configured_knowledge_store()
+    service = ChatService(store=store, preload_enabled=not args.no_preload)
     api = ThreadingHTTPServer(('127.0.0.1', args.api_port), make_handler(service, allow_local_web=True))
     try:
         addresses = local_ipv4_addresses()
@@ -56,6 +57,7 @@ def main():
                 if address != '127.0.0.1':
                     print(f'Thiet bi cung mang: {scheme}://{address}:{web.server_port}/', flush=True)
         print(f'Quan tri nguon (chi tren may chu): http://127.0.0.1:{api.server_port}/admin', flush=True)
+        print(f'Kho so cuu: {store.backend_name}', flush=True)
         print('Nguon co so y te: OpenStreetMap', flush=True)
         print('Mot tien trinh model. Ctrl+C de dung ca web va API.', flush=True)
         if not args.no_preload:

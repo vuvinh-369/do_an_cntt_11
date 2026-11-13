@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../admin/viewmodels/admin_viewmodel.dart';
+import '../viewmodels/user_navigation_viewmodel.dart';
 import '../viewmodels/user_viewmodel.dart';
 import 'chat_view.dart';
+import 'daily_care_view.dart';
 import 'first_aid_view.dart';
 import 'analysis_result_view.dart';
 import 'document_view.dart';
@@ -275,6 +277,8 @@ class UserShellView extends StatelessWidget {
         return 'Kho tài liệu y tế';
       case 7:
         return 'Lịch sử phân tích';
+      case DieuHuongCoSoViewModel.dailyCareScreenIndex:
+        return 'Chăm sóc hằng ngày';
       default:
         return 'Trợ lý Cứu hộ AI';
     }
@@ -298,6 +302,8 @@ class UserShellView extends StatelessWidget {
         return const KhoTaiLieuView();
       case 7:
         return const LichSuPhanTichView();
+      case DieuHuongCoSoViewModel.dailyCareScreenIndex:
+        return const DailyCareView();
       default:
         return const TrangChuView();
     }
@@ -309,7 +315,7 @@ class UserShellView extends StatelessWidget {
     UserViewModel viewModel,
   ) {
     int activeTab = 0;
-    if (viewModel.currentScreenIndex == 4 || viewModel.currentScreenIndex == 3) {
+    if (viewModel.selectedNavIndex == 1) {
       activeTab = 1;
     } else if (viewModel.currentScreenIndex == 6) {
       activeTab = 2;
@@ -771,7 +777,10 @@ class UserShellView extends StatelessWidget {
         final isWide = constraints.maxWidth >= 780;
 
         final Widget rightContent;
-        if (viewModel.currentScreenIndex == 7) {
+        if (viewModel.currentScreenIndex ==
+            DieuHuongCoSoViewModel.dailyCareScreenIndex) {
+          rightContent = const DailyCareView();
+        } else if (viewModel.currentScreenIndex == 7) {
           rightContent = const LichSuPhanTichView();
         } else if (viewModel.currentScreenIndex == 6) {
           rightContent = const KhoTaiLieuView();
@@ -882,14 +891,16 @@ class UserShellView extends StatelessWidget {
                     : const Color(0xFF475569),
               ),
               const SizedBox(width: 12),
-              Text(
-                item.title,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected
-                      ? const Color(0xFF2563EB)
-                      : const Color(0xFF334155),
+              Flexible(
+                child: Text(
+                  item.title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? const Color(0xFF2563EB)
+                        : const Color(0xFF334155),
+                  ),
                 ),
               ),
             ],

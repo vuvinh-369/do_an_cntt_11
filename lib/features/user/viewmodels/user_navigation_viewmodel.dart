@@ -9,6 +9,8 @@ import '../../../core/email/email_config_service.dart';
 import '../../../core/user_management/user_account_service.dart';
 
 mixin DieuHuongCoSoViewModel on ChangeNotifier {
+  static const dailyCareScreenIndex = 8;
+
   // Chỉ số màn hình hiện tại:
   // 0 = Trang chủ (Màn hình 1)
   // 1 = Phân tích ảnh AI - Tải/Chụp ảnh (Màn hình 2)
@@ -84,6 +86,10 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
       case 7:
         _selectedNavIndex = 3; // Lịch sử
         _selectedSidebarIndex = 4; // Lịch sử phân tích
+        break;
+      case dailyCareScreenIndex:
+        _selectedNavIndex = 1;
+        _selectedSidebarIndex = 6;
         break;
       default:
         _selectedNavIndex = 0;
@@ -372,7 +378,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     'Lịch sử',
   ];
 
-  // Danh sách 6 mục menu dọc trên Sidebar bên trái (Đã loại bỏ Hướng dẫn sơ cứu trùng lặp và hợp nhất vào Kiến thức sơ cứu)
+  // Danh sách mục menu dọc trên Sidebar bên trái.
   final List<SidebarMenuItemModel> sidebarMenuItems = const [
     SidebarMenuItemModel(
       id: 'home',
@@ -403,6 +409,11 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
       id: 'ai_chatbox',
       title: 'ChatBox AI',
       icon: Icons.smart_toy_outlined,
+    ),
+    SidebarMenuItemModel(
+      id: 'daily_care',
+      title: 'Chăm sóc hằng ngày',
+      icon: Icons.spa_outlined,
     ),
   ];
 
@@ -486,6 +497,13 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     notifyListeners();
   }
 
+  void navigateToDailyCare() {
+    _pushScreen(dailyCareScreenIndex);
+    _currentScreenIndex = dailyCareScreenIndex;
+    _syncSidebarAndNavIndex();
+    notifyListeners();
+  }
+
   /// Xử lý khi bấm chọn mục trên Top Navigation Bar: ['Trang chủ', 'Kiến thức', 'Tài liệu', 'Lịch sử']
   void selectNavIndex(int index) {
     if (index == 0) {
@@ -514,6 +532,8 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
       navigateToAnalysisHistory();
     } else if (index == 5) {
       navigateToChatBoxAi();
+    } else if (index == 6) {
+      navigateToDailyCare();
     }
   }
 
