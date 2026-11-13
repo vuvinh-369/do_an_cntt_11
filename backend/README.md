@@ -1,4 +1,4 @@
-# Chat MedGemma và SQLite
+# Chat MedGemma và kho sơ cứu
 
 ChatBox Flutter gọi API Python này. Trọng số MedGemma, PDF và dữ liệu SQLite được cung cấp riêng, không nằm trong nội dung Git. Có thể lưu chúng trong `backend/runtime` (đã được Git bỏ qua) hoặc ở thư mục khác. Không đưa trọng số vào Flutter assets.
 
@@ -136,6 +136,34 @@ Dùng `Build-Web.ps1` để tạo bản web demo, rồi chạy `Run-Server.ps1 -
 Chỉ chạy một API MedGemma: dừng server/CLI MedGemma cũ trước khi chạy bản này. API giữ một model và khóa các yêu cầu sinh câu trả lời. Mở nhiều tab không nạp thêm model. YOLO chạy CPU và dùng chung tiến trình chat để tránh nạp thêm một bản PyTorch/GPU. Bản tích hợp này được kiểm tra cho Flutter Web.
 
 Nếu chỉ thử kho tài liệu, dùng `Run-Chat.ps1 -NoPreload`; câu hỏi khớp nguồn vẫn tra SQLite ngay. `Nạp AI` trong chat sẽ nạp model trong cùng tiến trình. Nạp mặc định một lần khi API khởi động; trình duyệt không thể tự khởi động Python trên máy chủ.
+
+## Chuyển kho sơ cứu từ SQLite lên Supabase
+
+Trong dự án Supabase đang dùng, bấm **Connect → Session pooler**, sao chép URI và thay `[YOUR-PASSWORD]` bằng mật khẩu cơ sở dữ liệu đã mã hóa các ký tự đặc biệt theo định dạng URL. Tạo hoặc mở `backend/.env.local` trong VS Code và thêm dòng dưới đây với URI thật. Git bỏ qua tệp này. [Hướng dẫn kết nối Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres#shared-pooler-session-mode)
+
+```dotenv
+MEDGEMMA_KB_DATABASE_URL=postgresql://postgres.PROJECT_REF:PASSWORD@POOLER_HOST:5432/postgres?sslmode=require
+```
+
+Mở PowerShell trong VS Code tại thư mục dự án. Nếu đang chạy server, bấm **Ctrl+C** trong terminal đó trước khi nhập để kho SQLite ổn định trong lúc chuyển.
+
+```powershell
+Set-Location "D:\DATA\.CODEX\DoAnVinhPhatNam\WebVinhNamPhat_CamNang"
+$python = "D:\Models\medgemma-env\Scripts\python.exe"
+& $python -m pip install "psycopg[binary]==3.3.9"
+& $python -X utf8 -B .\backend\migrate_knowledge.py
+```
+
+Lệnh nhập tạo schema `medgemma_kb`, kiểm tra dữ liệu sau khi chép và giữ nguyên trạng thái duyệt. Trên **Table Editor**, chọn schema `medgemma_kb` rồi mở `knowledge_entries`. Script tạo schema từ `supabase/medgemma_knowledge_schema.sql` trong cùng giao dịch. Nếu schema đã tồn tại, dùng lệnh kiểm tra dưới đây. Nội dung và lịch sử duyệt thuộc backend Python. Bảng `public.daily_care_lessons` phục vụ trang Chăm sóc hằng ngày.
+
+```powershell
+& $python -X utf8 -B .\backend\migrate_knowledge.py --check
+.\Run-Server.ps1 -Lan
+```
+
+Dòng `Kho so cuu: supabase` báo backend đã chọn Supabase. API `/api/status` báo thêm `knowledge_backend` và số mục tham khảo. Nếu cần kiểm tra web và kho trước khi nạp model, chạy `.\Run-Server.ps1 -Lan -NoPreload`.
+
+PDF nằm ở `backend/runtime/TaiLieuNguon` trên máy chạy backend. Nếu đặt ở nơi khác, thêm `MEDGEMMA_KB_SOURCE_ROOT` vào `backend/.env.local` với đường dẫn thư mục cha của `TaiLieuNguon`. Khi cần quay lại bản SQLite cục bộ, bỏ dòng `MEDGEMMA_KB_DATABASE_URL` rồi khởi động lại server. Dùng `MEDGEMMA_KB_PATH` hoặc `--sqlite` khi cần nhập từ một file SQLite khác.
 
 ## Cấu hình đường dẫn
 

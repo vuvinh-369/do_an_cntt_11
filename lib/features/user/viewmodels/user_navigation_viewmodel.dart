@@ -9,6 +9,8 @@ import '../../../core/email/email_config_service.dart';
 import '../../../core/user_management/user_account_service.dart';
 
 mixin DieuHuongCoSoViewModel on ChangeNotifier {
+  static const dailyCareScreenIndex = 9;
+
   // Chỉ số màn hình hiện tại:
   // 0 = Trang chủ (Màn hình 1)
   // 1 = Phân tích ảnh AI - Tải/Chụp ảnh (Màn hình 2)
@@ -19,6 +21,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
   // 6 = Kho tài liệu y tế - Quản lý tài liệu cục bộ trên thiết bị (Màn hình 7)
   // 7 = Lịch sử phân tích (Màn hình 8)
   // 8 = Tư vấn Bác sĩ trực tuyến Zalo-style (Màn hình 9)
+  // 9 = Chăm sóc hằng ngày (Màn hình 10)
   int _currentScreenIndex = 0;
   int get currentScreenIndex => _currentScreenIndex;
 
@@ -89,6 +92,10 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
       case 8:
         _selectedNavIndex = -1; // Màn hình tư vấn chuyên khoa
         _selectedSidebarIndex = 6; // Tư vấn Bác sĩ
+        break;
+      case dailyCareScreenIndex:
+        _selectedNavIndex = 1;
+        _selectedSidebarIndex = 7; // Chăm sóc hằng ngày
         break;
       default:
         _selectedNavIndex = 0;
@@ -396,7 +403,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     'Lịch sử',
   ];
 
-  // Danh sách 6 mục menu dọc trên Sidebar bên trái (Đã loại bỏ Hướng dẫn sơ cứu trùng lặp và hợp nhất vào Kiến thức sơ cứu)
+  // Danh sách mục menu dọc trên Sidebar bên trái.
   final List<SidebarMenuItemModel> sidebarMenuItems = const [
     SidebarMenuItemModel(
       id: 'home',
@@ -432,6 +439,11 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
       id: 'doctor_consultation',
       title: 'Tư vấn Bác sĩ',
       icon: Icons.medical_services_outlined,
+    ),
+    SidebarMenuItemModel(
+      id: 'daily_care',
+      title: 'Chăm sóc hằng ngày',
+      icon: Icons.spa_outlined,
     ),
   ];
 
@@ -523,6 +535,14 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     notifyListeners();
   }
 
+  /// Chuyển sang Màn hình 10: Chăm sóc hằng ngày
+  void navigateToDailyCare() {
+    _pushScreen(dailyCareScreenIndex);
+    _currentScreenIndex = dailyCareScreenIndex;
+    _syncSidebarAndNavIndex();
+    notifyListeners();
+  }
+
   /// Xử lý khi bấm chọn mục trên Top Navigation Bar: ['Trang chủ', 'Kiến thức', 'Tài liệu', 'Lịch sử']
   void selectNavIndex(int index) {
     if (index == 0) {
@@ -537,7 +557,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
   }
 
   /// Xử lý khi bấm chọn mục trên thanh Sidebar bên trái:
-  /// 0: Trang chủ, 1: Phân tích ảnh AI, 2: Kiến thức sơ cứu, 3: Tài liệu, 4: Lịch sử phân tích, 5: ChatBox AI
+  /// 0: Trang chủ, 1: Phân tích ảnh AI, 2: Kiến thức sơ cứu, 3: Tài liệu, 4: Lịch sử phân tích, 5: ChatBox AI, 6: Tư vấn Bác sĩ, 7: Chăm sóc hằng ngày
   void selectSidebarIndex(int index) {
     if (index == 0) {
       navigateToHome();
@@ -553,6 +573,8 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
       navigateToChatBoxAi();
     } else if (index == 6) {
       navigateToDoctorConsultation();
+    } else if (index == 7) {
+      navigateToDailyCare();
     }
   }
 

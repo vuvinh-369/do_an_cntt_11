@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -7,8 +8,23 @@ import '../../../../core/browser_position.dart';
 import '../../../../core/nearby_places_api.dart';
 import '../../../../core/url_launcher_helper.dart';
 
+typedef NearbyPlacesFetcher =
+    Future<NearbyPlacesResult> Function(
+      NearbyLocation location, {
+      required int radiusKm,
+    });
+typedef NearbyLocationsFetcher =
+    Future<List<NearbyLocation>> Function(String address);
+
 class NearbyPlacesDialog extends StatefulWidget {
-  const NearbyPlacesDialog({super.key});
+  const NearbyPlacesDialog({
+    super.key,
+    this.fetchPlaces,
+    this.fetchLocations,
+  });
+
+  final NearbyPlacesFetcher? fetchPlaces;
+  final NearbyLocationsFetcher? fetchLocations;
 
   @override
   State<NearbyPlacesDialog> createState() => _NearbyPlacesDialogState();
@@ -17,9 +33,6 @@ class NearbyPlacesDialog extends StatefulWidget {
 class _NearbyPlacesDialogState extends State<NearbyPlacesDialog> {
   final _address = TextEditingController();
   final _addressFocus = FocusNode();
-  static final _coordinatePattern = RegExp(
-    r'^([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)$',
-  );
   List<NearbyLocation> _locations = const [];
   NearbyPlacesResult? _result;
   NearbyLocation? _searchedLocation;
@@ -27,6 +40,11 @@ class _NearbyPlacesDialogState extends State<NearbyPlacesDialog> {
   HealthFacilityType? _filter;
   String? _loading;
   String? _message;
+
+  NearbyPlacesFetcher get _fetchPlaces =>
+      widget.fetchPlaces ?? findNearbyPlaces;
+  NearbyLocationsFetcher get _fetchLocations =>
+      widget.fetchLocations ?? findNearbyLocations;
 
   @override
   void initState() {
@@ -101,42 +119,55 @@ class _NearbyPlacesDialogState extends State<NearbyPlacesDialog> {
     final address = _address.text.trim();
     if (address.length < 3) return;
     FocusScope.of(context).unfocus();
-    final coordinates = _coordinatePattern.firstMatch(address);
-    if (coordinates != null) {
-      final latitude = double.parse(coordinates[1]!);
-      final longitude = double.parse(coordinates[2]!);
-      if (latitude.abs() > 90 || longitude.abs() > 180) {
-        setState(() => _message = 'Tọa độ chưa hợp lệ. Hãy kiểm tra lại.');
-        return;
-      }
+
+    final parsedCoords = parseCoordinatesInput(address);
+    if (parsedCoords != null) {
       await _search(
         NearbyLocation(
-          label: 'Tọa độ đã nhập',
-          coordinates: {'latitude': latitude, 'longitude': longitude},
+          label: parsedCoords.fromMapsLink
+              ? 'Tọa độ từ liên kết Google Maps'
+              : 'Tọa độ đã nhập',
+          coordinates: {
+            'latitude': parsedCoords.latitude,
+            'longitude': parsedCoords.longitude,
+          },
         ),
       );
       return;
     }
+    if (isPlainCoordinateText(address)) {
+      setState(() => _message = 'Tọa độ chưa hợp lệ. Hãy kiểm tra lại.');
+      return;
+    }
+
     setState(() {
       _loading = 'Đang tìm địa chỉ…';
       _message = null;
       _result = null;
       _locations = const [];
     });
+    NearbyLocation? autoTarget;
     try {
-      final locations = await findNearbyLocations(address);
+      final locations = await _fetchLocations(address);
       if (!mounted) return;
-      setState(() {
-        _locations = locations;
-        if (locations.isEmpty) {
-          _message =
-              'Chưa tìm thấy địa chỉ. Hãy thêm phường và tỉnh/thành phố.';
-        }
-      });
+      if (locations.length == 1) {
+        autoTarget = locations.single;
+      } else {
+        setState(() {
+          _locations = locations;
+          if (locations.isEmpty) {
+            _message =
+                'Chưa tìm thấy địa chỉ. Hãy thêm phường và tỉnh/thành phố.';
+          }
+        });
+      }
     } on NearbyPlacesException catch (error) {
       if (mounted) setState(() => _message = error.message);
     } finally {
-      if (mounted) setState(() => _loading = null);
+      if (mounted && autoTarget == null) setState(() => _loading = null);
+    }
+    if (autoTarget != null && mounted) {
+      await _search(autoTarget);
     }
   }
 
@@ -148,7 +179,7 @@ class _NearbyPlacesDialogState extends State<NearbyPlacesDialog> {
       _message = null;
     });
     try {
-      final result = await findNearbyPlaces(location, radiusKm: _radiusKm);
+      final result = await _fetchPlaces(location, radiusKm: _radiusKm);
       if (mounted) {
         setState(() {
           _result = result;
@@ -182,11 +213,14 @@ class _NearbyPlacesDialogState extends State<NearbyPlacesDialog> {
 
   void _openMaps(NearbyLocation location, NearbyPlace place) {
     final coordinates = location.coordinates;
-    final uri = Uri.https('www.google.com', '/maps/dir/', {
+    final params = <String, String>{
       'api': '1',
       'origin': '${coordinates['latitude']},${coordinates['longitude']}',
       'destination': '${place.latitude},${place.longitude}',
-    });
+      if (place.placeId != null && place.placeId!.isNotEmpty)
+        'destination_place_id': place.placeId!,
+    };
+    final uri = Uri.https('www.google.com', '/maps/dir/', params);
     UrlLauncherHelper.launchWebUrl(context, uri.toString());
   }
 
@@ -242,8 +276,11 @@ class _NearbyPlacesDialogState extends State<NearbyPlacesDialog> {
                 children: [
                   if (!canUseBrowserLocation) ...[
                     const Text(
-                      'Địa chỉ LAN đang dùng HTTP. Hãy nhập địa chỉ hoặc dán '
-                      'tọa độ. Định vị tự động có trên bản HTTPS.',
+                      kIsWeb
+                          ? 'Địa chỉ LAN đang dùng HTTP. Hãy nhập địa chỉ, tọa độ '
+                                'hoặc dán link Google Maps. Định vị tự động có trên bản HTTPS.'
+                          : 'Nhập địa chỉ, tọa độ hoặc dán link Google Maps để tìm '
+                                'cơ sở y tế và nhà thuốc gần đó.',
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -251,12 +288,13 @@ class _NearbyPlacesDialogState extends State<NearbyPlacesDialog> {
                     controller: _address,
                     focusNode: _addressFocus,
                     enabled: loading == null,
-                    maxLength: 160,
+                    maxLength: 500,
                     textInputAction: TextInputAction.search,
                     onSubmitted: (_) => _searchAddress(),
                     decoration: const InputDecoration(
-                      labelText: 'Địa chỉ hoặc tọa độ',
-                      hintText: 'Ví dụ: Chợ Bến Thành, TP.HCM',
+                      labelText: 'Địa chỉ, tọa độ hoặc link Google Maps',
+                      hintText:
+                          'Ví dụ: Chợ Bến Thành, TP.HCM hoặc dán link Google Maps',
                       border: OutlineInputBorder(),
                       counterText: '',
                     ),
@@ -378,7 +416,17 @@ class _NearbyPlacesDialogState extends State<NearbyPlacesDialog> {
                 ],
               ),
             ),
-            if (result != null || _locations.isNotEmpty)
+            if (result != null && result.isGoogleMaps)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10, top: 2),
+                child: Text(
+                  'Dữ liệu Google Maps (qua Serper)',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              )
+            else if (result != null || _locations.isNotEmpty)
               TextButton(
                 onPressed: () => UrlLauncherHelper.launchWebUrl(
                   context,
@@ -395,6 +443,10 @@ class _NearbyPlacesDialogState extends State<NearbyPlacesDialog> {
   Widget _buildPlace(NearbyLocation location, NearbyPlace place) {
     final theme = Theme.of(context);
     final distance = place.distanceKm.toStringAsFixed(2).replaceAll('.', ',');
+    final ratingText = place.rating != null
+        ? ' • ★ ${place.rating!.toStringAsFixed(1).replaceAll('.', ',')}'
+              '${place.ratingCount != null ? ' (${place.ratingCount})' : ''}'
+        : '';
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -404,8 +456,15 @@ class _NearbyPlacesDialogState extends State<NearbyPlacesDialog> {
           children: [
             Text(place.name, style: theme.textTheme.titleSmall),
             const SizedBox(height: 3),
-            Text('${place.type.label} • $distance km'),
+            Text('${place.type.label} • $distance km$ratingText'),
             if (place.address.isNotEmpty) Text(place.address),
+            if (place.hours != null && place.hours!.isNotEmpty)
+              Text(
+                'Hôm nay: ${place.hours}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFF047857),
+                ),
+              ),
             if (place.phone == null) const Text('Chưa có số điện thoại'),
             Wrap(
               spacing: 8,

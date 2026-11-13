@@ -38,6 +38,7 @@ class OfflineYoloPredictor {
 
       // 2. Tìm trình thông dịch Python trên máy
       final pythonCandidates = [
+        '.venv\\Scripts\\python.exe',
         'python',
         'C:\\Users\\fvgfv\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe',
         'D:\\Models\\medgemma-env\\Scripts\\python.exe',

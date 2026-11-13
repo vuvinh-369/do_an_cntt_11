@@ -1,9 +1,11 @@
 // File: lib/main.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'core/app_scroll_behavior.dart';
 import 'core/doctor_management/doctor_management_service.dart';
+import 'core/serper/serper_config_service.dart';
 import 'core/storage/local_storage_service.dart';
 import 'core/supabase/supabase_service.dart';
 import 'core/user_management/user_account_service.dart';
@@ -20,6 +22,7 @@ import 'features/user/views/user_shell_view.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseService.instance.initialize();
+  unawaited(SerperConfigService.instance.fetchConfigFromSupabase());
   await LocalStorageService.instance.loadDoctorSession();
   await DoctorManagementService.instance.loadFromLocalStorage();
   await UserAccountService.instance.loadFromLocalStorage();

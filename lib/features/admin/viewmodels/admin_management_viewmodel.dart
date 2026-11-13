@@ -2,6 +2,7 @@ import '../../../core/feedback/ai_feedback_model.dart';
 import '../../../core/feedback/ai_feedback_service.dart';
 import '../../../core/gemini/gemini_config_model.dart';
 import '../../../core/gemini/gemini_service.dart';
+import '../../../core/serper/serper_config_service.dart';
 import '../../../core/rule_engine/rule_engine_service.dart';
 import '../../../core/rule_engine/rule_models.dart';
 import '../models/admin_management_models.dart';
@@ -620,6 +621,36 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
     required String model,
   }) async {
     return await GeminiService.instance.testApiKey(apiKey: apiKey, model: model);
+  }
+
+  // ===========================================================================
+  // 5b. CẤU HÌNH GOOGLE MAPS (SERPER.DEV API)
+  // ===========================================================================
+  String get serperApiKey => SerperConfigService.instance.apiKey;
+
+  bool get isSerperUsingDefaultKey =>
+      SerperConfigService.instance.isUsingDefaultKey;
+
+  Future<bool> refreshSerperConfigFromSupabase() async {
+    final ok = await SerperConfigService.instance.fetchConfigFromSupabase();
+    notifyListeners();
+    return ok;
+  }
+
+  Future<SerperSaveResult> updateSerperApiKey(String apiKey) async {
+    final result = await SerperConfigService.instance.updateApiKey(apiKey);
+    notifyListeners();
+    return result;
+  }
+
+  Future<SerperSaveResult> resetSerperApiKeyToDefault() async {
+    final result = await SerperConfigService.instance.resetToDefault();
+    notifyListeners();
+    return result;
+  }
+
+  Future<SerperTestResult> testSerperConnection(String apiKey) {
+    return SerperConfigService.instance.testApiKey(apiKey);
   }
 
   // ===========================================================================

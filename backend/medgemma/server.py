@@ -24,7 +24,7 @@ from json_constraints import constrain_json, interpretation_options
 from reference_relevance import eligible_references
 from answer_generation import clean_answer, complete_answer, retry_token_ids
 from conversation_shortcuts import social_reply
-from nearby_places import NearbyPlacesError, search_nearby
+from nearby_places import NearbyPlacesError, refresh_serper_config, search_nearby, test_serper_api_key
 from wound_images import WoundImageService, ImageAnalysisError, image_context, image_reference_queries
 
 ROOT = Path(__file__).resolve().parent
@@ -33,6 +33,19 @@ MAX_INPUT_TOKENS = 1024
 MAX_OUTPUT_TOKENS = 768
 FINAL_RECOVERY_TOKENS = 256
 SQLITE_PATH = Path(os.environ.get('MEDGEMMA_KB_PATH', str(ROOT.parent / 'runtime' / 'knowledge_base' / 'so_cuu.sqlite3')))
+
+
+def configured_knowledge_store(sqlite_path=None, allow_source_demo=True):
+    source_root = os.environ.get('MEDGEMMA_KB_SOURCE_ROOT') or None
+    dsn = os.environ.get('MEDGEMMA_KB_DATABASE_URL', '').strip()
+    if dsn and sqlite_path is None:
+        try:
+            from postgres_store import SupabaseKnowledgeStore
+        except ImportError:
+            raise SystemExit('Cai thu vien: python -m pip install "psycopg[binary]==3.3.9"') from None
+        return SupabaseKnowledgeStore(dsn, source_root or ROOT.parent / 'runtime', allow_source_demo)
+    path = sqlite_path or os.environ.get('MEDGEMMA_KB_PATH') or SQLITE_PATH
+    return SQLiteStore(path, source_root=source_root, allow_source_demo=allow_source_demo)
 
 
 class ThreadingHTTPServer(BaseThreadingHTTPServer):
@@ -303,12 +316,14 @@ class ModelRunner:
 
 
 class ChatService:
-    def __init__(self, kb_path=ROOT / "knowledge.json", runner=None, sqlite_path=SQLITE_PATH, preload_enabled=True, allow_source_demo=True, source_root=None, image_analyzer=None):
+    def __init__(self, kb_path=ROOT / "knowledge.json", runner=None, sqlite_path=SQLITE_PATH, preload_enabled=True, allow_source_demo=True, source_root=None, image_analyzer=None, store=None):
         self.kb = KnowledgeBase(kb_path)
         self.runner = runner if runner is not None else ModelRunner()
         self.cache = OrderedDict()
         self.cache_lock = threading.Lock()
-        self.store = SQLiteStore(sqlite_path,source_root=source_root,allow_source_demo=allow_source_demo) if sqlite_path else None
+        self.store = store
+        if store is None and sqlite_path:
+            self.store = SQLiteStore(sqlite_path, source_root=source_root, allow_source_demo=allow_source_demo)
         self.admin_token = secrets.token_urlsafe(32)
         self.preload_enabled = preload_enabled
         self.grounded = GroundedChat(self.store,self.runner)
@@ -355,7 +370,7 @@ class ChatService:
             return dict(source, route='image_source_grounded', image_analysis_id=identifier,
                         generation_attempts=0, guides=[],
                         fallback_notice='YOLO chỉ gợi ý loại tổn thương; các dấu hiệu bạn đánh dấu là thông tin tự mô tả. '
-                        'Nội dung dưới đây được tra trực tiếp từ SQLite, giữ nguyên điều kiện áp dụng và cảnh báo; '
+                        'Nội dung dưới đây được tra trực tiếp từ kho sơ cứu, giữ nguyên điều kiện áp dụng và cảnh báo; '
                         'chưa xác nhận phù hợp với tình trạng trong ảnh.')
         mode = 'image_guidance' if initial else 'image_followup'
         context = image_context(record, followup=not initial)
@@ -382,8 +397,8 @@ class ChatService:
         return generated
 
     def search_knowledge(self, query='', group=''):
-        if not self.store:raise StoreError('Chưa kết nối kho SQLite.',503)
-        groups = self.store.summary()['injury_types']
+        if not self.store:raise StoreError('Chưa kết nối kho hướng dẫn.',503)
+        groups = self.store.injury_groups()
         if len(query)>4000 or (group and group not in {item['code'] for item in groups}):
             raise StoreError('Từ khóa hoặc nhóm tài liệu không hợp lệ.')
         published = self.store.list_entries(published=True)
@@ -482,7 +497,8 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
         def public_path(self):
             path = urlsplit(self.path).path
             return path in {'/api/chat', '/api/status', '/api/warmup', '/api/knowledge',
-                            '/api/analyze-image', '/api/nearby-places'} or bool(
+                            '/api/analyze-image', '/api/nearby-places',
+                            '/api/serper-refresh', '/api/serper-test'} or bool(
                 re.fullmatch(r'/api/(knowledge/[0-9]+|source/[^/]+)', path))
 
         def allowed_origin(self, origin):
@@ -513,7 +529,7 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
             origin = self.headers.get('Origin')
             method = self.headers.get('Access-Control-Request-Method', '').upper()
             path = urlsplit(self.path).path
-            expected = 'POST' if path in {'/api/chat', '/api/warmup', '/api/analyze-image', '/api/nearby-places'} else 'GET'
+            expected = 'POST' if path in {'/api/chat', '/api/warmup', '/api/analyze-image', '/api/nearby-places', '/api/serper-refresh', '/api/serper-test'} else 'GET'
             requested = {x.strip().lower() for x in self.headers.get('Access-Control-Request-Headers', '').split(',') if x.strip()}
             if (not self.trusted_host() or not origin or not self.public_path()
                     or not self.allowed_origin(origin) or method != expected
@@ -557,7 +573,7 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
             except (ValueError,TypeError):
                 self.send_json({'error':'Yêu cầu chưa hợp lệ.'},400)
             except Exception:
-                self.send_json({'error':'Không đọc được kho hướng dẫn. Kiểm tra file SQLite hoặc khởi động lại máy chủ.'},500)
+                self.send_json({'error':'Không đọc được kho hướng dẫn. Kiểm tra cấu hình kho hoặc khởi động lại máy chủ.'},500)
 
         def get_route(self,path,query):
             if path == "/api/status":
@@ -567,6 +583,7 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
                                 "load_seconds": round(service.runner.load_seconds, 2),
                                 "approved_entries": summary.get('published', 0),
                                 "reference_entries": summary.get('published', 0) + summary.get('demo_published', 0),
+                                "knowledge_backend": service.store.backend_name if service.store else None,
                                 'preload_enabled': service.preload_enabled})
             elif path in {'/admin','/admin.html','/knowledge','/knowledge.html','/','/index.html'}:
                 filename = 'admin.html' if path.startswith('/admin') else 'knowledge.html' if path.startswith('/knowledge') else 'index.html'
@@ -579,14 +596,14 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
                 self.end_headers()
                 self.wfile.write(raw)
             elif path == '/api/admin/meta':
-                if not service.store:raise StoreError('Chưa kết nối kho SQLite.',503)
+                if not service.store:raise StoreError('Chưa kết nối kho hướng dẫn.',503)
                 self.send_json(dict(service.store.summary(),csrf_token=service.admin_token))
             elif path == '/api/admin/entries':
                 self.send_json({'entries':service.store.list_entries()})
             elif re.fullmatch(r'/api/admin/entries/\d+',path):
                 self.send_json(service.store.detail(int(path.rsplit('/',1)[1])))
             elif path == '/api/knowledge':
-                if not service.store:raise StoreError('Chưa kết nối kho SQLite.',503)
+                if not service.store:raise StoreError('Chưa kết nối kho hướng dẫn.',503)
                 parameters = parse_qs(urlsplit(self.path).query)
                 self.send_json(service.search_knowledge(parameters.get('q',[''])[0],parameters.get('group',[''])[0]))
             elif re.fullmatch(r'/api/knowledge/\d+',path):
@@ -633,6 +650,10 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
                     self.send_json(service.images.analyze(payload))
                 elif path == '/api/nearby-places':
                     self.send_json(search_nearby(payload))
+                elif path == '/api/serper-refresh':
+                    self.send_json(refresh_serper_config())
+                elif path == '/api/serper-test':
+                    self.send_json(test_serper_api_key(payload.get('api_key', '')))
                 elif path == "/api/warmup":
                     self.send_json({"accepted": service.runner.warmup()})
                 elif re.fullmatch(r'/api/admin/entries/\d+/(save|action)',path):
@@ -655,17 +676,28 @@ def make_handler(service, allowed_origins=(), allow_local_web=False):
 
 
 if __name__ == "__main__":
+    try:
+        sys.path.insert(0, str(ROOT.parent))
+    except NameError:
+        import sys
+        sys.path.insert(0, str(ROOT.parent))
+    try:
+        from local_config import load_config
+        load_config()
+    except ImportError:
+        pass
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--cli", action="store_true", help="Use the optimized chat in PowerShell")
     parser.add_argument('--no-preload',action='store_true',help='Start the library/admin without loading the model')
-    parser.add_argument('--no-source-demo',action='store_true',help='Use only clinically approved SQLite references')
-    parser.add_argument('--kb',type=Path,default=SQLITE_PATH,help='SQLite knowledge database')
+    parser.add_argument('--no-source-demo',action='store_true',help='Use only clinically approved references')
+    parser.add_argument('--kb',type=Path,help='Override the configured knowledge store with a SQLite file')
     parser.add_argument('--allowed-origin', action='append', default=[x.strip() for x in os.environ.get('MEDGEMMA_ALLOWED_ORIGINS','').split(',') if x.strip()])
     parser.add_argument('--allow-local-web', action='store_true', default=os.environ.get('MEDGEMMA_ALLOW_LOCAL_WEB') == '1', help='Development only: allow loopback Flutter origins on dynamic ports for public chat endpoints')
     args = parser.parse_args()
+    store = configured_knowledge_store(args.kb, allow_source_demo=not args.no_source_demo)
+    service = ChatService(store=store, preload_enabled=not args.no_preload)
     if args.cli:
-        service = ChatService(sqlite_path=args.kb,preload_enabled=not args.no_preload,allow_source_demo=not args.no_source_demo)
         print("Chat toi uu. Nhap 'thoat' de dung; moi cau hoi xu ly rieng.", flush=True)
         try:
             while True:
@@ -685,11 +717,11 @@ if __name__ == "__main__":
         except (KeyboardInterrupt, EOFError):
             pass
         raise SystemExit(0)
-    service = ChatService(sqlite_path=args.kb,preload_enabled=not args.no_preload,allow_source_demo=not args.no_source_demo)
     server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(service, args.allowed_origin, args.allow_local_web))
     print(f"Mo trinh duyet: http://127.0.0.1:{args.port}", flush=True)
     print("Dong ban chat PowerShell cu truoc khi nap model. Ctrl+C de dung.", flush=True)
     print(f"Quan tri huong dan: http://127.0.0.1:{args.port}/admin",flush=True)
+    print(f"Kho so cuu: {store.backend_name}", flush=True)
     if not args.no_preload:
         service.runner.warmup()
         print("Dang tu dong nap model. Web se bao khi model san sang.", flush=True)

@@ -45,14 +45,20 @@ Mở đường dẫn `https://...` in trong terminal bằng trình duyệt đi�
 
 Danh sách bệnh viện, trung tâm y tế và nhà thuốc lấy dữ liệu OpenStreetMap qua Overpass và Photon. Hai nguồn được tra song song và kết quả phù hợp được sắp xếp theo khoảng cách đường chim bay. Nút **Chỉ đường trên Google Maps** mở tuyến đường từ vị trí dùng để tra cứu đến cơ sở đã chọn. Nếu danh sách trống, nút **Tra thêm trên Google Maps** mở trang tìm kiếm bản đồ.
 
+## Chăm sóc sức khỏe hằng ngày
+
+Mở **Chăm sóc hằng ngày** trên Trang chủ để xem các bài theo ngày và theo tuần. Mỗi bài có các bước thực hành và đường dẫn tới nguồn tham khảo.
+
+Trong dự án Supabase mà web đang kết nối, mở **SQL Editor → New query**, dán toàn bộ nội dung [supabase/daily_care_lessons.sql](supabase/daily_care_lessons.sql) rồi bấm **Run**. Tệp tạo bảng `daily_care_lessons` và thêm 7 bài mẫu. Trong **Table Editor**, dùng `is_published` để bật hoặc ẩn bài, `sort_order` để sắp thứ tự. Khách và người đăng nhập chỉ có quyền đọc các bài đã xuất bản. Chạy lại tệp giữ các bài có cùng `slug`.
+
 ## Model và dữ liệu
 
 - Máy hiện tại đặt MedGemma ở `D:\DATA\.CODEX\DoAnVinhPhatNam\medgemma-1.5-4b-it` và trỏ `MEDGEMMA_MODEL_PATH` đến đó trong `backend/.env.local`. Thành viên dùng máy khác tự tải model bằng tài khoản Hugging Face của mình và đặt đường dẫn theo [hướng dẫn backend](backend/README.md).
 - YOLO: `lib/AI_Model/best.pt`, chạy CPU trong cùng tiến trình API. Không mở thêm server YOLO cổng 8000 cho luồng mới.
-- SQLite: `backend/runtime/knowledge_base/so_cuu.sqlite3`; báo cáo/manifest đi cùng. PDF ở `backend/runtime/TaiLieuNguon`. Runtime được cung cấp riêng, không đi theo Git.
+- Kho sơ cứu mặc định đọc SQLite tại `backend/runtime/knowledge_base/so_cuu.sqlite3`. Để nhập kho vào Supabase và đổi kết nối, xem [hướng dẫn chuyển kho](backend/README.md#chuyển-kho-sơ-cứu-từ-sqlite-lên-supabase). PDF nằm ở `backend/runtime/TaiLieuNguon`.
 - Gemini: các tệp `lib/core/gemini/` và cách cấu hình API hiện có của nhóm được giữ nguyên.
 
-MedGemma là bản 1.5 4B, trọng số trên đĩa BF16; lúc nạp dùng NF4 4-bit, double quantization và SDPA. Nạp một lần và giữ trong bộ nhớ cho các thiết bị dùng chung. Có nguồn phù hợp thì trả SQLite và trang PDF ngay; thiếu nguồn mới gọi model. Phản hồi ghi rõ nguồn và trạng thái duyệt. Bộ hiện có 21 mục tham khảo demo, chưa có mục được duyệt chuyên môn.
+MedGemma là bản 1.5 4B, trọng số trên đĩa BF16; lúc nạp dùng NF4 4-bit, double quantization và SDPA. Nạp một lần và giữ trong bộ nhớ cho các thiết bị dùng chung. Có nguồn phù hợp thì trả nội dung kho và trang PDF ngay; thiếu nguồn mới gọi model. Phản hồi ghi rõ nguồn và trạng thái duyệt. Bộ hiện có 21 mục tham khảo demo, chưa có mục được duyệt chuyên môn.
 
 Nhiều thiết bị dùng chung GPU; yêu cầu sinh đồng thời có thể nhận thông báo bận và cần gửi lại. Chia máy chủ/máy khách không tự làm GPU chạy nhanh hơn. Máy chủ cần đủ RAM/bộ nhớ ảo và chỉ chạy một bản MedGemma.
 
