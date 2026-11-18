@@ -1,6 +1,6 @@
-import 'package:do_an_cntt_11/features/user/models/daily_care_lesson.dart';
+import 'package:do_an_cntt_11/features/daily_care/models/daily_care_lesson.dart';
 import 'package:do_an_cntt_11/features/user/viewmodels/user_viewmodel.dart';
-import 'package:do_an_cntt_11/features/user/views/daily_care_view.dart';
+import 'package:do_an_cntt_11/features/daily_care/views/daily_care_view.dart';
 import 'package:do_an_cntt_11/features/user/views/user_shell_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

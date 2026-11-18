@@ -1,8 +1,8 @@
 // File: lib/features/admin/views/admin_doctor_management_view.dart
 import 'package:flutter/material.dart';
 
-import '../../../core/doctor_management/doctor_management_service.dart';
-import '../../../core/user_management/user_account_service.dart';
+import '../../auth/services/user_account_service.dart';
+import '../../doctor/services/doctor_management_service.dart';
 import '../../user/models/doctor_consultation_models.dart';
 
 /// Màn hình Quản lý Bác sĩ trong phân hệ Quản trị (/admin)
@@ -1112,9 +1112,10 @@ class _AdminDoctorManagementViewState extends State<AdminDoctorManagementView> {
                           } else {
                             Navigator.pop(ctx);
                             await DoctorManagementService.instance.fetchDoctors();
-                            if (mounted) setState(() {});
+                            if (!mounted) return;
+                            setState(() {});
                             _showToast(
-                              context,
+                              this.context,
                               'Đã cấp tài khoản @${userCtrl.text.trim()} thành công cho bác sĩ ${doctor.fullName}!',
                             );
                           }

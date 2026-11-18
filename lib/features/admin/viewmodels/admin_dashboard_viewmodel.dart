@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/history/analysis_history_service.dart';
-import '../../../core/user_management/user_account_service.dart';
+import '../../auth/services/user_account_service.dart';
 import '../models/admin_dashboard_models.dart';
 import 'admin_navigation_viewmodel.dart';
 

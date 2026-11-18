@@ -654,7 +654,7 @@ class _DangNhapQuanTriViewState extends State<DangNhapQuanTriView> {
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
-                          onPressed: () {
+                          onPressed: () async {
                             setDialogState(() {
                               feedbackError = null;
                               feedbackSuccess = null;
@@ -664,7 +664,7 @@ class _DangNhapQuanTriViewState extends State<DangNhapQuanTriView> {
                               setDialogState(() => feedbackError = 'Vui lòng nhập tài khoản hoặc email.');
                               return;
                             }
-                            final res = viewModel.requestAdminPasswordResetOtp(input);
+                            final res = await viewModel.requestAdminPasswordResetOtp(input);
                             if (res['success'] == true) {
                               setDialogState(() {
                                 step = 2;
@@ -762,7 +762,7 @@ class _DangNhapQuanTriViewState extends State<DangNhapQuanTriView> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: ElevatedButton(
-                                onPressed: () {
+                                onPressed: () async {
                                   setDialogState(() {
                                     feedbackError = null;
                                     feedbackSuccess = null;
@@ -776,14 +776,16 @@ class _DangNhapQuanTriViewState extends State<DangNhapQuanTriView> {
                                     return;
                                   }
 
-                                  final res = viewModel.verifyAdminOtpAndResetPassword(
+                                  final res = await viewModel.verifyAdminOtpAndResetPassword(
                                     otp: otp,
                                     newPassword: newPass,
                                     confirmPassword: confirmPass,
                                   );
 
+                                  if (!dialogCtx.mounted) return;
                                   if (res['success'] == true) {
                                     Navigator.pop(dialogCtx);
+                                    if (!context.mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Row(

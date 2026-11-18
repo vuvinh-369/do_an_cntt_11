@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:do_an_cntt_11/core/doctor_management/doctor_management_service.dart';
 import 'package:do_an_cntt_11/core/storage/local_storage_service.dart';
-import 'package:do_an_cntt_11/core/user_management/user_account_service.dart';
 import 'package:do_an_cntt_11/features/admin/views/admin_doctor_management_view.dart';
-import 'package:do_an_cntt_11/features/user/models/doctor_consultation_models.dart';
-import 'package:do_an_cntt_11/features/user/models/user_account_model.dart';
+import 'package:do_an_cntt_11/features/auth/models/user_account_model.dart';
+import 'package:do_an_cntt_11/features/auth/services/user_account_service.dart';
+import 'package:do_an_cntt_11/features/doctor/models/doctor_consultation_models.dart';
+import 'package:do_an_cntt_11/features/doctor/services/doctor_management_service.dart';
+import 'package:do_an_cntt_11/features/doctor/views/doctor_consultation_view.dart';
+import 'package:do_an_cntt_11/features/doctor/views/doctor_directory_view.dart';
 import 'package:do_an_cntt_11/features/user/viewmodels/user_viewmodel.dart';
-import 'package:do_an_cntt_11/features/user/views/doctor_consultation_view.dart';
-import 'package:do_an_cntt_11/features/user/views/doctor_directory_view.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
   group('1. DoctorProfile Data Model & Serialization Tests', () {
     test('DoctorProfile serialization toMap and fromMap with mandatory R1 fields', () {

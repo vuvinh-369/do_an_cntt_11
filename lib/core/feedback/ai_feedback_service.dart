@@ -125,7 +125,19 @@ class AiFeedbackService extends ChangeNotifier {
     try {
       final client = SupabaseService.instance.client;
       if (client != null) {
-        await client.from('ai_feedbacks').insert(feedback.toMap());
+        final payload = feedback.toMap();
+        // Kiểm tra an toàn khóa ngoại analysis_id (nếu ca quét không lưu trên Supabase ví dụ từ khách vãng lai)
+        if (payload['analysis_id'] != null) {
+          final exists = await client
+              .from('analysis_history')
+              .select('id')
+              .eq('id', payload['analysis_id'])
+              .maybeSingle();
+          if (exists == null) {
+            payload['analysis_id'] = null;
+          }
+        }
+        await client.from('ai_feedbacks').insert(payload);
         debugPrint('[AiFeedbackService] ✅ Đã lưu đánh giá ${feedback.id} vào Supabase Cloud thành công.');
       } else {
         debugPrint('[AiFeedbackService] ⚠️ Supabase client chưa kết nối, đánh giá đã được lưu trong LocalStorage.');

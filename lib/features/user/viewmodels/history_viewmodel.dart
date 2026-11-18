@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../../../core/history/analysis_history_service.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -27,10 +28,16 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
   DateTime? get historyToDate => _historyToDate;
 
     /// Nạp danh sách lịch sử phân tích từ Supabase
-  Future<void> fetchHistoryFromSupabase() async {
+  Future<void> fetchHistoryFromSupabase({bool silent = false}) async {
     try {
       final client = SupabaseService.instance.client;
-      if (client == null) return;
+      if (client == null) {
+        await AnalysisHistoryService.instance.loadFromLocalStorage();
+        _analysisHistoryItems.clear();
+        _analysisHistoryItems.addAll(AnalysisHistoryService.instance.items);
+        notifyListeners();
+        return;
+      }
       final dynamic query = client.from('analysis_history').select();
       final res = currentUser?.username != null
           ? await query.eq('username', currentUser!.username).order('created_at', ascending: false)
@@ -39,9 +46,17 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
       for (final row in res) {
         _analysisHistoryItems.add(AnalysisHistoryItemModel.fromMap(row));
       }
+      if (_analysisHistoryItems.isEmpty) {
+        _analysisHistoryItems.addAll(AnalysisHistoryService.instance.items);
+      }
       notifyListeners();
     } catch (e) {
       debugPrint('[HistoryViewModel] Lấy lịch sử Supabase (chuẩn bị bảng): $e');
+      if (_analysisHistoryItems.isEmpty) {
+        await AnalysisHistoryService.instance.loadFromLocalStorage();
+        _analysisHistoryItems.addAll(AnalysisHistoryService.instance.items);
+        notifyListeners();
+      }
     }
   }
 
@@ -235,22 +250,33 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
     _currentHistoryPage = 1;
     notifyListeners();
 
-    // Đồng bộ lên Supabase
+    // Đồng bộ lập tức vào Service và LocalStorage (Bền vững 100%)
+    unawaited(AnalysisHistoryService.instance.addDirectItem(newRecord));
+
+    // Đồng bộ lên Supabase Cloud CHỈ KHI người dùng đã đăng nhập (tuân thủ khóa ngoại username)
     try {
       final client = SupabaseService.instance.client;
-      if (client != null) {
+      final currentUsername = currentUser?.username.trim();
+      if (client != null && currentUsername != null && currentUsername.isNotEmpty) {
         client.from('analysis_history').insert({
-          'username': currentUser?.username,
-          'injury_type_id': assignedTopicId ?? 'other',
+          'id': newRecord.id,
+          'username': currentUsername,
+          'injury_type_id': assignedTopicId ?? 'abrasion',
           'injury_type_name': detectedInjuryType,
           'confidence_score': detectedConfidence?.toDouble() ?? 80.0,
           'severity_level': 'moderate',
+          'location_label': detectedLocation,
+          'image_url': imageSourceName,
           'created_at': now.toIso8601String(),
         }).then((_) {
           AnalysisHistoryService.instance.fetchHistoryFromSupabase(silent: true);
+        }).catchError((err) {
+          debugPrint('[HistoryViewModel] Ghi Supabase thất bại, dữ liệu đã lưu an toàn trong LocalStorage: $err');
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[HistoryViewModel] Đồng bộ Supabase exception: $e');
+    }
   }
 
   /// Cho phép cập nhật lại vị trí tổn thương của bản ghi mới nhất khi người dùng đổi vị trí ở Màn hình 3

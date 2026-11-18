@@ -1,7 +1,7 @@
 // File: lib/features/admin/views/admin_user_management_view.dart
 import 'package:flutter/material.dart';
 
-import '../../../core/user_management/user_account_service.dart';
+import '../../auth/services/user_account_service.dart';
 import '../../user/models/user_account_model.dart';
 
 /// Màn hình Quản lý người dùng trong phân hệ Quản trị (/admin)

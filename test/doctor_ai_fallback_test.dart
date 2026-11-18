@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter_test/flutter_test.dart';
 
 /// Sender types in doctor consultation
 enum TestChatSenderType {
@@ -440,7 +441,8 @@ class TestDoctorAiFallbackService {
   }
 }
 
-void main() async {
+void main() {
+  test('Requirement R3 AI Doctor Fallback Suite', () async {
   print('======================================================================');
   print('Running Requirement R3: AI Doctor Fallback (MedGemma / Gemini) Test Suite');
   print('======================================================================');
@@ -709,5 +711,6 @@ void main() async {
   print('ALL $passedSpecs OF $totalSpecs SPECS PASSED (100% SUCCESS)');
   print('Requirement R3 AI Doctor Fallback Verified Completely.');
   print('======================================================================');
-  exit(0);
+  // exit(0);
+  });
 }

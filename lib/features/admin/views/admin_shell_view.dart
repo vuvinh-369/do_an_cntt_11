@@ -1,4 +1,3 @@
-// File: lib/views/admin_view.dart
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +7,8 @@ import 'admin_login_view.dart';
 import 'admin_dashboard_view.dart';
 import 'admin_feedback_audit_view.dart';
 import 'admin_management_views.dart';
-import '../../user/services/doctor_consultation_service.dart';
+import '../../doctor/services/doctor_consultation_service.dart';
+import '../../../core/widgets/offline_banner.dart';
 
 class AdminShellView extends StatefulWidget {
   const AdminShellView({super.key});
@@ -59,7 +59,12 @@ class _AdminShellViewState extends State<AdminShellView> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FB),
-      body: _buildAdminWorkspaceShell(context, adminViewModel),
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(child: _buildAdminWorkspaceShell(context, adminViewModel)),
+        ],
+      ),
     );
   }
 

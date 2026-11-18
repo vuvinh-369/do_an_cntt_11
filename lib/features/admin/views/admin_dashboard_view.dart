@@ -1,4 +1,3 @@
-// File: lib/views/adminview/dashboard_quan_tri_view.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

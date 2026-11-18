@@ -755,7 +755,7 @@ class ChatBoxAiView extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                '${currentModel.shortName} đang phân tích và chuẩn bị câu trả lời...',
+                'Hệ thống đang phân tích và chuẩn bị câu trả lời...',
                 style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF64748B),

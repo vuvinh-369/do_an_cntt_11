@@ -564,7 +564,7 @@ class _AdminHistoryAnalyticsViewState extends State<AdminHistoryAnalyticsView> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          isGuest ? 'Khách vãng lai' : item.username!,
+                          isGuest ? 'Khách' : item.username!,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -821,7 +821,7 @@ class _AdminHistoryAnalyticsViewState extends State<AdminHistoryAnalyticsView> {
                   'Tài khoản người dùng:',
                   item.username != null && item.username!.isNotEmpty
                       ? item.username!
-                      : 'Khách vãng lai (Chưa đăng nhập)',
+                      : 'Khách (Chưa đăng nhập)',
                 ),
                 _buildInfoRow('Vị trí tổn thương:', item.locationLabel),
                 _buildInfoRow('Mức độ đau ước lượng:', '${item.painLevel} / 10'),

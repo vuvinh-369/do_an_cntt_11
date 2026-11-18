@@ -1,6 +1,1 @@
-import 'browser_position.dart';
-
-bool get canUseBrowserLocation => false;
-
-Future<BrowserPosition> getBrowserLocation() async =>
-    throw BrowserLocationFailure.unavailable;
+export 'package:do_an_cntt_11/core/location/browser_location_stub.dart';

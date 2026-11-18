@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
-import '../../../core/email/email_config_service.dart';
+import '../../../core/supabase/supabase_otp_service.dart';
 import '../../../core/security/auth_brute_force_service.dart';
 import '../../../core/storage/local_storage_service.dart';
 import '../../../core/supabase/supabase_service.dart';
-import '../../../core/user_management/user_account_service.dart';
+import '../../auth/services/user_account_service.dart';
 import '../../user/models/user_account_model.dart';
 import '../models/admin_login_models.dart';
 import 'admin_navigation_viewmodel.dart';
@@ -345,8 +345,8 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
     return null;
   }
 
-  /// Yêu cầu gửi mã OTP khôi phục mật khẩu Quản trị qua Email
-  Map<String, dynamic> requestAdminPasswordResetOtp(String identifier) {
+  /// Yêu cầu gửi mã OTP khôi phục mật khẩu Quản trị qua Email (Dịch vụ Supabase Auth Built-in)
+  Future<Map<String, dynamic>> requestAdminPasswordResetOtp(String identifier) async {
     final cleanId = identifier.trim().toLowerCase();
     if (cleanId.isEmpty) {
       return {
@@ -365,50 +365,54 @@ mixin DangNhapQuanTriViewModel on DieuHuongQuanTriViewModel {
       };
     }
 
-    return EmailConfigService.instance.generateAndDispatchOtp(
-      identifier: _adminProfile.username,
-      targetEmail: _adminProfile.email,
-      username: _adminProfile.displayName,
+    final res = await SupabaseOtpService.instance.sendPasswordResetOtp(
+      email: _adminProfile.email,
     );
+
+    return {
+      'success': res['success'] == true,
+      'targetEmail': _adminProfile.email,
+      'message': res['message'] ?? '',
+    };
   }
 
-  /// Xác thực mã OTP và đặt lại mật khẩu mới cho Quản trị viên
-  Map<String, dynamic> verifyAdminOtpAndResetPassword({
+  /// Xác thực mã OTP và đặt lại mật khẩu mới cho Quản trị viên qua Supabase Auth
+  Future<Map<String, dynamic>> verifyAdminOtpAndResetPassword({
     required String otp,
     required String newPassword,
     required String confirmPassword,
-  }) {
-    if (newPassword.trim().length < 6) {
+  }) async {
+    final cleanPass = newPassword.trim();
+    if (cleanPass.length < 6) {
       return {
         'success': false,
         'message': 'Mật khẩu mới phải có ít nhất 6 ký tự.',
       };
     }
-    if (newPassword.trim() != confirmPassword.trim()) {
+    if (cleanPass != confirmPassword.trim()) {
       return {
         'success': false,
         'message': 'Mật khẩu xác nhận không trùng khớp.',
       };
     }
 
-    final verifyRes = EmailConfigService.instance.verifyOtp(
-      identifier: _adminProfile.username,
-      otpInput: otp,
+    final err = await SupabaseOtpService.instance.verifyOtpAndResetPassword(
+      email: _adminProfile.email,
+      otp: otp,
+      newPassword: cleanPass,
+      username: _adminProfile.username,
     );
 
-    if (verifyRes['valid'] != true) {
+    if (err != null) {
       return {
         'success': false,
-        'message': verifyRes['message'] as String? ?? 'Mã xác nhận OTP không hợp lệ.',
+        'message': err,
       };
     }
 
-    // Xóa mã OTP sau khi sử dụng thành công
-    EmailConfigService.instance.consumeOtp(_adminProfile.username);
-
     // Cập nhật mật khẩu mới cho Admin
     _adminProfile = _adminProfile.copyWith(
-      password: newPassword.trim(),
+      password: cleanPass,
     );
     notifyListeners();
 

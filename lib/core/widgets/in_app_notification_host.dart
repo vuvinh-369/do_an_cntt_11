@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../features/user/models/doctor_consultation_models.dart';
-import '../../features/user/services/doctor_consultation_service.dart';
+import '../../features/doctor/models/doctor_consultation_models.dart';
+import '../../features/doctor/services/doctor_consultation_service.dart';
 import '../../features/user/viewmodels/user_viewmodel.dart';
 import '../doctor_management/doctor_management_service.dart';
 

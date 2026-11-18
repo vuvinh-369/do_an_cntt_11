@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:do_an_cntt_11/core/storage/local_storage_service.dart';
-import 'package:do_an_cntt_11/features/user/models/doctor_consultation_models.dart';
-import 'package:do_an_cntt_11/features/user/services/doctor_consultation_service.dart';
+import 'package:do_an_cntt_11/features/doctor/models/doctor_consultation_models.dart';
+import 'package:do_an_cntt_11/features/doctor/services/doctor_consultation_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

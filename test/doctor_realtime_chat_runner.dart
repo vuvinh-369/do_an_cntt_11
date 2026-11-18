@@ -3,8 +3,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:do_an_cntt_11/features/user/models/doctor_consultation_models.dart';
-import 'package:do_an_cntt_11/features/user/services/doctor_consultation_service.dart';
+import 'package:do_an_cntt_11/features/doctor/models/doctor_consultation_models.dart';
+import 'package:do_an_cntt_11/features/doctor/services/doctor_consultation_service.dart';
 
 void main() async {
   print('===============================================================');

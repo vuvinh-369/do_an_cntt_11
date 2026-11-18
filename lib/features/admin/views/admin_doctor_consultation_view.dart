@@ -8,7 +8,7 @@ import '../../../core/call/call_models.dart';
 import '../../../core/call/call_signaling_service.dart';
 import '../../../core/call/views/call_overlay_view.dart';
 import '../../../core/call/views/incoming_call_dialog.dart';
-import '../../../core/doctor_management/doctor_management_service.dart';
+import '../../doctor/services/doctor_management_service.dart';
 import '../../user/models/doctor_consultation_models.dart';
 import '../../user/services/doctor_consultation_service.dart';
 
@@ -257,7 +257,7 @@ class _AdminDoctorConsultationViewState
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: cards.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          separatorBuilder: (context, index) => const SizedBox(width: 8),
           itemBuilder: (_, index) => SizedBox(width: 175, child: cards[index]),
         ),
       );
@@ -726,7 +726,7 @@ class _AdminDoctorConsultationViewState
               ? _buildEmptyQueuePlaceholder()
               : ListView.separated(
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) =>
+                  separatorBuilder: (context, index) =>
                       const Divider(height: 1, color: Color(0xFFF1F5F9)),
                   itemBuilder: (context, index) {
                     final item = filtered[index];
@@ -1399,7 +1399,7 @@ class _AdminDoctorConsultationViewState
           att.bytes!,
           height: 180,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildBrokenImagePlaceholder(),
+          errorBuilder: (context, error, stackTrace) => _buildBrokenImagePlaceholder(),
         ),
       );
     } else if (msg.attachmentUrl != null && msg.attachmentUrl!.isNotEmpty) {
@@ -1415,7 +1415,7 @@ class _AdminDoctorConsultationViewState
                 decoded,
                 height: 180,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildBrokenImagePlaceholder(),
+                errorBuilder: (context, error, stackTrace) => _buildBrokenImagePlaceholder(),
               ),
             );
           }
@@ -1429,7 +1429,7 @@ class _AdminDoctorConsultationViewState
             url,
             height: 180,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _buildBrokenImagePlaceholder(),
+            errorBuilder: (context, error, stackTrace) => _buildBrokenImagePlaceholder(),
           ),
         );
       }

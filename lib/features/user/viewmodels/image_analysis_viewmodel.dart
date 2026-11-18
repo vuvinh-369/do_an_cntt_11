@@ -313,9 +313,9 @@ mixin PhanTichAnhViewModel
       final picker = ImagePicker();
       final XFile? photo = await picker.pickImage(
         source: ImageSource.camera,
-        maxWidth: 1920,
-        maxHeight: 1920,
-        imageQuality: 92,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
       );
 
       if (photo == null) {

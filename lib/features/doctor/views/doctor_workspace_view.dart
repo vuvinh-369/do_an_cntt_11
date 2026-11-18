@@ -1,4 +1,3 @@
-// File: lib/features/doctor/views/doctor_workspace_view.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -9,10 +8,10 @@ import '../../../core/call/call_models.dart';
 import '../../../core/call/call_signaling_service.dart';
 import '../../../core/call/views/call_overlay_view.dart';
 import '../../../core/call/views/incoming_call_dialog.dart';
-import '../../../core/doctor_management/doctor_management_service.dart';
 import '../../../core/storage/local_storage_service.dart';
-import '../../user/models/doctor_consultation_models.dart';
-import '../../user/services/doctor_consultation_service.dart';
+import '../models/doctor_consultation_models.dart';
+import '../services/doctor_consultation_service.dart';
+import '../services/doctor_management_service.dart';
 
 /// Không gian làm việc riêng biệt dành cho Bác sĩ trực tuyến (/doctor)
 /// Cho phép tiếp nhận hàng đợi ca bệnh được phân công, tư vấn 2 chiều realtime,
@@ -787,7 +786,7 @@ class _DoctorWorkspaceViewState extends State<DoctorWorkspaceView> {
               ? _buildEmptyQueuePlaceholder()
               : ListView.separated(
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) =>
+                  separatorBuilder: (context, index) =>
                       const Divider(height: 1, color: Color(0xFFF1F5F9)),
                   itemBuilder: (context, index) {
                     final item = filtered[index];
@@ -1465,7 +1464,7 @@ class _DoctorWorkspaceViewState extends State<DoctorWorkspaceView> {
                     width: 40,
                     height: 40,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.image,
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.image,
                         size: 40, color: Color(0xFF94A3B8)),
                   )
                 : const Icon(Icons.image, size: 40, color: Color(0xFF94A3B8)),
@@ -1505,7 +1504,7 @@ class _DoctorWorkspaceViewState extends State<DoctorWorkspaceView> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         itemCount: _clinicalQuickReplies.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final quick = _clinicalQuickReplies[index];
           return ActionChip(

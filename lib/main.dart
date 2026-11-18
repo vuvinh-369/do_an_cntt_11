@@ -4,19 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'core/app_scroll_behavior.dart';
-import 'core/doctor_management/doctor_management_service.dart';
 import 'core/feedback/ai_feedback_service.dart';
+import 'core/history/analysis_history_service.dart';
 import 'core/serper/serper_config_service.dart';
 import 'core/storage/local_storage_service.dart';
 import 'core/supabase/supabase_service.dart';
-import 'core/user_management/user_account_service.dart';
 import 'core/widgets/in_app_notification_host.dart';
 import 'features/admin/viewmodels/admin_viewmodel.dart';
 import 'features/admin/views/admin_shell_view.dart';
+import 'features/auth/services/user_account_service.dart';
+import 'features/doctor/models/doctor_consultation_models.dart';
+import 'features/doctor/services/doctor_consultation_service.dart';
+import 'features/doctor/services/doctor_management_service.dart';
 import 'features/doctor/views/doctor_login_view.dart';
 import 'features/doctor/views/doctor_workspace_view.dart';
-import 'features/user/models/doctor_consultation_models.dart';
-import 'features/user/services/doctor_consultation_service.dart';
 import 'features/user/viewmodels/user_viewmodel.dart';
 import 'features/user/views/user_shell_view.dart';
 
@@ -27,9 +28,11 @@ void main() async {
   await LocalStorageService.instance.loadDoctorSession();
   await DoctorManagementService.instance.loadFromLocalStorage();
   await UserAccountService.instance.loadFromLocalStorage();
+  await AnalysisHistoryService.instance.loadFromLocalStorage();
   DoctorManagementService.instance.subscribeRealtime();
   DoctorConsultationService.instance.subscribeRealtime();
   unawaited(AiFeedbackService.instance.fetchFeedbacksFromSupabase());
+  unawaited(AnalysisHistoryService.instance.fetchHistoryFromSupabase());
   runApp(const MyApp());
 }
 

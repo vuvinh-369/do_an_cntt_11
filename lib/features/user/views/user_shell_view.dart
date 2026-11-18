@@ -19,6 +19,7 @@ import 'widgets/emergency_actions.dart';
 import 'widgets/user_painters.dart';
 import 'widgets/user_auth_modal_dialog.dart';
 import 'widgets/user_profile_modal_dialog.dart';
+import '../../../core/widgets/offline_banner.dart';
 
 
 class UserShellView extends StatelessWidget {
@@ -65,6 +66,7 @@ class UserShellView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const OfflineBanner(),
                 _buildTopNavigationBar(context, viewModel),
                 if (viewModel.currentScreenIndex != 0)
                   const Divider(
@@ -120,13 +122,21 @@ class UserShellView extends StatelessWidget {
           ],
         ),
       ),
-      body: isChatScreen
-          ? (viewModel.currentScreenIndex == 8
-              ? const DoctorConsultationView()
-              : const ChatBoxAiView())
-          : SingleChildScrollView(
-              child: _buildSelectedMobileBodyContent(viewModel),
-            ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const OfflineBanner(),
+          Expanded(
+            child: isChatScreen
+                ? (viewModel.currentScreenIndex == 8
+                    ? const DoctorConsultationView()
+                    : const ChatBoxAiView())
+                : SingleChildScrollView(
+                    child: _buildSelectedMobileBodyContent(viewModel),
+                  ),
+          ),
+        ],
+      ),
       bottomNavigationBar: isChatScreen
           ? _buildMobileChatSupportBottomBar(context, viewModel)
           : _buildMobileStandardBottomNavBar(context, viewModel),

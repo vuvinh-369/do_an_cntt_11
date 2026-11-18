@@ -3,11 +3,11 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:do_an_cntt_11/core/doctor_management/doctor_management_service.dart';
 import 'package:do_an_cntt_11/core/storage/local_storage_service.dart';
-import 'package:do_an_cntt_11/core/user_management/user_account_service.dart';
-import 'package:do_an_cntt_11/features/user/models/doctor_consultation_models.dart';
-import 'package:do_an_cntt_11/features/user/models/user_account_model.dart';
+import 'package:do_an_cntt_11/features/auth/models/user_account_model.dart';
+import 'package:do_an_cntt_11/features/auth/services/user_account_service.dart';
+import 'package:do_an_cntt_11/features/doctor/models/doctor_consultation_models.dart';
+import 'package:do_an_cntt_11/features/doctor/services/doctor_management_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

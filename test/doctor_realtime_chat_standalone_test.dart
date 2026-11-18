@@ -4,7 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:do_an_cntt_11/features/user/models/doctor_consultation_models.dart';
+import 'package:do_an_cntt_11/features/doctor/models/doctor_consultation_models.dart';
 
 void main() async {
   print('======================================================================');

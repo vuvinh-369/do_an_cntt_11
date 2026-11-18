@@ -1,13 +1,12 @@
-// File: lib/features/doctor/views/doctor_login_view.dart
 import 'package:flutter/material.dart';
 
-import '../../../core/doctor_management/doctor_management_service.dart';
 import '../../../core/security/auth_brute_force_service.dart';
 import '../../../core/security/widgets/auth_captcha_box.dart';
 import '../../../core/storage/local_storage_service.dart';
-import '../../../core/user_management/user_account_service.dart';
-import '../../user/models/doctor_consultation_models.dart';
-import '../../user/models/user_account_model.dart';
+import '../../auth/models/user_account_model.dart';
+import '../../auth/services/user_account_service.dart';
+import '../models/doctor_consultation_models.dart';
+import '../services/doctor_management_service.dart';
 
 /// Màn hình Đăng nhập Cổng Bác sĩ Trực tuyến (/doctor) - Yêu cầu R2
 /// Bọc đúng Scaffold Material ancestor, xác thực thông tin đăng nhập được Admin cấp,
@@ -182,26 +181,24 @@ class _DoctorLoginViewState extends State<DoctorLoginView> {
       );
 
       // Nếu chưa có trong danh mục hồ sơ (profile chưa tạo), tự động khởi tạo hồ sơ bác sĩ hợp lệ
-      if (doctor == null) {
-        doctor = DoctorProfile(
-          id: account.doctorId ?? 'doc_${account.username}',
-          fullName: account.fullName.isNotEmpty
-              ? account.fullName
-              : 'BS. ${account.username}',
-          title: 'Bác sĩ Tư vấn Sơ cứu',
-          specialty: 'Khám & Tư vấn Cấp cứu Từ xa',
-          hospital: 'Trung tâm Cấp cứu 115',
-          phoneNumber: account.emailOrPhone ?? '115',
-          workplaceAddress: 'Bệnh viện Đa khoa / Cổng Bác sĩ Trực tuyến',
-          avatarInitials: account.fullName.isNotEmpty
-              ? account.fullName[0].toUpperCase()
-              : 'BS',
-          avatarColor: const Color(0xFF2563EB),
-          accountUsername: account.username,
-          isOnline: true,
-          statusText: 'Đang trực tuyến • Sẵn sàng hỗ trợ',
-        );
-      }
+      doctor ??= DoctorProfile(
+        id: account.doctorId ?? 'doc_${account.username}',
+        fullName: account.fullName.isNotEmpty
+            ? account.fullName
+            : 'BS. ${account.username}',
+        title: 'Bác sĩ Tư vấn Sơ cứu',
+        specialty: 'Khám & Tư vấn Cấp cứu Từ xa',
+        hospital: 'Trung tâm Cấp cứu 115',
+        phoneNumber: account.emailOrPhone ?? '115',
+        workplaceAddress: 'Bệnh viện Đa khoa / Cổng Bác sĩ Trực tuyến',
+        avatarInitials: account.fullName.isNotEmpty
+            ? account.fullName[0].toUpperCase()
+            : 'BS',
+        avatarColor: const Color(0xFF2563EB),
+        accountUsername: account.username,
+        isOnline: true,
+        statusText: 'Đang trực tuyến • Sẵn sàng hỗ trợ',
+      );
 
       // Kích hoạt và lưu phiên làm việc bác sĩ bền vững (Yêu cầu R2 - AppRootPortalSwitcher chuyển sang DoctorWorkspaceView)
       await LocalStorageService.instance.saveDoctorSession(
@@ -242,7 +239,7 @@ class _DoctorLoginViewState extends State<DoctorLoginView> {
               constraints: const BoxConstraints(maxWidth: 440),
               child: Card(
                 elevation: 2,
-                shadowColor: Colors.black.withOpacity(0.08),
+                shadowColor: Colors.black.withValues(alpha: 0.08),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: const BorderSide(color: Color(0xFFE2E8F0)),

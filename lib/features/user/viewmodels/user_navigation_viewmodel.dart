@@ -7,7 +7,7 @@ import '../models/first_aid_models.dart';
 import '../models/navigation_model.dart';
 import '../models/user_account_model.dart';
 import '../services/daily_health_service.dart';
-import '../../../core/email/email_config_service.dart';
+import '../../../core/supabase/supabase_otp_service.dart';
 import '../../../core/user_management/user_account_service.dart';
 
 mixin DieuHuongCoSoViewModel on ChangeNotifier {
@@ -309,8 +309,8 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     notifyListeners();
   }
 
-  /// Yêu cầu gửi mã OTP khôi phục mật khẩu qua Email (Lưu tạm và xử lý trên Supabase Cloud)
-  Map<String, dynamic> requestPasswordResetOtp(String identifier) {
+  /// Yêu cầu gửi mã OTP khôi phục mật khẩu qua Email (Dịch vụ Supabase Auth Built-in)
+  Future<Map<String, dynamic>> requestPasswordResetOtp(String identifier) async {
     final cleanId = identifier.trim().toLowerCase();
     if (cleanId.isEmpty) {
       return {
@@ -329,68 +329,88 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
       }
     }
 
-    if (targetUser == null) {
+    // Nếu không khớp tài khoản local nhưng người dùng nhập trực tiếp một email hợp lệ
+    String targetEmail = targetUser?.emailOrPhone?.trim() ?? '';
+    if (targetEmail.isEmpty && cleanId.contains('@')) {
+      targetEmail = cleanId;
+    }
+
+    if (targetEmail.isEmpty) {
+      if (targetUser != null) {
+        return {
+          'success': false,
+          'message': 'Tài khoản này chưa thiết lập email khôi phục. Vui lòng liên hệ quản trị viên.',
+        };
+      }
       return {
         'success': false,
         'message': 'Không tìm thấy tài khoản tương ứng với "$identifier" trong hệ thống.',
       };
     }
 
-    final targetEmail = targetUser.emailOrPhone?.trim() ?? '';
-    if (targetEmail.isEmpty) {
-      return {
-        'success': false,
-        'message': 'Tài khoản này chưa thiết lập email khôi phục. Vui lòng liên hệ quản trị viên.',
-      };
-    }
-
-    final result = EmailConfigService.instance.generateAndDispatchOtp(
-      identifier: targetUser.username,
-      targetEmail: targetEmail,
-      username: targetUser.username,
+    final otpRes = await SupabaseOtpService.instance.sendPasswordResetOtp(
+      email: targetEmail,
     );
 
-    return result;
+    return {
+      'success': otpRes['success'] == true,
+      'targetEmail': targetEmail,
+      'message': otpRes['message'] ?? '',
+    };
   }
 
-  /// Xác thực mã OTP và cập nhật mật khẩu mới cho tài khoản trên Supabase Cloud
-  String? verifyAndResetPassword({
+  /// Xác thực mã OTP và cập nhật mật khẩu mới cho tài khoản qua Supabase Auth
+  Future<String?> verifyAndResetPassword({
     required String identifier,
     required String otp,
     required String newPassword,
-  }) {
+  }) async {
     final cleanId = identifier.trim().toLowerCase();
     final cleanOtp = otp.trim();
     final cleanPass = newPassword.trim();
 
+    if (cleanOtp.isEmpty) {
+      return 'Vui lòng nhập mã xác thực OTP.';
+    }
     if (cleanPass.length < 6) {
       return 'Mật khẩu mới phải có ít nhất 6 ký tự.';
     }
 
-    final verifyResult = EmailConfigService.instance.verifyOtp(
-      identifier: cleanId,
-      otpInput: cleanOtp,
+    UserAccountModel? targetUser;
+    for (final acc in UserAccountService.instance.accounts) {
+      if (acc.username.toLowerCase() == cleanId ||
+          (acc.emailOrPhone != null &&
+              acc.emailOrPhone!.trim().toLowerCase() == cleanId)) {
+        targetUser = acc;
+        break;
+      }
+    }
+
+    String targetEmail = targetUser?.emailOrPhone?.trim() ?? '';
+    if (targetEmail.isEmpty && cleanId.contains('@')) {
+      targetEmail = cleanId;
+    }
+
+    if (targetEmail.isEmpty) {
+      return 'Không xác định được địa chỉ email cần khôi phục mật khẩu.';
+    }
+
+    final error = await SupabaseOtpService.instance.verifyOtpAndResetPassword(
+      email: targetEmail,
+      otp: cleanOtp,
+      newPassword: cleanPass,
+      username: targetUser?.username ?? cleanId,
     );
 
-    if (verifyResult['valid'] != true) {
-      return verifyResult['message'] as String? ?? 'Mã OTP không hợp lệ hoặc đã hết hạn.';
+    if (error == null) {
+      final updatedUsername = targetUser?.username ?? cleanId;
+      if (_currentUser?.username.toLowerCase() == updatedUsername.toLowerCase()) {
+        _currentUser = _currentUser!.copyWith(password: cleanPass);
+      }
+      notifyListeners();
     }
 
-    final record = verifyResult['record'] as PendingOtpRecord;
-    final user = UserAccountService.instance.findByUsername(record.username);
-
-    if (user == null) {
-      return 'Không tìm thấy tài khoản tương ứng để cập nhật mật khẩu.';
-    }
-
-    UserAccountService.instance.changePassword(user.username, cleanPass);
-    if (_currentUser?.username.toLowerCase() == user.username.toLowerCase()) {
-      _currentUser = _currentUser!.copyWith(password: cleanPass);
-    }
-
-    EmailConfigService.instance.consumeOtp(cleanId);
-    notifyListeners();
-    return null; // Thành công
+    return error;
   }
 
   /// Đăng nhập nhanh tương thích ngược

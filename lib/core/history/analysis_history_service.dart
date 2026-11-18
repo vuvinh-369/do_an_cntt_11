@@ -1,16 +1,19 @@
 // File: lib/core/history/analysis_history_service.dart
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../features/user/models/history_models.dart';
+import '../storage/local_storage_service.dart';
 import '../supabase/supabase_service.dart';
 
 /// Dịch vụ Singleton quản lý Lịch sử quét & Phân tích chẩn đoán hình ảnh vết thương
-/// Đồng bộ trực tiếp hai chiều với máy chủ cơ sở dữ liệu Supabase (Bảng 'analysis_history')
+/// Hỗ trợ cơ chế Kép (Dual-mode): Bộ nhớ đệm cục bộ LocalStorage (SharedPreferences)
+/// kết hợp đồng bộ hai chiều thời gian thực với máy chủ Supabase PostgreSQL (Bảng 'analysis_history')
 class AnalysisHistoryService extends ChangeNotifier {
   static final AnalysisHistoryService instance = AnalysisHistoryService._internal();
 
   AnalysisHistoryService._internal() {
-    fetchHistoryFromSupabase();
+    loadFromLocalStorage();
   }
 
   final List<AnalysisHistoryItemModel> _items = [];
@@ -26,7 +29,7 @@ class AnalysisHistoryService extends ChangeNotifier {
   DateTime? get lastSyncTime => _lastSyncTime;
 
   // ===========================================================================
-  // CÁC CHỈ SỐ THỐNG KÊ THỜI GIAN THỰC (TÍNH TỪ DỮ LIỆU THẬT TRÊN SUPABASE)
+  // CÁC CHỈ SỐ THỐNG KÊ THỜI GIAN THỰC (TÍNH TỪ DỮ LIỆU ĐÃ NẠP)
   // ===========================================================================
 
   /// Tổng số ca quét đã thực hiện
@@ -85,6 +88,120 @@ class AnalysisHistoryService extends ChangeNotifier {
     return counts;
   }
 
+  /// Lọc các ca quét theo người dùng cụ thể (hoặc toàn bộ nếu là Quản trị viên/Khách)
+  List<AnalysisHistoryItemModel> getItemsForUser(String? username) {
+    if (username == null || username.trim().isEmpty) {
+      return items;
+    }
+    final target = username.trim().toLowerCase();
+    return _items.where((i) {
+      final u = i.username?.trim().toLowerCase();
+      return u == target || u == null;
+    }).toList();
+  }
+
+  // ===========================================================================
+  // BỘ NHỚ ĐỆM CỤC BỘ LOCAL STORAGE (PERSISTENCE)
+  // ===========================================================================
+
+  /// Nạp lịch sử từ LocalStorage ngay khi khởi động app
+  Future<void> loadFromLocalStorage() async {
+    try {
+      final rawList = await LocalStorageService.instance.loadAnalysisHistory();
+      if (rawList.isNotEmpty) {
+        _items.clear();
+        for (final map in rawList) {
+          _items.add(AnalysisHistoryItemModel.fromMap(map));
+        }
+        notifyListeners();
+      } else if (_items.isEmpty) {
+        // Nếu bộ nhớ đệm trống hoàn toàn, khởi tạo danh sách mẫu mặc định an toàn
+        _initDefaultFallbackItems();
+        await _persistToLocalStorage();
+      }
+    } catch (e) {
+      debugPrint('[AnalysisHistoryService] Lỗi đọc bộ nhớ đệm LocalStorage: $e');
+    }
+  }
+
+  /// Ghi toàn bộ danh sách hiện tại xuống LocalStorage
+  Future<void> _persistToLocalStorage() async {
+    try {
+      final maps = _items.map((i) => i.toMap()).toList();
+      await LocalStorageService.instance.saveAnalysisHistory(maps);
+    } catch (e) {
+      debugPrint('[AnalysisHistoryService] Lỗi ghi bộ nhớ đệm LocalStorage: $e');
+    }
+  }
+
+  /// Khởi tạo dữ liệu mẫu ban đầu để giao diện không bị trống rỗng khi mới cài đặt
+  void _initDefaultFallbackItems() {
+    final now = DateTime.now();
+    _items.clear();
+    _items.addAll([
+      AnalysisHistoryItemModel(
+        id: 'hist_seed_001',
+        username: 'admin',
+        injuryType: 'Trầy xước ngoài da',
+        confidencePercent: 93,
+        severityLevel: 'mild',
+        locationLabel: 'Cẳng tay phải',
+        timestamp: '14:20 ${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
+        dateTime: now.subtract(const Duration(minutes: 35)),
+        imageSourceName: 'assets/images/sample_abrasion.jpg',
+        relatedTopicId: 'abrasion',
+        symptoms: const ['Chảy máu rỉ rỉ', 'Rát bề mặt biểu bì', 'Bụi cát bám dính'],
+        painLevel: 2,
+        firstAidSummary: 'Rửa sạch bằng nước muối sinh lý 0.9%, sát khuẩn bằng Povidone-Iodine và dán gạc vô trùng thoáng.',
+      ),
+      AnalysisHistoryItemModel(
+        id: 'hist_seed_002',
+        username: 'benhnhan_01',
+        injuryType: 'Vết cắt / rách da',
+        confidencePercent: 88,
+        severityLevel: 'severe',
+        locationLabel: 'Ngón tay trỏ trái',
+        timestamp: '11:45 ${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
+        dateTime: now.subtract(const Duration(hours: 3)),
+        imageSourceName: 'assets/images/sample_cut.jpg',
+        relatedTopicId: 'cut_laceration',
+        symptoms: const ['Chảy máu nhiều', 'Vết rách sâu quá 0.5cm', 'Vết cắt kim loại sắc'],
+        painLevel: 7,
+        firstAidSummary: 'Ấn ép trực tiếp gạc vô trùng cầm máu khẩn cấp, nâng cao chi tổn thương và khẩn trương đến viện khâu vết thương.',
+      ),
+      AnalysisHistoryItemModel(
+        id: 'hist_seed_003',
+        username: 'benhnhan_02',
+        injuryType: 'Bỏng nhiệt',
+        confidencePercent: 85,
+        severityLevel: 'moderate',
+        locationLabel: 'Mu bàn tay phải',
+        timestamp: '06:15 ${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
+        dateTime: now.subtract(const Duration(hours: 8)),
+        imageSourceName: 'assets/images/sample_burn.jpg',
+        relatedTopicId: 'burn',
+        symptoms: const ['Da đỏ rát', 'Phồng rộp bọng nước', 'Bỏng nước sôi diện tích nhỏ'],
+        painLevel: 5,
+        firstAidSummary: 'Xả nước mát sạch (15-25°C) liên tục trong 15-20 phút. Tuyệt đối không chườm đá lạnh buốt hay chọc vỡ bọng nước.',
+      ),
+      AnalysisHistoryItemModel(
+        id: 'hist_seed_004',
+        username: null,
+        injuryType: 'Bầm tím phần mềm',
+        confidencePercent: 80,
+        severityLevel: 'mild',
+        locationLabel: 'Đầu gối trái',
+        timestamp: '15:30 ${now.subtract(const Duration(days: 1)).day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
+        dateTime: now.subtract(const Duration(days: 1)),
+        imageSourceName: 'assets/images/sample_bruise.jpg',
+        relatedTopicId: 'bruise',
+        symptoms: const ['Tụ máu dưới da', 'Đổi màu xanh tím', 'Đau khi ấn vào'],
+        painLevel: 3,
+        firstAidSummary: 'Chườm lạnh gián tiếp qua khăn sạch 15 phút để co mạch giảm phù nề, nghỉ ngơi vùng va đập.',
+      ),
+    ]);
+  }
+
   // ===========================================================================
   // CÁC HÀM TRUY VẤN VÀ ĐỒNG BỘ DỮ LIỆU VỚI SUPABASE
   // ===========================================================================
@@ -99,9 +216,9 @@ class AnalysisHistoryService extends ChangeNotifier {
     try {
       final client = SupabaseService.instance.client;
       if (client == null) {
-        _lastError = 'Chưa kết nối máy chủ Supabase.';
-        _isLoading = false;
-        notifyListeners();
+        // Khi chưa kết nối hoặc đang offline, giữ nguyên bộ nhớ đệm
+        _lastError = 'Chưa kết nối máy chủ Supabase (Đang dùng dữ liệu lưu trữ cục bộ).';
+        await loadFromLocalStorage();
         return;
       }
 
@@ -110,43 +227,82 @@ class AnalysisHistoryService extends ChangeNotifier {
           .select()
           .order('created_at', ascending: false);
 
-      _items.clear();
-      for (final row in res) {
-        _items.add(AnalysisHistoryItemModel.fromMap(row));
+      if (res.isNotEmpty) {
+        _items.clear();
+        for (final row in res) {
+          _items.add(AnalysisHistoryItemModel.fromMap(row));
+        }
+        _lastError = null;
+        _lastSyncTime = DateTime.now();
+        await _persistToLocalStorage();
+      } else {
+        // Nếu Supabase trả về rỗng (bảng mới tạo chưa seed), đồng bộ các bản ghi cục bộ lên
+        if (_items.isNotEmpty) {
+          unawaited(_syncLocalItemsToSupabase());
+        }
       }
-
-      _lastError = null;
-      _lastSyncTime = DateTime.now();
     } catch (e) {
       _lastError = e.toString();
       debugPrint('[AnalysisHistoryService] Tải lịch sử Supabase: $e');
+      // Tải lại từ bộ nhớ đệm để đảm bảo không bị trống
+      if (_items.isEmpty) {
+        await loadFromLocalStorage();
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  /// Ghi nhận một ca phân tích mới trực tiếp vào Supabase
+  /// Đồng bộ danh sách bản ghi cục bộ lên Supabase nếu máy chủ đang trống
+  Future<void> _syncLocalItemsToSupabase() async {
+    try {
+      final client = SupabaseService.instance.client;
+      if (client == null || _items.isEmpty) return;
+      // Chỉ đồng bộ các bản ghi của tài khoản đã đăng nhập (tuân thủ khóa ngoại username)
+      final validItems = _items
+          .where((i) => i.username != null && i.username!.trim().isNotEmpty)
+          .map((i) => i.toMap())
+          .toList();
+      if (validItems.isNotEmpty) {
+        await client.from('analysis_history').upsert(validItems);
+      }
+    } catch (e) {
+      debugPrint('[AnalysisHistoryService] Đồng bộ ngược lên Supabase: $e');
+    }
+  }
+
+  /// Thêm trực tiếp một Model đã khởi tạo vào danh sách (dùng khi UserViewModel ghi nhận)
+  Future<void> addDirectItem(AnalysisHistoryItemModel item) async {
+    _items.removeWhere((i) => i.id == item.id);
+    _items.insert(0, item);
+    notifyListeners();
+    await _persistToLocalStorage();
+  }
+
+  /// Ghi nhận một ca phân tích mới trực tiếp vào Supabase & LocalStorage
   Future<bool> recordAnalysis({
     String? username,
     required String injuryTypeId,
     required String injuryTypeName,
     required double confidenceScore,
     String severityLevel = 'moderate',
+    String locationLabel = 'Chưa xác định',
     String? imageUrl,
     List<String> symptoms = const [],
     int painLevel = 0,
     String? firstAidSummary,
   }) async {
     final now = DateTime.now();
+    final localId = 'hist_${now.millisecondsSinceEpoch}';
 
     final optimisticItem = AnalysisHistoryItemModel(
-      id: 'local_${now.millisecondsSinceEpoch}',
+      id: localId,
       username: username,
       injuryType: injuryTypeName,
       confidencePercent: confidenceScore.round(),
       severityLevel: severityLevel,
-      locationLabel: 'Vùng tổn thương',
+      locationLabel: locationLabel,
       timestamp: '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} ${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
       dateTime: now,
       imageSourceName: imageUrl,
@@ -156,45 +312,55 @@ class AnalysisHistoryService extends ChangeNotifier {
       firstAidSummary: firstAidSummary,
     );
 
+    // 1. Lưu ngay vào RAM và LocalStorage (Bền vững, không mất khi đóng app)
     _items.insert(0, optimisticItem);
     notifyListeners();
+    await _persistToLocalStorage();
 
-    try {
-      final client = SupabaseService.instance.client;
-      if (client != null) {
-        final inserted = await client.from('analysis_history').insert({
-          'username': username,
-          'injury_type_id': injuryTypeId,
-          'injury_type_name': injuryTypeName,
-          'confidence_score': confidenceScore,
-          'severity_level': severityLevel,
-          'image_url': imageUrl,
-          'symptoms': symptoms,
-          'pain_level': painLevel,
-          'first_aid_summary': firstAidSummary,
-          'created_at': now.toIso8601String(),
-        }).select().maybeSingle();
+    // 2. Đồng bộ lên Supabase Cloud CHỈ KHI người dùng đã đăng nhập (username hợp lệ)
+    // Người dùng khách vẫn quét và hỏi AI bình thường nhưng chỉ lưu cục bộ trên máy
+    final cleanUsername = username?.trim();
+    if (cleanUsername != null && cleanUsername.isNotEmpty) {
+      try {
+        final client = SupabaseService.instance.client;
+        if (client != null) {
+          final inserted = await client.from('analysis_history').insert({
+            'id': localId,
+            'username': cleanUsername,
+            'injury_type_id': injuryTypeId,
+            'injury_type_name': injuryTypeName,
+            'confidence_score': confidenceScore,
+            'severity_level': severityLevel,
+            'location_label': locationLabel,
+            'image_url': imageUrl,
+            'symptoms': symptoms,
+            'pain_level': painLevel,
+            'first_aid_summary': firstAidSummary,
+            'created_at': now.toIso8601String(),
+          }).select().maybeSingle();
 
-        if (inserted != null && inserted['id'] != null) {
-          // Cập nhật ID thật từ Supabase
-          final idx = _items.indexOf(optimisticItem);
-          if (idx != -1) {
-            _items[idx] = AnalysisHistoryItemModel.fromMap(inserted);
-            notifyListeners();
+          if (inserted != null && inserted['id'] != null) {
+            final idx = _items.indexWhere((i) => i.id == localId);
+            if (idx != -1) {
+              _items[idx] = AnalysisHistoryItemModel.fromMap(inserted);
+              await _persistToLocalStorage();
+              notifyListeners();
+            }
           }
+          return true;
         }
-        return true;
+      } catch (e) {
+        debugPrint('[AnalysisHistoryService] Ghi nhận lịch sử Supabase lỗi: $e');
       }
-    } catch (e) {
-      debugPrint('[AnalysisHistoryService] Ghi nhận lịch sử Supabase lỗi: $e');
     }
     return false;
   }
 
-  /// Xóa một ca quét khỏi bảng 'analysis_history' trên Supabase
+  /// Xóa một ca quét khỏi danh sách và Supabase
   Future<bool> deleteRecord(String id) async {
     _items.removeWhere((item) => item.id == id);
     notifyListeners();
+    await _persistToLocalStorage();
 
     try {
       final client = SupabaseService.instance.client;
@@ -220,39 +386,43 @@ class AnalysisHistoryService extends ChangeNotifier {
         'injury_type_name': 'Trầy xước ngoài da',
         'confidence_score': 92.5,
         'severity_level': 'mild',
+        'location_label': 'Cẳng tay phải',
         'pain_level': 2,
         'symptoms': ['Chảy máu rỉ rỉ', 'Rát bề mặt biểu bì', 'Bụi cát bám dính'],
         'first_aid_summary': 'Rửa sạch bằng nước muối 0.9%, sát khuẩn bằng Povidone-Iodine và dán gạc vô trùng thoáng.',
         'created_at': DateTime.now().subtract(const Duration(minutes: 35)).toIso8601String(),
       },
       {
-        'username': 'benhnhan_01',
+        'username': 'patient_test',
         'injury_type_id': 'cut_laceration',
         'injury_type_name': 'Vết cắt / rách da',
         'confidence_score': 88.0,
         'severity_level': 'severe',
+        'location_label': 'Ngón tay trỏ trái',
         'pain_level': 7,
         'symptoms': ['Chảy máu nhiều', 'Vết rách sâu quá 0.5cm', 'Vết cắt kim loại sắc'],
         'first_aid_summary': 'Ấn ép trực tiếp gạc vô trùng cầm máu khẩn cấp, nâng cao chi tổn thương và khẩn trương đến viện khâu vết thương.',
         'created_at': DateTime.now().subtract(const Duration(hours: 3)).toIso8601String(),
       },
       {
-        'username': 'benhnhan_02',
+        'username': 'patient_test',
         'injury_type_id': 'burn',
         'injury_type_name': 'Bỏng nhiệt',
         'confidence_score': 85.0,
         'severity_level': 'moderate',
+        'location_label': 'Mu bàn tay phải',
         'pain_level': 5,
         'symptoms': ['Da đỏ rát', 'Phồng rộp bọng nước', 'Bỏng nước sôi diện tích nhỏ'],
         'first_aid_summary': 'Xả nước mát sạch (15-25°C) liên tục trong 15-20 phút. Tuyệt đối không chườm đá lạnh buốt hay chọc vỡ bọng nước.',
         'created_at': DateTime.now().subtract(const Duration(hours: 8)).toIso8601String(),
       },
       {
-        'username': null, // Khách vãng lai
+        'username': 'default_user',
         'injury_type_id': 'bruise',
         'injury_type_name': 'Bầm tím phần mềm',
         'confidence_score': 79.5,
         'severity_level': 'mild',
+        'location_label': 'Đầu gối trái',
         'pain_level': 3,
         'symptoms': ['Tụ máu dưới da', 'Đổi màu xanh tím', 'Đau khi ấn vào'],
         'first_aid_summary': 'Chườm lạnh gián tiếp qua khăn sạch 15 phút để co mạch giảm phù nề, nghỉ ngơi vùng va đập.',

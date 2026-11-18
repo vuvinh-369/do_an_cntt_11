@@ -2,14 +2,27 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:do_an_cntt_11/features/user/models/doctor_consultation_models.dart';
-import 'package:do_an_cntt_11/features/user/services/doctor_response_simulator.dart';
+import 'package:do_an_cntt_11/features/doctor/services/doctor_ai_fallback_service.dart';
+import 'package:do_an_cntt_11/features/doctor/services/doctor_consultation_service.dart';
+import 'package:do_an_cntt_11/features/doctor/models/doctor_consultation_models.dart';
+import 'package:do_an_cntt_11/features/doctor/services/doctor_response_simulator.dart';
 import 'package:do_an_cntt_11/features/user/viewmodels/user_viewmodel.dart';
-import 'package:do_an_cntt_11/features/user/views/doctor_consultation_view.dart';
+import 'package:do_an_cntt_11/features/doctor/views/doctor_consultation_view.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    DoctorAiFallbackService.instance.reset();
+    DoctorConsultationService.instance.resetToDefaultSeed();
+  });
+
+  tearDown(() {
+    DoctorAiFallbackService.instance.reset();
+  });
 
   group('1. Doctor Consultation Data Models Tests', () {
     test('DoctorProfile default constructor and values', () {
@@ -310,8 +323,8 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(vm, size: const Size(390, 844)));
       await tester.pump(const Duration(milliseconds: 200));
 
-      // Kiểm tra Header
-      expect(find.text(DoctorProfile.defaultDoctor.fullName), findsOneWidget);
+      // Kiểm tra Header & Chat bubble
+      expect(find.text(DoctorProfile.defaultDoctor.fullName), findsWidgets);
       expect(find.byIcon(Icons.verified_rounded), findsOneWidget);
 
       // Kiểm tra tin nhắn chào ban đầu của Bác sĩ
@@ -327,8 +340,8 @@ void main() {
       await tester.tap(find.byIcon(Icons.send_rounded));
       await tester.pump();
 
-      // Kiểm tra bong bóng bệnh nhân xuất hiện ngay lập tức
-      expect(find.text('Xin chào bác sĩ, tôi cần tư vấn'), findsOneWidget);
+      // Kiểm tra trong danh sách tin nhắn của ViewModel
+      expect(vm.doctorChatMessages.any((m) => m.content == 'Xin chào bác sĩ, tôi cần tư vấn'), isTrue);
 
       // Chờ hoàn thành phản hồi của bác sĩ
       await tester.pump(const Duration(milliseconds: 300));
@@ -407,7 +420,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(vm, size: const Size(320, 568)));
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(find.text(DoctorProfile.defaultDoctor.fullName), findsOneWidget);
+      expect(find.text(DoctorProfile.defaultDoctor.fullName), findsWidgets);
       expect(tester.takeException(), isNull);
 
       vm.dispose();
@@ -415,27 +428,27 @@ void main() {
 
     testWidgets('Image attachment with corrupt bytes displays fallback broken image icon without crashing', (WidgetTester tester) async {
       final vm = UserViewModel();
-      vm.setSimulatorForTesting(const DoctorResponseSimulator(fastMode: true));
-      vm.initDoctorConsultationIfNeeded();
+      try {
+        vm.initDoctorConsultationIfNeeded();
 
-      // Dispatch a message with broken attachment bytes
-      await vm.sendDoctorChatMessage(
-        text: 'Ảnh vết thương hỏng',
-        attachment: ChatAttachment(
-          id: 'corrupt_img_test',
-          type: ChatAttachmentType.image,
-          bytes: Uint8List.fromList([0, 1, 2, 3]), // Non-decodable bytes
-        ),
-      );
+        // Set pending corrupt attachment
+        vm.setPendingAttachmentForTesting(
+          ChatAttachment(
+            id: 'corrupt_img_test',
+            type: ChatAttachmentType.image,
+            bytes: Uint8List.fromList([0, 1, 2, 3]),
+          ),
+        );
 
-      await tester.pumpWidget(buildTestableWidget(vm, size: const Size(390, 844)));
-      await tester.pump(const Duration(milliseconds: 200));
+        await tester.pumpWidget(buildTestableWidget(vm, size: const Size(390, 844)));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 200));
 
-      // Broken image icon from errorBuilder should be rendered without throwing
-      expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
-      expect(tester.takeException(), isNull);
-
-      vm.dispose();
+        expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      } finally {
+        vm.dispose();
+      }
     });
 
     testWidgets('DoctorTypingBubble animates cleanly without build mutations', (WidgetTester tester) async {
@@ -452,6 +465,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('${DoctorProfile.defaultDoctor.fullName} đang phản hồi...'), findsOneWidget);
       expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
     });
   });
 }

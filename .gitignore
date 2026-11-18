@@ -50,6 +50,9 @@ app.*.map.json
 .venv/
 
 # Local AI data and machine configuration; weights stay outside this repository.
+.env
+.env.local
+*.env.local
 backend/.env.local
 backend/runtime/
 **/__pycache__/

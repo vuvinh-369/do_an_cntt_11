@@ -1,11 +1,1 @@
-typedef BrowserPosition = ({
-  double latitude,
-  double longitude,
-  double accuracyMeters,
-});
-
-enum BrowserLocationFailure implements Exception {
-  denied,
-  unavailable,
-  timedOut,
-}
+export 'package:do_an_cntt_11/core/location/browser_position.dart';

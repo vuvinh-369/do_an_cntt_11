@@ -404,7 +404,7 @@ class LocalStorageService {
         final randNum = math.Random().nextInt(900000) + 100000;
         guestId = 'guest_${DateTime.now().millisecondsSinceEpoch}_$randNum';
         await prefs.setString(_keyGuestSessionId, guestId);
-        debugPrint('[LocalStorage] Đã tạo phiên khách vãng lai mới: $guestId');
+        debugPrint('[LocalStorage] Đã tạo phiên khách mới: $guestId');
       }
       _cachedGuestSessionId = guestId;
       return guestId;
@@ -706,5 +706,40 @@ class LocalStorageService {
     } catch (e) {
       debugPrint('[LocalStorage] Lỗi xóa brute-force attempts: $e');
     }
+  }
+
+  // ===========================================================================
+  // QUẢN LÝ LỊCH SỬ PHÂN TÍCH QUÉT ẢNH AI (ANALYSIS HISTORY LOCAL CACHE)
+  // ===========================================================================
+  static const String _keyAnalysisHistory = 'analysis_history_local_cache_v1';
+
+  /// Lưu danh sách lịch sử phân tích vào LocalStorage (fail-safe khi Supabase ngoại tuyến hoặc khởi động lại app)
+  Future<void> saveAnalysisHistory(List<Map<String, dynamic>> items) async {
+    try {
+      final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
+      _cachedPrefs = prefs;
+      final jsonString = jsonEncode(items);
+      await prefs.setString(_keyAnalysisHistory, jsonString);
+    } catch (e) {
+      debugPrint('[LocalStorage] Lỗi lưu lịch sử phân tích: $e');
+    }
+  }
+
+  /// Nạp danh sách lịch sử phân tích từ LocalStorage
+  Future<List<Map<String, dynamic>>> loadAnalysisHistory() async {
+    try {
+      final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
+      _cachedPrefs = prefs;
+      final raw = prefs.getString(_keyAnalysisHistory);
+      if (raw != null && raw.trim().isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          return decoded.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[LocalStorage] Lỗi nạp lịch sử phân tích: $e');
+    }
+    return [];
   }
 }
