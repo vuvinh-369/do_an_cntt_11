@@ -167,7 +167,31 @@ PDF nằm ở `backend/runtime/TaiLieuNguon` trên máy chạy backend. Nếu đ
 
 ## Cấu hình đường dẫn
 
-Sao chép `.env.example` thành `.env.local` và điền đường dẫn trên máy. `.env.local` đã được bỏ qua bởi Git. Biến môi trường hệ thống được ưu tiên hơn file cấu hình.
+Sao chép `backend/.env.example` thành `backend/.env.local` và điền đường dẫn trên máy. Server đọc `backend/.env.local`; chỉnh tệp mẫu ở thư mục gốc hoặc trong `backend` không tự áp dụng cấu hình. `backend/.env.local` đã được bỏ qua bởi Git. Biến môi trường hệ thống được ưu tiên hơn file cấu hình.
+
+### Bản tải mới dùng kho Supabase đã có
+
+Trong terminal PowerShell của VS Code, tạo tệp cấu hình nếu chưa có:
+
+```powershell
+Set-Location "D:\DATA\.CODEX\DoAnVinhPhatNam\WebChuyenNganhPhatVinhNam"
+if (-not (Test-Path -LiteralPath '.\backend\.env.local')) {
+    Copy-Item -LiteralPath '.\backend\.env.example' -Destination '.\backend\.env.local'
+}
+```
+
+Mở `backend/.env.local`, điền URI Session pooler thật vào `MEDGEMMA_KB_DATABASE_URL` và kiểm tra hai đường dẫn:
+
+- `MEDGEMMA_MODEL_PATH`: thư mục MedGemma dùng chung cùng cấp với repo.
+- `MEDGEMMA_KB_SOURCE_ROOT`: thư mục chứa `TaiLieuNguon`. Trên máy hiện tại có thể dùng `D:/DATA/.CODEX/DoAnVinhPhatNam/WebVinhNamPhat_CamNang/backend/runtime`; cần giữ thư mục PDF này hoặc đổi đường dẫn khi chuyển dữ liệu.
+
+Supabase URL và publishable key của Flutter không thay thế được URI PostgreSQL mà kho sơ cứu của backend sử dụng. Kho đã nhập lên Supabase thì không cần nhập lại SQLite sau mỗi lần clone. Nếu bỏ trống URI và chưa có SQLite cục bộ, API sẽ trả lỗi `Chưa tìm thấy kho hướng dẫn SQLite`, khiến ChatBox báo chưa kết nối.
+
+Chạy `.\Build-Web.ps1` nếu chưa có bản web. Dừng server cũ bằng **Ctrl+C**, rồi chạy `.\Run-Server.ps1 -Lan` trong một terminal duy nhất. Lỗi `WinError 10048` thường do một server khác còn giữ cổng `8080` hoặc `8765`. Khi server hoạt động đúng, `/api/status` trả HTTP 200, `knowledge_backend` là `supabase`; chờ `model_state` thành `ready` trước khi thử MedGemma.
+
+Khi chia sẻ trên GitHub, chỉ commit tệp mẫu và tài liệu; mật khẩu cơ sở dữ liệu và API key thật giữ trong `backend/.env.local` của từng máy.
+
+### Các biến cấu hình
 
 - `MEDGEMMA_MODEL_PATH` trỏ đến thư mục model đã tải bằng tài khoản có quyền truy cập. Khi chạy bằng script dự án và để trống cấu hình này, server tìm `medgemma-1.5-4b-it` cùng cấp với repo. Nếu dùng đường dẫn tải ở bước 3, hãy đặt `MEDGEMMA_MODEL_PATH` theo đường dẫn đó.
 - `MEDGEMMA_KB_PATH`: file `so_cuu.sqlite3`. Cùng thư mục phải có `demo_publication.json` và `ket_qua_ra_soat.json` nếu dùng tài liệu demo.
