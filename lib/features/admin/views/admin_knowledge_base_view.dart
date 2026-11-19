@@ -22,6 +22,16 @@ class _AdminKnowledgeBaseViewState extends State<AdminKnowledgeBaseView> {
   int _selectedTab = 0; // 0: Cẩm nang bài viết sơ cứu, 1: Nguồn trích xuất y khoa chi tiết
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<AdminViewModel>().loadPersistedKnowledgeArticles();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<AdminViewModel>();
     final articles = viewModel.filteredKnowledgeArticles;
@@ -571,7 +581,7 @@ class _AdminKnowledgeBaseViewState extends State<AdminKnowledgeBaseView> {
       text: articleToEdit?.sourceOrganization ?? 'Hội Chữ Thập Đỏ Việt Nam',
     );
     final sourceUrlController = TextEditingController(
-      text: articleToEdit?.sourceUrl ?? 'https://redcross.org.vn/so-cap-cuu',
+      text: articleToEdit?.sourceUrl ?? 'https://redcross.org.vn/',
     );
 
     String selectedTopicId = articleToEdit?.targetInjuryTypeId ?? initialTopicId ?? 'abrasion';

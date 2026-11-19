@@ -37,6 +37,11 @@ class LocalStorageService {
   static const String _keyConversationsQueue = 'chat_conversations_queue';
   static const String _keyGuestSessionId = 'auth_guest_session_id';
 
+  // Keys cho lưu trữ nguồn trích xuất y khoa, bài viết kiến thức & tài liệu y tế
+  static const String _keyMedicalSourceLinks = 'medical_source_links_json';
+  static const String _keyKnowledgeArticles = 'knowledge_articles_json';
+  static const String _keyMedicalDocuments = 'medical_documents_json';
+
   SharedPreferences? _cachedPrefs;
   String? _cachedDoctorUsername;
   String? _cachedDoctorId;
@@ -739,6 +744,105 @@ class LocalStorageService {
       }
     } catch (e) {
       debugPrint('[LocalStorage] Lỗi nạp lịch sử phân tích: $e');
+    }
+    return [];
+  }
+
+  // ===========================================================================
+  // LƯU TRỮ NGUỒN TRÍCH XUẤT Y KHOA (MedicalSourceLink - Đường dẫn link)
+  // ===========================================================================
+
+  /// Lưu danh sách nguồn trích xuất y khoa vào LocalStorage
+  Future<void> saveMedicalSourceLinks(List<Map<String, dynamic>> items) async {
+    try {
+      final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
+      _cachedPrefs = prefs;
+      await prefs.setString(_keyMedicalSourceLinks, jsonEncode(items));
+    } catch (e) {
+      debugPrint('[LocalStorage] Lỗi lưu medical source links: $e');
+    }
+  }
+
+  /// Nạp danh sách nguồn trích xuất y khoa từ LocalStorage
+  Future<List<Map<String, dynamic>>> loadMedicalSourceLinks() async {
+    try {
+      final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
+      _cachedPrefs = prefs;
+      final raw = prefs.getString(_keyMedicalSourceLinks);
+      if (raw != null && raw.trim().isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          return decoded.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[LocalStorage] Lỗi nạp medical source links: $e');
+    }
+    return [];
+  }
+
+  // ===========================================================================
+  // LƯU TRỮ BÀI VIẾT KIẾN THỨC SƠ CỨU (KnowledgeArticleModel - Kèm link nguồn)
+  // ===========================================================================
+
+  /// Lưu danh sách bài viết cẩm nang kiến thức vào LocalStorage
+  Future<void> saveKnowledgeArticles(List<Map<String, dynamic>> items) async {
+    try {
+      final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
+      _cachedPrefs = prefs;
+      await prefs.setString(_keyKnowledgeArticles, jsonEncode(items));
+    } catch (e) {
+      debugPrint('[LocalStorage] Lỗi lưu knowledge articles: $e');
+    }
+  }
+
+  /// Nạp danh sách bài viết cẩm nang kiến thức từ LocalStorage
+  Future<List<Map<String, dynamic>>> loadKnowledgeArticles() async {
+    try {
+      final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
+      _cachedPrefs = prefs;
+      final raw = prefs.getString(_keyKnowledgeArticles);
+      if (raw != null && raw.trim().isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          return decoded.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[LocalStorage] Lỗi nạp knowledge articles: $e');
+    }
+    return [];
+  }
+
+  // ===========================================================================
+  // LƯU TRỮ KHO TÀI LIỆU Y TẾ (MedicalDocumentModel - Kèm link web tham chiếu)
+  // ===========================================================================
+
+  /// Lưu danh sách kho tài liệu y tế vào LocalStorage
+  Future<void> saveMedicalDocuments(List<Map<String, dynamic>> items) async {
+    try {
+      final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
+      _cachedPrefs = prefs;
+      await prefs.setString(_keyMedicalDocuments, jsonEncode(items));
+    } catch (e) {
+      debugPrint('[LocalStorage] Lỗi lưu medical documents: $e');
+    }
+  }
+
+  /// Nạp danh sách kho tài liệu y tế từ LocalStorage
+  Future<List<Map<String, dynamic>>> loadMedicalDocuments() async {
+    try {
+      final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
+      _cachedPrefs = prefs;
+      final raw = prefs.getString(_keyMedicalDocuments);
+      if (raw != null && raw.trim().isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          return decoded.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[LocalStorage] Lỗi nạp medical documents: $e');
     }
     return [];
   }

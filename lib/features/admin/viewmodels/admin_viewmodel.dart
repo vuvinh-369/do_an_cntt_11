@@ -10,4 +10,8 @@ class AdminViewModel extends ChangeNotifier
         DieuHuongQuanTriViewModel,
         DangNhapQuanTriViewModel,
         DashboardQuanTriViewModel,
-        AdminManagementViewModel {}
+        AdminManagementViewModel {
+  AdminViewModel() {
+    loadPersistedKnowledgeArticles();
+  }
+}

@@ -869,8 +869,8 @@ class DailyHealthService extends ChangeNotifier {
           'Giữ giờ thức dậy tương đối ổn định, kể cả cuối tuần.',
           'Tắt thiết bị điện tử ít nhất 30 phút trước khi ngủ. CDC khuyến nghị người từ 18–60 tuổi ngủ ít nhất 7 giờ mỗi ngày.'
         ],
-        sourceName: 'CDC – Giấc ngủ',
-        sourceUrl: 'https://www.cdc.gov/sleep/about/index.html',
+        sourceName: 'NHS – Giấc ngủ lành mạnh',
+        sourceUrl: 'https://www.nhs.uk/live-well/sleep-and-tiredness/how-to-get-to-sleep/',
         sortOrder: 40,
         isPublished: true,
       ),
@@ -944,8 +944,8 @@ class DailyHealthService extends ChangeNotifier {
           'Kiểm tra xem bạn có bị thiếu ngủ dồn dập vào các ngày trong tuần hay không.',
           'Tránh ngủ nướng bù quá 2 giờ vào cuối tuần để không phá vỡ nhịp sinh học tự nhiên.'
         ],
-        sourceName: 'CDC – Thói quen ngủ lành mạnh',
-        sourceUrl: 'https://www.cdc.gov/sleep/about/index.html',
+        sourceName: 'NHS – Thói quen ngủ khoa học',
+        sourceUrl: 'https://www.nhs.uk/live-well/sleep-and-tiredness/how-to-get-to-sleep/',
         sortOrder: 30,
         isPublished: true,
       ),

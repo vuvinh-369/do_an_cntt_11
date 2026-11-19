@@ -23,6 +23,9 @@ class UserViewModel extends ChangeNotifier
         KhoTaiLieuViewModel,
         LichSuPhanTichViewModel,
         BacSiTuVanViewModel {
+  UserViewModel() {
+    loadPersistedMedicalDocuments();
+  }
   @override
   void onViewFirstAidGuidePressed() {
     // Tự động đồng bộ các dấu hiệu quan sát kèm theo (checkbox), mức độ đau và đa tổn thương sang Rule Engine

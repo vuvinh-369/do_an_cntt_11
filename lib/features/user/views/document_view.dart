@@ -637,6 +637,7 @@ class KhoTaiLieuView extends StatelessWidget {
       text: viewModel.sampleDeviceFiles.first['localFilePath'],
     );
     final summaryController = TextEditingController();
+    final externalUrlController = TextEditingController();
 
     String selectedCategoryId = 'basic_first_aid';
     String selectedExtension =
@@ -869,6 +870,37 @@ class KhoTaiLieuView extends StatelessWidget {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        '5. Đường dẫn liên kết tham chiếu (URL tùy chọn):',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0D2B6B),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: externalUrlController,
+                        decoration: InputDecoration(
+                          hintText: 'https://...',
+                          prefixIcon: const Icon(Icons.link_rounded, size: 18),
+                          hintStyle: const TextStyle(
+                            fontSize: 13.5,
+                            color: Color(0xFF94A3B8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFCBD5E1),
+                            ),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 22),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -903,6 +935,9 @@ class KhoTaiLieuView extends StatelessWidget {
                                 fileSize: selectedFileSize,
                                 localFilePath: localPathController.text,
                                 summary: summaryController.text,
+                                externalUrl: externalUrlController.text.trim().isNotEmpty
+                                    ? externalUrlController.text.trim()
+                                    : null,
                               );
                               Navigator.of(dialogContext).pop();
                             },
@@ -945,6 +980,7 @@ class KhoTaiLieuView extends StatelessWidget {
     bool isEditing = false;
     final editTitleController = TextEditingController(text: doc.title);
     final editSummaryController = TextEditingController(text: doc.summary);
+    final editUrlController = TextEditingController(text: doc.externalUrl ?? '');
     String editCategoryId = doc.categoryId;
 
     final selectableCategories = viewModel.documentCategories
@@ -1128,6 +1164,30 @@ class KhoTaiLieuView extends StatelessWidget {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Đường dẫn liên kết web (URL):',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0D2B6B),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: editUrlController,
+                          decoration: InputDecoration(
+                            hintText: 'https://...',
+                            prefixIcon: const Icon(Icons.link_rounded, size: 18),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
                       ] else ...[
                         Text(
                           doc.summary,
@@ -1238,6 +1298,7 @@ class KhoTaiLieuView extends StatelessWidget {
                                   newTitle: editTitleController.text,
                                   newCategoryId: editCategoryId,
                                   newSummary: editSummaryController.text,
+                                  newExternalUrl: editUrlController.text.trim(),
                                 );
                                 Navigator.of(dialogContext).pop();
                               } else {

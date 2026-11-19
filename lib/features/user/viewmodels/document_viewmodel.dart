@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
+import '../../../core/storage/local_storage_service.dart';
 import '../models/document_models.dart';
 import 'user_navigation_viewmodel.dart';
 import 'first_aid_viewmodel.dart';
@@ -108,7 +110,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
         '4. Chuyển cấp cứu ngay nếu nạn nhân bất tỉnh, khó thở hoặc chảy máu không cầm.',
       ],
       relatedGuideTopicId: 'abrasion',
-      externalUrl: 'https://redcross.org.vn/so-cap-cuu',
+      externalUrl: 'https://redcross.org.vn/',
     ),
     const MedicalDocumentModel(
       id: 'doc_2',
@@ -129,7 +131,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
         '4. Che phủ bằng băng gạc vô trùng và thay băng hàng ngày hoặc khi bị ướt.',
       ],
       relatedGuideTopicId: 'cut_laceration',
-      externalUrl: 'https://kcb.vn/huong-dan-so-cuu',
+      externalUrl: 'https://medlineplus.gov/ency/article/000043.htm',
     ),
     const MedicalDocumentModel(
       id: 'doc_3',
@@ -151,7 +153,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
         '4. Che phủ nhẹ nhàng bằng gạc vô trùng không dính và theo dõi dấu hiệu nhiễm trùng.',
       ],
       relatedGuideTopicId: 'burn',
-      externalUrl: 'https://www.who.int/emergencies/first-aid',
+      externalUrl: 'https://www.who.int/news-room/fact-sheets/detail/burns',
     ),
     const MedicalDocumentModel(
       id: 'doc_4',
@@ -172,6 +174,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
         '4. Đưa người bệnh đến cơ sở y tế gần nhất nếu dị vật sâu hoặc có nguy cơ uốn ván.',
       ],
       relatedGuideTopicId: 'foreign_body',
+      externalUrl: 'https://medlineplus.gov/foreignbodies.html',
     ),
     const MedicalDocumentModel(
       id: 'doc_5',
@@ -192,6 +195,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
         '4. Bỏng diện rộng, bỏng vùng mặt/cổ/bàn tay hoặc nghi ngờ ngộ độc hóa chất.',
       ],
       relatedGuideTopicId: 'cut_laceration',
+      externalUrl: 'https://medlineplus.gov/firstaid.html',
     ),
 
     // --- TRANG 2 ---
@@ -214,6 +218,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
         '3. Kê cao vùng tay hoặc chân bị thương cao hơn mức tim nếu không nghi ngờ gãy xương.',
       ],
       relatedGuideTopicId: 'cut_laceration',
+      externalUrl: 'https://medlineplus.gov/bleeding.html',
     ),
     const MedicalDocumentModel(
       id: 'doc_7',
@@ -233,6 +238,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
         '3. Sau 48 giờ, có thể chườm ấm nhẹ để tăng tuần hoàn giúp tan vết bầm.',
       ],
       relatedGuideTopicId: 'bruise',
+      externalUrl: 'https://medlineplus.gov/bruises.html',
     ),
     const MedicalDocumentModel(
       id: 'doc_8',
@@ -366,6 +372,33 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
   // LOGIC QUẢN LÝ KHO TÀI LIỆU Y TẾ CỤC BỘ TRÊN THIẾT BỊ (MÀN HÌNH 7)
   // 1. Thêm tài liệu | 2. Mở tài liệu | 3. Tìm kiếm | 4. Phân loại | 5. Quản lý | 6. Lưu cục bộ
   // =========================================================================
+  // LƯU TRỮ VĨNH VIỄN TÀI LIỆU Y TẾ (LOCAL PERSISTENCE)
+  // =========================================================================
+  bool _hasLoadedMedicalDocuments = false;
+
+  /// Nạp danh sách tài liệu y tế đã lưu từ LocalStorage khi mở app
+  Future<void> loadPersistedMedicalDocuments() async {
+    if (_hasLoadedMedicalDocuments) return;
+    _hasLoadedMedicalDocuments = true;
+    try {
+      final list = await LocalStorageService.instance.loadMedicalDocuments();
+      if (list.isNotEmpty) {
+        _medicalDocuments.clear();
+        _medicalDocuments.addAll(list.map((m) => MedicalDocumentModel.fromMap(m)));
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('[KhoTaiLieuViewModel] Lỗi load tài liệu y tế: $e');
+    }
+  }
+
+  /// Tự động lưu bền vững danh sách tài liệu y tế xuống thiết bị
+  void _persistDocuments() {
+    try {
+      final list = _medicalDocuments.map((d) => d.toMap()).toList();
+      unawaited(LocalStorageService.instance.saveMedicalDocuments(list));
+    } catch (_) {}
+  }
 
   /// 1. Thêm tài liệu mới từ tệp lưu trữ cục bộ trên thiết bị
   void addLocalMedicalDocument({
@@ -377,6 +410,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
     required String localFilePath,
     required String summary,
     List<String>? contentPoints,
+    String? externalUrl,
   }) {
     final now = DateTime.now();
     final formattedDate =
@@ -420,11 +454,13 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
               '3. Tuân thủ hướng dẫn sơ cứu an toàn và liên hệ y tế khi cần thiết.',
             ],
       relatedGuideTopicId: mappedGuideTopicId,
+      externalUrl: externalUrl?.trim().isNotEmpty == true ? externalUrl!.trim() : null,
     );
 
     // Chèn lên đầu danh sách để hiển thị ngay ở đầu bảng Trang 1
     _medicalDocuments.insert(0, newDoc);
     _currentDocumentPage = 1;
+    _persistDocuments();
     notifyListeners();
   }
 
@@ -434,6 +470,7 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
     required String newTitle,
     required String newCategoryId,
     required String newSummary,
+    String? newExternalUrl,
   }) {
     final index = _medicalDocuments.indexWhere((doc) => doc.id == id);
     if (index == -1) return;
@@ -446,13 +483,16 @@ mixin KhoTaiLieuViewModel on DieuHuongCoSoViewModel, HuongDanSoCuuViewModel {
       categoryId: newCategoryId,
       categoryLabel: updatedCategoryLabel,
       summary: newSummary.trim().isEmpty ? current.summary : newSummary.trim(),
+      externalUrl: newExternalUrl != null ? newExternalUrl.trim() : current.externalUrl,
     );
+    _persistDocuments();
     notifyListeners();
   }
 
   /// 3. Xóa tài liệu khỏi danh sách quản lý trên thiết bị
   void deleteMedicalDocument(String id) {
     _medicalDocuments.removeWhere((doc) => doc.id == id);
+    _persistDocuments();
     notifyListeners();
   }
 

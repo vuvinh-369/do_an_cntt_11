@@ -1,3 +1,5 @@
+import 'dart:async';
+import '../storage/local_storage_service.dart';
 import 'rule_models.dart';
 
 /// Dịch vụ Rule Engine xử lý đánh giá sơ cứu y tế thông minh
@@ -8,7 +10,26 @@ class RuleEngineService {
   factory RuleEngineService() => _instance;
   RuleEngineService._internal() {
     _initDefaultRules();
-    resetMedicalSourcesToDefault();
+    _medicalSources.addAll(standardMedicalSources);
+    unawaited(loadPersistedMedicalSources());
+  }
+
+  /// Nạp lại các nguồn trích xuất y khoa đã lưu bền vững từ LocalStorage
+  Future<void> loadPersistedMedicalSources() async {
+    try {
+      final list = await LocalStorageService.instance.loadMedicalSourceLinks();
+      if (list.isNotEmpty) {
+        _medicalSources.clear();
+        _medicalSources.addAll(list.map((m) => MedicalSourceLink.fromMap(m)));
+      }
+    } catch (_) {}
+  }
+
+  void _persistSources() {
+    try {
+      final list = _medicalSources.map((s) => s.toMap()).toList();
+      unawaited(LocalStorageService.instance.saveMedicalSourceLinks(list));
+    } catch (_) {}
   }
 
   // Danh sách các quy tắc lưu trên Supabase Cloud (có thể thêm, sửa, bật/tắt từ Dashboard Admin)
@@ -24,7 +45,7 @@ class RuleEngineService {
       id: 'src_redcross',
       title: 'Tài liệu hướng dẫn sơ cấp cứu ban đầu',
       organization: 'Hội Chữ Thập Đỏ Việt Nam',
-      url: 'https://redcross.org.vn/so-cap-cuu',
+      url: 'https://redcross.org.vn/',
       publishYear: '2024',
       targetTopicId: 'all',
       isEnabled: true,
@@ -33,25 +54,25 @@ class RuleEngineService {
       id: 'src_kcb',
       title: 'Hướng dẫn xử trí vết thương ngoài da và bỏng',
       organization: 'Cục Quản lý Khám chữa bệnh - Bộ Y Tế',
-      url: 'https://kcb.vn/huong-dan-so-cuu',
+      url: 'https://kcb.vn/',
       publishYear: '2023',
       targetTopicId: 'all',
       isEnabled: true,
     ),
     MedicalSourceLink(
       id: 'src_who',
-      title: 'First Aid Protocols and Wound Care Guidelines',
+      title: 'Burns and Trauma Care Protocols',
       organization: 'Tổ chức Y tế Thế giới (WHO)',
-      url: 'https://www.who.int/emergencies/first-aid',
+      url: 'https://www.who.int/news-room/fact-sheets/detail/burns',
       publishYear: '2024',
       targetTopicId: 'all',
       isEnabled: true,
     ),
     MedicalSourceLink(
-      id: 'src_mayo',
-      title: 'Cuts, scrapes and burns first aid care',
-      organization: 'Mayo Clinic Health System',
-      url: 'https://www.mayoclinic.org/first-aid',
+      id: 'src_medline',
+      title: 'First Aid and Emergency Care Guidelines',
+      organization: 'Thư viện Y khoa Quốc gia Hoa Kỳ (MedlinePlus / NIH)',
+      url: 'https://medlineplus.gov/firstaid.html',
       publishYear: '2025',
       targetTopicId: 'all',
       isEnabled: true,
@@ -72,17 +93,20 @@ class RuleEngineService {
 
   void addMedicalSource(MedicalSourceLink source) {
     _medicalSources.add(source);
+    _persistSources();
   }
 
   void updateMedicalSource(String id, MedicalSourceLink updated) {
     final index = _medicalSources.indexWhere((s) => s.id == id);
     if (index != -1) {
       _medicalSources[index] = updated;
+      _persistSources();
     }
   }
 
   void deleteMedicalSource(String id) {
     _medicalSources.removeWhere((s) => s.id == id);
+    _persistSources();
   }
 
   void toggleMedicalSourceEnabled(String id) {
@@ -90,17 +114,20 @@ class RuleEngineService {
     if (index != -1) {
       final old = _medicalSources[index];
       _medicalSources[index] = old.copyWith(isEnabled: !old.isEnabled);
+      _persistSources();
     }
   }
 
   void resetMedicalSourcesToDefault() {
     _medicalSources.clear();
     _medicalSources.addAll(standardMedicalSources);
+    _persistSources();
   }
 
   void loadMedicalSources(List<MedicalSourceLink> items) {
     _medicalSources.clear();
     _medicalSources.addAll(items);
+    _persistSources();
   }
 
   /// Khởi tạo các luật sơ cứu nền tảng

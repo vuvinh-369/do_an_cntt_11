@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import '../../../core/feedback/ai_feedback_model.dart';
 import '../../../core/feedback/ai_feedback_service.dart';
 import '../../../core/gemini/gemini_config_model.dart';
@@ -5,6 +7,7 @@ import '../../../core/gemini/gemini_service.dart';
 import '../../../core/serper/serper_config_service.dart';
 import '../../../core/rule_engine/rule_engine_service.dart';
 import '../../../core/rule_engine/rule_models.dart';
+import '../../../core/storage/local_storage_service.dart';
 import '../models/admin_management_models.dart';
 import 'admin_navigation_viewmodel.dart';
 
@@ -41,7 +44,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
       lastUpdated: '25/10/2025',
       isPublished: true,
       sourceOrganization: 'Hội Chữ Thập Đỏ Việt Nam',
-      sourceUrl: 'https://redcross.org.vn/so-cap-cuu',
+      sourceUrl: 'https://redcross.org.vn/',
     ),
     const KnowledgeArticleModel(
       id: 'kb_2',
@@ -68,8 +71,8 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
       ],
       lastUpdated: '24/10/2025',
       isPublished: true,
-      sourceOrganization: 'Cục Quản lý Khám chữa bệnh - Bộ Y Tế',
-      sourceUrl: 'https://kcb.vn/huong-dan-so-cuu',
+      sourceOrganization: 'Thư viện Y khoa Quốc gia Hoa Kỳ (MedlinePlus)',
+      sourceUrl: 'https://medlineplus.gov/ency/article/000043.htm',
     ),
     const KnowledgeArticleModel(
       id: 'kb_3',
@@ -99,7 +102,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
       lastUpdated: '20/10/2025',
       isPublished: true,
       sourceOrganization: 'Tổ chức Y tế Thế giới (WHO)',
-      sourceUrl: 'https://www.who.int/emergencies/first-aid',
+      sourceUrl: 'https://www.who.int/news-room/fact-sheets/detail/burns',
     ),
     const KnowledgeArticleModel(
       id: 'kb_4',
@@ -126,8 +129,8 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
       ],
       lastUpdated: '18/10/2025',
       isPublished: true,
-      sourceOrganization: 'Mayo Clinic Health System',
-      sourceUrl: 'https://www.mayoclinic.org/first-aid',
+      sourceOrganization: 'Thư viện Y khoa Quốc gia Hoa Kỳ (MedlinePlus)',
+      sourceUrl: 'https://medlineplus.gov/bruises.html',
     ),
     const KnowledgeArticleModel(
       id: 'kb_5',
@@ -155,8 +158,8 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
       ],
       lastUpdated: '28/10/2025',
       isPublished: true,
-      sourceOrganization: 'Hội Chữ Thập Đỏ Việt Nam',
-      sourceUrl: 'https://redcross.org.vn/so-cap-cuu',
+      sourceOrganization: 'Thư viện Y khoa Quốc gia Hoa Kỳ (MedlinePlus)',
+      sourceUrl: 'https://medlineplus.gov/foreignbodies.html',
     ),
     const KnowledgeArticleModel(
       id: 'kb_6',
@@ -186,8 +189,8 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
       ],
       lastUpdated: '26/10/2025',
       isPublished: true,
-      sourceOrganization: 'Bộ Y Tế',
-      sourceUrl: 'https://kcb.vn/huong-dan-so-cuu',
+      sourceOrganization: 'Cục Quản lý Khám chữa bệnh - Bộ Y Tế',
+      sourceUrl: 'https://kcb.vn/',
     ),
   ];
 
@@ -269,9 +272,36 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
     }
   }
 
+  bool _hasLoadedKnowledgeArticles = false;
+
+  /// Nạp danh sách bài viết kiến thức đã lưu bền vững từ LocalStorage
+  Future<void> loadPersistedKnowledgeArticles() async {
+    if (_hasLoadedKnowledgeArticles) return;
+    _hasLoadedKnowledgeArticles = true;
+    try {
+      final list = await LocalStorageService.instance.loadKnowledgeArticles();
+      if (list.isNotEmpty) {
+        _knowledgeArticles.clear();
+        _knowledgeArticles.addAll(list.map((m) => KnowledgeArticleModel.fromMap(m)));
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('[AdminManagementViewModel] Lỗi load knowledge articles: $e');
+    }
+  }
+
+  /// Tự động lưu bền vững danh sách bài viết kiến thức
+  void _persistArticles() {
+    try {
+      final list = _knowledgeArticles.map((a) => a.toMap()).toList();
+      unawaited(LocalStorageService.instance.saveKnowledgeArticles(list));
+    } catch (_) {}
+  }
+
   void addKnowledgeArticle(KnowledgeArticleModel article) {
     _knowledgeArticles.insert(0, article);
     _currentKbPage = 1;
+    _persistArticles();
     notifyListeners();
   }
 
@@ -279,6 +309,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
     final index = _knowledgeArticles.indexWhere((a) => a.id == article.id);
     if (index != -1) {
       _knowledgeArticles[index] = article;
+      _persistArticles();
       notifyListeners();
     }
   }
@@ -288,6 +319,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
     if (_currentKbPage > totalKbPages) {
       _currentKbPage = totalKbPages;
     }
+    _persistArticles();
     notifyListeners();
   }
 
@@ -296,6 +328,7 @@ mixin AdminManagementViewModel on DieuHuongQuanTriViewModel {
     if (index != -1) {
       final old = _knowledgeArticles[index];
       _knowledgeArticles[index] = old.copyWith(isPublished: !old.isPublished);
+      _persistArticles();
       notifyListeners();
     }
   }
