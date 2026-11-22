@@ -887,7 +887,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Mô hình AI: Google Gemini Flash (Mới nhất)',
+                              'Mô hình AI: Google Gemini Flash',
                               style: TextStyle(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w700,
@@ -896,7 +896,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Hệ thống tự động sử dụng phiên bản Flash mới nhất với nhiệt độ 0.4 (chuẩn độ chính xác y khoa).',
+                              'Hệ thống tự động sử dụng phiên bản Flash.',
                               style: TextStyle(fontSize: 12, color: Color(0xFF3B82F6)),
                             ),
                           ],

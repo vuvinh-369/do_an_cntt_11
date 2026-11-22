@@ -1,10 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:do_an_cntt_11/core/history/analysis_history_service.dart';
 import 'package:do_an_cntt_11/core/storage/local_storage_service.dart';
-import 'package:do_an_cntt_11/features/user/models/history_models.dart';
 import 'package:do_an_cntt_11/features/user/viewmodels/user_viewmodel.dart';
 
 void main() {
@@ -30,7 +28,7 @@ void main() {
       await service.loadFromLocalStorage();
 
       final initialCount = service.totalScans;
-      final ok = await service.recordAnalysis(
+      final recorded = await service.recordAnalysis(
         username: 'test_user',
         injuryTypeId: 'cut_laceration',
         injuryTypeName: 'Vết cắt sâu',
@@ -43,6 +41,7 @@ void main() {
       );
 
       // Local persistence should always succeed even without Supabase
+      expect(recorded, isNotNull);
       expect(service.totalScans, equals(initialCount + 1));
       expect(service.items.first.injuryType, equals('Vết cắt sâu'));
       expect(service.items.first.username, equals('test_user'));

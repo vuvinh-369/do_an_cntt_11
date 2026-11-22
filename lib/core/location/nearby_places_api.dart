@@ -123,9 +123,17 @@ bool isPlainCoordinateText(String input) =>
 
 final Uri _serperMapsUri = Uri.parse('https://google.serper.dev/maps');
 final Uri _photonSearchUri = Uri.parse('https://photon.komoot.io/api/');
+final Uri _nominatimSearchUri =
+    Uri.parse('https://nominatim.openstreetmap.org/search');
 const Duration _directPlacesCacheTtl = Duration(minutes: 30);
 const Duration _directGeocodeCacheTtl = Duration(hours: 6);
 const int _directCacheMaxEntries = 64;
+
+const Map<String, String> _geocodingHeaders = {
+  'User-Agent':
+      'MedicalFirstAidApp/1.0 (Emergency Medical Assistant; +https://github.com/do_an_cntt_11)',
+  'Accept': 'application/json',
+};
 
 class _CachedValue<T> {
   _CachedValue(this.value, this.expiresAt);
@@ -284,13 +292,22 @@ Future<NearbyPlacesResult> findNearbyPlacesDirect(
       }
     }
 
-    final fallbackPayload = await _searchPhotonNearbyPlaces(
-      httpClient,
-      latitude: lat,
-      longitude: lon,
-      radiusKm: radiusKm,
-    );
-    return NearbyPlacesResult.fromJson(fallbackPayload);
+    try {
+      final fallbackPayload = await _searchPhotonNearbyPlaces(
+        httpClient,
+        latitude: lat,
+        longitude: lon,
+        radiusKm: radiusKm,
+      );
+      return NearbyPlacesResult.fromJson(fallbackPayload);
+    } on Object {
+      return NearbyPlacesResult.fromJson({
+        'radius_km': radiusKm,
+        'source': 'openstreetmap',
+        'cached': false,
+        'places': <Map<String, dynamic>>[],
+      });
+    }
   } finally {
     if (client == null) {
       httpClient.close();
@@ -340,19 +357,43 @@ Future<List<NearbyLocation>> findNearbyLocationsDirect(
       }
     }
 
-    final photonLocations = await _geocodePhotonLocations(
-      httpClient,
-      address: trimmed,
-    );
-    if (photonLocations.isNotEmpty) {
-      _storeCache(
-        _directGeocodeCache,
-        cacheKey,
-        photonLocations,
-        _directGeocodeCacheTtl,
+    try {
+      final photonLocations = await _geocodePhotonLocations(
+        httpClient,
+        address: trimmed,
       );
+      if (photonLocations.isNotEmpty) {
+        _storeCache(
+          _directGeocodeCache,
+          cacheKey,
+          photonLocations,
+          _directGeocodeCacheTtl,
+        );
+        return photonLocations;
+      }
+    } on Object {
+      // Fall back to Nominatim if Photon fails.
     }
-    return photonLocations;
+
+    try {
+      final nominatimLocations = await _geocodeNominatimLocations(
+        httpClient,
+        address: trimmed,
+      );
+      if (nominatimLocations.isNotEmpty) {
+        _storeCache(
+          _directGeocodeCache,
+          cacheKey,
+          nominatimLocations,
+          _directGeocodeCacheTtl,
+        );
+        return nominatimLocations;
+      }
+    } on Object {
+      // Return empty list if all geocoders fail.
+    }
+
+    return const [];
   } finally {
     if (client == null) {
       httpClient.close();
@@ -718,60 +759,118 @@ Future<List<NearbyLocation>> _geocodePhotonLocations(
   http.Client client, {
   required String address,
 }) async {
-  final uri = _photonSearchUri.replace(
-    queryParameters: {'q': address, 'limit': '5'},
-  );
-  final response = await client.get(uri).timeout(const Duration(seconds: 10));
-  if (response.statusCode < 200 || response.statusCode >= 300) {
-    throw http.ClientException(
-      'Không thể tìm tọa độ từ địa chỉ (HTTP ${response.statusCode}).',
-      uri,
+  try {
+    final uri = _photonSearchUri.replace(
+      queryParameters: {'q': address, 'limit': '5'},
     );
-  }
-  final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-  if (decoded is! Map<String, dynamic>) {
+    final response = await client
+        .get(uri, headers: _geocodingHeaders)
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      return const [];
+    }
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is! Map<String, dynamic>) {
+      return const [];
+    }
+    final features = decoded['features'];
+    if (features is! List) {
+      return const [];
+    }
+    final seen = <String>{};
+    final locations = <NearbyLocation>[];
+    for (final feature in features) {
+      if (feature is! Map<String, dynamic>) {
+        continue;
+      }
+      final geometry = feature['geometry'];
+      final props = feature['properties'];
+      if (geometry is! Map<String, dynamic> || props is! Map<String, dynamic>) {
+        continue;
+      }
+      final coords = geometry['coordinates'];
+      if (coords is! List || coords.length < 2) {
+        continue;
+      }
+      final lon = (coords[0] as num?)?.toDouble();
+      final lat = (coords[1] as num?)?.toDouble();
+      if (lat == null || lon == null || !lat.isFinite || !lon.isFinite) {
+        continue;
+      }
+      final label = _formatPhotonAddress(props);
+      if (label.isEmpty) {
+        continue;
+      }
+      final key = '${lat.toStringAsFixed(5)}:${lon.toStringAsFixed(5)}';
+      if (!seen.add(key)) {
+        continue;
+      }
+      locations.add(
+        NearbyLocation(
+          label: label,
+          coordinates: {'latitude': lat, 'longitude': lon},
+        ),
+      );
+    }
+    return locations;
+  } on Object {
     return const [];
   }
-  final features = decoded['features'];
-  if (features is! List) {
+}
+
+Future<List<NearbyLocation>> _geocodeNominatimLocations(
+  http.Client client, {
+  required String address,
+}) async {
+  try {
+    final uri = _nominatimSearchUri.replace(
+      queryParameters: {
+        'q': address,
+        'format': 'json',
+        'limit': '5',
+        'countrycodes': 'vn',
+      },
+    );
+    final response = await client
+        .get(uri, headers: _geocodingHeaders)
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      return const [];
+    }
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is! List) {
+      return const [];
+    }
+    final seen = <String>{};
+    final locations = <NearbyLocation>[];
+    for (final item in decoded) {
+      if (item is! Map<String, dynamic>) {
+        continue;
+      }
+      final lat = double.tryParse((item['lat'] as String?) ?? '');
+      final lon = double.tryParse((item['lon'] as String?) ?? '');
+      if (lat == null || lon == null || !lat.isFinite || !lon.isFinite) {
+        continue;
+      }
+      final displayName = (item['display_name'] as String?)?.trim() ?? '';
+      if (displayName.isEmpty) {
+        continue;
+      }
+      final key = '${lat.toStringAsFixed(5)}:${lon.toStringAsFixed(5)}';
+      if (!seen.add(key)) {
+        continue;
+      }
+      locations.add(
+        NearbyLocation(
+          label: displayName,
+          coordinates: {'latitude': lat, 'longitude': lon},
+        ),
+      );
+    }
+    return locations;
+  } on Object {
     return const [];
   }
-  final seen = <String>{};
-  final locations = <NearbyLocation>[];
-  for (final feature in features) {
-    if (feature is! Map<String, dynamic>) {
-      continue;
-    }
-    final geometry = feature['geometry'];
-    final props = feature['properties'];
-    if (geometry is! Map<String, dynamic> || props is! Map<String, dynamic>) {
-      continue;
-    }
-    final coords = geometry['coordinates'];
-    if (coords is! List || coords.length < 2) {
-      continue;
-    }
-    final lon = (coords[0] as num?)?.toDouble();
-    final lat = (coords[1] as num?)?.toDouble();
-    if (lat == null || lon == null || !lat.isFinite || !lon.isFinite) {
-      continue;
-    }
-    final label = _formatPhotonAddress(props);
-    if (label.isEmpty) {
-      continue;
-    }
-    final key = '${lat.toStringAsFixed(5)}:${lon.toStringAsFixed(5)}';
-    if (!seen.add(key)) {
-      continue;
-    }
-    locations.add(
-      NearbyLocation(
-        label: label,
-        coordinates: {'latitude': lat, 'longitude': lon},
-      ),
-    );
-  }
-  return locations;
 }
 
 Future<Map<String, dynamic>> _searchPhotonNearbyPlaces(
@@ -796,7 +895,7 @@ Future<Map<String, dynamic>> _searchPhotonNearbyPlaces(
           },
         );
         final response = await client
-            .get(uri)
+            .get(uri, headers: _geocodingHeaders)
             .timeout(const Duration(seconds: 10));
         if (response.statusCode < 200 || response.statusCode >= 300) {
           return (

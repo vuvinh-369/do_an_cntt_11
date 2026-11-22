@@ -85,7 +85,7 @@ class _DoctorConsultationViewState extends State<DoctorConsultationView> {
         final screenHeight = MediaQuery.sizeOf(context).height;
         final availableHeight = (constraints.maxHeight.isFinite && constraints.maxHeight > 0)
             ? constraints.maxHeight
-            : (screenHeight > 0 ? screenHeight : 700.0);
+            : math.max(500.0, screenHeight - 165.0);
 
         return SizedBox(
           height: availableHeight,

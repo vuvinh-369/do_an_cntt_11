@@ -40,11 +40,13 @@ class UserShellView extends StatelessWidget {
     // =========================================================================
     final isFixedViewportScreen =
         viewModel.currentScreenIndex == 8 || viewModel.currentScreenIndex == 5;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final shouldDisableOuterScroll = isFixedViewportScreen && screenHeight >= 680;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FB),
       body: SingleChildScrollView(
-        physics: isFixedViewportScreen
+        physics: shouldDisableOuterScroll
             ? const NeverScrollableScrollPhysics()
             : const ClampingScrollPhysics(),
         child: Center(
@@ -95,7 +97,9 @@ class UserShellView extends StatelessWidget {
     UserViewModel viewModel,
   ) {
     final isHome = viewModel.currentScreenIndex == 0;
-    final isChatScreen = viewModel.currentScreenIndex == 5 || viewModel.currentScreenIndex == 8;
+    final isChatAiScreen = viewModel.currentScreenIndex == 5;
+    final isDoctorScreen = viewModel.currentScreenIndex == 8;
+    final isChatScreen = isChatAiScreen || isDoctorScreen;
 
     return Scaffold(
       backgroundColor: isHome ? const Color(0xFFF6F9FC) : Colors.white,
@@ -128,7 +132,7 @@ class UserShellView extends StatelessWidget {
           const OfflineBanner(),
           Expanded(
             child: isChatScreen
-                ? (viewModel.currentScreenIndex == 8
+                ? (isDoctorScreen
                     ? const DoctorConsultationView()
                     : const ChatBoxAiView())
                 : SingleChildScrollView(
@@ -137,9 +141,11 @@ class UserShellView extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: isChatScreen
-          ? _buildMobileChatSupportBottomBar(context, viewModel)
-          : _buildMobileStandardBottomNavBar(context, viewModel),
+      bottomNavigationBar: isDoctorScreen
+          ? null
+          : (isChatAiScreen
+              ? _buildMobileChatSupportBottomBar(context, viewModel)
+              : _buildMobileStandardBottomNavBar(context, viewModel)),
     );
   }
 

@@ -411,4 +411,93 @@ void main() {
       expect(photonRes.single.label, contains('1 Đinh Tiên Hoàng'));
     },
   );
+
+  test(
+    'findNearbyLocationsDirect falls back to Nominatim when Photon returns 403',
+    () async {
+      clearDirectSerperCache();
+      addTearDown(clearDirectSerperCache);
+
+      final client = MockClient((request) async {
+        if (request.url.host == 'photon.komoot.io') {
+          return http.Response('Forbidden', 403);
+        }
+        if (request.url.host == 'nominatim.openstreetmap.org') {
+          return http.Response.bytes(
+            utf8.encode(
+              jsonEncode([
+                {
+                  'lat': '10.8053',
+                  'lon': '106.6992',
+                  'display_name': '14 Nguyễn Thiện Thuật, Bình Thạnh, TP.HCM',
+                },
+              ]),
+            ),
+            200,
+          );
+        }
+        return http.Response('Not found', 404);
+      });
+
+      final result = await findNearbyLocationsDirect(
+        '14 Bình Thạnh',
+        client: client,
+        apiKey: '', // no Serper key
+      );
+
+      expect(result.length, 1);
+      expect(result.single.label, contains('14 Nguyễn Thiện Thuật, Bình Thạnh'));
+      expect(result.single.coordinates['latitude'], closeTo(10.8053, 0.0001));
+    },
+  );
+
+  test(
+    'findNearbyLocationsDirect safely returns empty list when all geocoders fail',
+    () async {
+      clearDirectSerperCache();
+      addTearDown(clearDirectSerperCache);
+
+      final client = MockClient((request) async {
+        return http.Response('Forbidden or Down', 403);
+      });
+
+      final result = await findNearbyLocationsDirect(
+        'Địa chỉ không tồn tại',
+        client: client,
+        apiKey: '',
+      );
+
+      expect(result, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'NearbyPlacesDialog handles unexpected exceptions without crashing',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: NearbyPlacesDialog(
+              fetchLocations: (address) async {
+                throw http.ClientException('Network error', Uri.parse('https://example.com'));
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.enterText(find.byType(TextField), 'Địa chỉ thử nghiệm');
+      await tester.pump();
+      await tester.tap(find.text('Tìm theo địa chỉ'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Chưa tìm thấy địa chỉ phù hợp'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

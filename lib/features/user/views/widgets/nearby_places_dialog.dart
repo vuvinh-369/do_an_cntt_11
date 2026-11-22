@@ -157,12 +157,19 @@ class _NearbyPlacesDialogState extends State<NearbyPlacesDialog> {
           _locations = locations;
           if (locations.isEmpty) {
             _message =
-                'Chưa tìm thấy địa chỉ. Hãy thêm phường và tỉnh/thành phố.';
+                'Chưa tìm thấy địa chỉ phù hợp. Vui lòng kiểm tra lại chính tả hoặc thêm quận/huyện, tỉnh/thành phố.';
           }
         });
       }
     } on NearbyPlacesException catch (error) {
       if (mounted) setState(() => _message = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _message =
+              'Chưa tìm thấy địa chỉ phù hợp. Vui lòng kiểm tra lại chính tả hoặc thêm quận/huyện, tỉnh/thành phố.',
+        );
+      }
     } finally {
       if (mounted && autoTarget == null) setState(() => _loading = null);
     }
@@ -189,6 +196,13 @@ class _NearbyPlacesDialogState extends State<NearbyPlacesDialog> {
       }
     } on NearbyPlacesException catch (error) {
       if (mounted) setState(() => _message = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _message =
+              'Không thể tải danh sách cơ sở y tế gần bạn. Vui lòng kiểm tra kết nối mạng hoặc thử lại sau.',
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = null);
     }

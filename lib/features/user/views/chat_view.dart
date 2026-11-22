@@ -1372,8 +1372,8 @@ class ChatBoxAiView extends StatelessWidget {
                 isDense: true,
                 border: InputBorder.none,
                 hintText: isThinking
-                    ? '${currentModel.shortName} đang suy nghĩ câu trả lời...'
-                    : 'Hỏi ${currentModel.shortName} về vết thương (Enter để gửi)...',
+                    ? 'Hệ thống đang suy nghĩ câu trả lời...'
+                    : 'Hỏi hệ thống về vết thương (Enter để gửi)...',
                 hintStyle: TextStyle(
                   fontSize: isMobile ? 13 : 14,
                   color: const Color(0xFF94A3B8),
