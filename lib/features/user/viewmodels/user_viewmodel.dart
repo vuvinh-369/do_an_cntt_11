@@ -25,6 +25,7 @@ class UserViewModel extends ChangeNotifier
         BacSiTuVanViewModel {
   UserViewModel() {
     loadPersistedMedicalDocuments();
+    initAnalysisHistory();
   }
   @override
   void onViewFirstAidGuidePressed() {
@@ -60,6 +61,7 @@ class UserViewModel extends ChangeNotifier
 
   @override
   void dispose() {
+    disposeAnalysisHistory();
     disposeChat();
     disposeImageAnalysis();
     disposeDoctorConsultation();

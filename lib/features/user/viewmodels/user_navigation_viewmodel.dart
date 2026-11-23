@@ -121,6 +121,14 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
   // Tên tài khoản (username) đang đăng nhập
   String? get currentUsername => _currentUser?.username;
 
+  /// Hook được gọi khi phiên đăng nhập của người dùng thay đổi (Đăng nhập, Đăng ký, Đăng xuất, Khôi phục phiên)
+  @protected
+  void onUserSessionChanged() {}
+
+  /// Hook được gọi khi người dùng điều hướng tới Màn hình Lịch sử phân tích
+  @protected
+  void onNavigateToAnalysisHistory() {}
+
   /// Đăng ký tài khoản người dùng mới (chỉ cần username + password, email là tùy chọn)
   /// Tuyệt đối KHÔNG yêu cầu họ tên, số điện thoại hay địa chỉ nhà.
   String? registerUser({
@@ -139,6 +147,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     _currentUser = UserAccountService.instance.findByUsername(username);
     if (_currentUser != null) {
       DailyHealthService.instance.setActiveUserId(_currentUser!.username);
+      onUserSessionChanged();
     }
     notifyListeners();
     return null;
@@ -247,6 +256,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
         username: username,
         password: password,
       );
+      onUserSessionChanged();
       notifyListeners();
       return null;
     }
@@ -279,6 +289,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
         username: username,
         password: password,
       );
+      onUserSessionChanged();
       notifyListeners();
       return null;
     }
@@ -306,6 +317,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     DailyHealthService.instance.setActiveUserId(null);
     await LocalStorageService.instance.clearUserSession();
     await LocalStorageService.instance.clearDoctorSession();
+    onUserSessionChanged();
     notifyListeners();
   }
 
@@ -421,6 +433,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
       fullName: name,
       createdAt: DateTime.now(),
     );
+    onUserSessionChanged();
     notifyListeners();
   }
 
@@ -575,6 +588,7 @@ mixin DieuHuongCoSoViewModel on ChangeNotifier {
     _pushScreen(7);
     _currentScreenIndex = 7;
     _syncSidebarAndNavIndex();
+    onNavigateToAnalysisHistory();
     notifyListeners();
   }
 

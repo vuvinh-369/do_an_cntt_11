@@ -105,22 +105,25 @@ class StandaloneAuthBruteForceService {
   }
 
   StandaloneCaptchaChallenge generateNewChallenge(String scope) {
-    final isAdd = _random.nextBool();
-    int a = 10 + _random.nextInt(41);
-    int b = 1 + _random.nextInt(30);
-    if (!isAdd && a < b) {
-      final t = a;
-      a = b;
-      b = t;
+    const numbers = '23456789';
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghjkmnpqrstuvwxyz';
+    final buffer = <String>[
+      numbers[_random.nextInt(numbers.length)],
+      upper[_random.nextInt(upper.length)],
+      lower[_random.nextInt(lower.length)],
+    ];
+    const all = '$numbers$upper$lower';
+    while (buffer.length < 5) {
+      buffer.add(all[_random.nextInt(all.length)]);
     }
-    final op = isAdd ? '+' : '-';
-    final ans = isAdd ? (a + b) : (a - b);
-    final question = '$a $op $b = ?';
+    buffer.shuffle(_random);
+    final code = buffer.join();
 
     final ch = StandaloneCaptchaChallenge(
       id: '${DateTime.now().millisecondsSinceEpoch}_${_random.nextInt(9999)}',
-      question: question,
-      answer: ans.toString(),
+      question: code,
+      answer: code,
       createdAt: DateTime.now(),
       expiresAt: DateTime.now().add(const Duration(minutes: 5)),
     );
@@ -133,7 +136,7 @@ class StandaloneAuthBruteForceService {
     if (answerInput == null || answerInput.trim().isEmpty) return false;
     final ch = _activeChallenges[scope];
     if (ch == null || ch.isExpired) return false;
-    return answerInput.trim() == ch.answer.trim();
+    return answerInput.trim().toLowerCase() == ch.answer.trim().toLowerCase();
   }
 
   void recordFailedAttempt(String scope) {
@@ -309,14 +312,14 @@ Future<void> main() async {
     assertTrue(service.isChallengeRequired(StandaloneAuthBruteForceService.scopeAdmin));
   });
 
-  runSpec('Self-contained arithmetic challenge is automatically generated at attempt 5', () {
+  runSpec('Self-contained alphanumeric challenge is automatically generated at attempt 5', () {
     service.resetAll();
     for (int i = 0; i < 5; i++) {
       service.recordFailedAttempt(StandaloneAuthBruteForceService.scopeAdmin);
     }
     final ch = service.getOrGenerateChallenge(StandaloneAuthBruteForceService.scopeAdmin);
     assertTrue(ch.id.isNotEmpty);
-    assertTrue(ch.question.endsWith('= ?'));
+    assertTrue(ch.question.length == 5);
     assertTrue(ch.answer.isNotEmpty);
     assertFalse(ch.isExpired);
   });

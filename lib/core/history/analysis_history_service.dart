@@ -109,10 +109,13 @@ class AnalysisHistoryService extends ChangeNotifier {
     try {
       final rawList = await LocalStorageService.instance.loadAnalysisHistory();
       if (rawList.isNotEmpty) {
+        final loadedItems = rawList.map((m) => AnalysisHistoryItemModel.fromMap(m)).toList();
+        final loadedIds = loadedItems.map((i) => i.id).toSet();
+        final unsaved = _items.where((i) => !loadedIds.contains(i.id)).toList();
         _items.clear();
-        for (final map in rawList) {
-          _items.add(AnalysisHistoryItemModel.fromMap(map));
-        }
+        _items.addAll(loadedItems);
+        _items.addAll(unsaved);
+        _items.sort((a, b) => b.dateTime.compareTo(a.dateTime));
         notifyListeners();
       } else if (_items.isEmpty) {
         // Nếu bộ nhớ đệm trống hoàn toàn, khởi tạo danh sách mẫu mặc định an toàn
@@ -228,13 +231,30 @@ class AnalysisHistoryService extends ChangeNotifier {
           .order('created_at', ascending: false);
 
       if (res.isNotEmpty) {
-        _items.clear();
+        final remoteItems = <AnalysisHistoryItemModel>[];
+        final remoteIds = <String>{};
         for (final row in res) {
-          _items.add(AnalysisHistoryItemModel.fromMap(row));
+          final item = AnalysisHistoryItemModel.fromMap(row);
+          remoteItems.add(item);
+          remoteIds.add(item.id);
         }
+
+        // Giữ lại các bản ghi cục bộ chưa có trên máy chủ Supabase (quét offline / chưa sync)
+        final localOnlyItems = _items.where((i) => !remoteIds.contains(i.id)).toList();
+
+        _items.clear();
+        _items.addAll(remoteItems);
+        _items.addAll(localOnlyItems);
+        // Sắp xếp theo dateTime giảm dần (mới nhất lên đầu)
+        _items.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+
         _lastError = null;
         _lastSyncTime = DateTime.now();
         await _persistToLocalStorage();
+
+        if (localOnlyItems.isNotEmpty) {
+          unawaited(_syncLocalItemsToSupabase());
+        }
       } else {
         // Nếu Supabase trả về rỗng (bảng mới tạo chưa seed), đồng bộ các bản ghi cục bộ lên
         if (_items.isNotEmpty) {

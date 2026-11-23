@@ -645,13 +645,23 @@ class LocalStorageService {
 
   static const String _keyBfAttemptsPrefix = 'auth_bf_attempts_';
   static const String _keyBfLockPrefix = 'auth_bf_lock_';
+  static const String _keyBfLastTimePrefix = 'auth_bf_last_time_';
+  static const Duration _consecutiveFailureWindow = Duration(minutes: 15);
 
   final Map<String, int> _cachedBfAttempts = {};
   final Map<String, DateTime> _cachedBfLocks = {};
+  final Map<String, DateTime> _cachedBfLastTimes = {};
 
   /// Lưu số lần đăng nhập sai và mốc thời gian khóa lũy tiến cho từng portal
-  Future<void> saveFailedLoginAttempts(String scope, int count, DateTime? lockedUntil) async {
+  Future<void> saveFailedLoginAttempts(
+    String scope,
+    int count,
+    DateTime? lockedUntil, {
+    DateTime? lastAttemptAt,
+  }) async {
+    final attemptTime = lastAttemptAt ?? DateTime.now();
     _cachedBfAttempts[scope] = count;
+    _cachedBfLastTimes[scope] = attemptTime;
     if (lockedUntil != null) {
       _cachedBfLocks[scope] = lockedUntil;
     } else {
@@ -661,6 +671,7 @@ class LocalStorageService {
       final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
       _cachedPrefs = prefs;
       await prefs.setInt('$_keyBfAttemptsPrefix$scope', count);
+      await prefs.setInt('$_keyBfLastTimePrefix$scope', attemptTime.millisecondsSinceEpoch);
       if (lockedUntil != null) {
         await prefs.setInt('$_keyBfLockPrefix$scope', lockedUntil.millisecondsSinceEpoch);
       } else {
@@ -674,9 +685,21 @@ class LocalStorageService {
   /// Nạp thông tin số lần đăng nhập sai và mốc thời gian khóa lũy tiến
   Future<Map<String, dynamic>> loadFailedLoginAttempts(String scope) async {
     if (_cachedBfAttempts.containsKey(scope)) {
+      final lastTime = _cachedBfLastTimes[scope];
+      final locked = _cachedBfLocks[scope];
+      final now = DateTime.now();
+      final isLockExpired = locked == null || now.isAfter(locked);
+      final isTimeExpired = lastTime == null || now.difference(lastTime) > _consecutiveFailureWindow;
+
+      if (_cachedBfAttempts[scope]! > 0 && isLockExpired && isTimeExpired) {
+        await clearFailedLoginAttempts(scope);
+        return {'count': 0, 'lockedUntil': null, 'lastAttemptAt': null};
+      }
+
       return {
         'count': _cachedBfAttempts[scope] ?? 0,
-        'lockedUntil': _cachedBfLocks[scope],
+        'lockedUntil': locked,
+        'lastAttemptAt': lastTime,
       };
     }
     try {
@@ -685,17 +708,35 @@ class LocalStorageService {
       final count = prefs.getInt('$_keyBfAttemptsPrefix$scope') ?? 0;
       final lockMillis = prefs.getInt('$_keyBfLockPrefix$scope');
       final lockedUntil = lockMillis != null ? DateTime.fromMillisecondsSinceEpoch(lockMillis) : null;
+      final lastMillis = prefs.getInt('$_keyBfLastTimePrefix$scope');
+      final lastAttemptAt = lastMillis != null ? DateTime.fromMillisecondsSinceEpoch(lastMillis) : null;
+
+      final now = DateTime.now();
+      final isLockExpired = lockedUntil == null || now.isAfter(lockedUntil);
+      final isTimeExpired = lastAttemptAt == null || now.difference(lastAttemptAt) > _consecutiveFailureWindow;
+
+      // Nếu số lần sai đã cũ (> 15 phút) hoặc dữ liệu từ phiên bản cũ không còn trong lockTime:
+      // Tự động xóa sạch để không kích hoạt nhầm tính năng chống spam bot!
+      if (count > 0 && isLockExpired && isTimeExpired) {
+        await clearFailedLoginAttempts(scope);
+        return {'count': 0, 'lockedUntil': null, 'lastAttemptAt': null};
+      }
+
       _cachedBfAttempts[scope] = count;
+      if (lastAttemptAt != null) {
+        _cachedBfLastTimes[scope] = lastAttemptAt;
+      }
       if (lockedUntil != null) {
         _cachedBfLocks[scope] = lockedUntil;
       }
       return {
         'count': count,
         'lockedUntil': lockedUntil,
+        'lastAttemptAt': lastAttemptAt,
       };
     } catch (e) {
       debugPrint('[LocalStorage] Lỗi load brute-force attempts: $e');
-      return {'count': 0, 'lockedUntil': null};
+      return {'count': 0, 'lockedUntil': null, 'lastAttemptAt': null};
     }
   }
 
@@ -703,11 +744,13 @@ class LocalStorageService {
   Future<void> clearFailedLoginAttempts(String scope) async {
     _cachedBfAttempts.remove(scope);
     _cachedBfLocks.remove(scope);
+    _cachedBfLastTimes.remove(scope);
     try {
       final prefs = _cachedPrefs ?? await SharedPreferences.getInstance();
       _cachedPrefs = prefs;
       await prefs.remove('$_keyBfAttemptsPrefix$scope');
       await prefs.remove('$_keyBfLockPrefix$scope');
+      await prefs.remove('$_keyBfLastTimePrefix$scope');
     } catch (e) {
       debugPrint('[LocalStorage] Lỗi xóa brute-force attempts: $e');
     }

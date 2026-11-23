@@ -27,37 +27,65 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
   DateTime? _historyToDate;
   DateTime? get historyToDate => _historyToDate;
 
-    /// Nạp danh sách lịch sử phân tích từ Supabase
+  bool _historyListenerRegistered = false;
+  bool _isHistoryDisposed = false;
+
+  /// Khởi tạo lịch sử phân tích từ LocalStorage/Service ngay khi UserViewModel được tạo
+  void initAnalysisHistory() {
+    _isHistoryDisposed = false;
+    _syncHistoryFromService();
+    if (!_historyListenerRegistered) {
+      AnalysisHistoryService.instance.addListener(_onAnalysisHistoryServiceChanged);
+      _historyListenerRegistered = true;
+    }
+  }
+
+  /// Hủy đăng ký listener khi ViewModel bị dispose
+  void disposeAnalysisHistory() {
+    _isHistoryDisposed = true;
+    if (_historyListenerRegistered) {
+      AnalysisHistoryService.instance.removeListener(_onAnalysisHistoryServiceChanged);
+      _historyListenerRegistered = false;
+    }
+  }
+
+  void _onAnalysisHistoryServiceChanged() {
+    if (_isHistoryDisposed) return;
+    _syncHistoryFromService();
+  }
+
+  void _syncHistoryFromService() {
+    if (_isHistoryDisposed) return;
+    final username = currentUser?.username;
+    final items = AnalysisHistoryService.instance.getItemsForUser(username);
+    _analysisHistoryItems.clear();
+    _analysisHistoryItems.addAll(items);
+    notifyListeners();
+  }
+
+  /// Nạp danh sách lịch sử phân tích từ Supabase và LocalStorage
   Future<void> fetchHistoryFromSupabase({bool silent = false}) async {
     try {
-      final client = SupabaseService.instance.client;
-      if (client == null) {
-        await AnalysisHistoryService.instance.loadFromLocalStorage();
-        _analysisHistoryItems.clear();
-        _analysisHistoryItems.addAll(AnalysisHistoryService.instance.items);
-        notifyListeners();
-        return;
-      }
-      final dynamic query = client.from('analysis_history').select();
-      final res = currentUser?.username != null
-          ? await query.eq('username', currentUser!.username).order('created_at', ascending: false)
-          : await query.order('created_at', ascending: false);
-      _analysisHistoryItems.clear();
-      for (final row in res) {
-        _analysisHistoryItems.add(AnalysisHistoryItemModel.fromMap(row));
-      }
-      if (_analysisHistoryItems.isEmpty) {
-        _analysisHistoryItems.addAll(AnalysisHistoryService.instance.items);
-      }
-      notifyListeners();
+      await AnalysisHistoryService.instance.fetchHistoryFromSupabase(silent: silent);
+      _syncHistoryFromService();
     } catch (e) {
-      debugPrint('[HistoryViewModel] Lấy lịch sử Supabase (chuẩn bị bảng): $e');
-      if (_analysisHistoryItems.isEmpty) {
-        await AnalysisHistoryService.instance.loadFromLocalStorage();
-        _analysisHistoryItems.addAll(AnalysisHistoryService.instance.items);
-        notifyListeners();
-      }
+      debugPrint('[HistoryViewModel] Lấy lịch sử Supabase: $e');
+      _syncHistoryFromService();
     }
+  }
+
+  @override
+  void onUserSessionChanged() {
+    super.onUserSessionChanged();
+    _syncHistoryFromService();
+    unawaited(fetchHistoryFromSupabase(silent: true));
+  }
+
+  @override
+  void onNavigateToAnalysisHistory() {
+    super.onNavigateToAnalysisHistory();
+    _syncHistoryFromService();
+    unawaited(fetchHistoryFromSupabase(silent: true));
   }
 
   // Danh sách lịch sử phân tích (Đồng bộ thời gian thực với Supabase Database)
@@ -232,8 +260,12 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
       }
     }
 
+    final currentUsername = currentUser?.username.trim();
     final newRecord = AnalysisHistoryItemModel(
       id: 'hist_${now.millisecondsSinceEpoch}',
+      username: (currentUsername != null && currentUsername.isNotEmpty)
+          ? currentUsername
+          : null,
       injuryType: detectedInjuryType,
       confidencePercent: detectedConfidence,
       locationLabel: detectedLocation,
@@ -246,6 +278,7 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
       rawImageBytes: rawImageBytes,
     );
 
+    _analysisHistoryItems.removeWhere((i) => i.id == newRecord.id);
     _analysisHistoryItems.insert(0, newRecord);
     _currentHistoryPage = 1;
     notifyListeners();
@@ -256,7 +289,6 @@ mixin LichSuPhanTichViewModel on DieuHuongCoSoViewModel {
     // Đồng bộ lên Supabase Cloud CHỈ KHI người dùng đã đăng nhập (tuân thủ khóa ngoại username)
     try {
       final client = SupabaseService.instance.client;
-      final currentUsername = currentUser?.username.trim();
       if (client != null && currentUsername != null && currentUsername.isNotEmpty) {
         client.from('analysis_history').insert({
           'id': newRecord.id,

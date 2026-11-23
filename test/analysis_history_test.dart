@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:do_an_cntt_11/core/history/analysis_history_service.dart';
 import 'package:do_an_cntt_11/core/storage/local_storage_service.dart';
+import 'package:do_an_cntt_11/features/user/models/history_models.dart';
 import 'package:do_an_cntt_11/features/user/viewmodels/user_viewmodel.dart';
 
 void main() {
@@ -131,6 +132,86 @@ void main() {
         userVm.goToPreviousHistoryPage();
         expect(userVm.currentHistoryPage, equals(1));
       }
+    });
+  });
+
+  group('User Session & App Restart Persistence Tests', () {
+    test('Logged in user analysis attaches username and persists across app restarts', () async {
+      final userVm = UserViewModel();
+
+      // Register and login a user
+      userVm.registerUser(
+        username: 'patient_vinh',
+        password: 'password123',
+      );
+      expect(userVm.isUserLoggedIn, isTrue);
+      expect(userVm.currentUsername, equals('patient_vinh'));
+
+      // Perform an image analysis scan
+      userVm.onNewAnalysisRecorded(
+        imageSourceName: 'patient_wound.png',
+        injuryType: 'Vết cắt sâu',
+        confidencePercent: 95,
+        locationLabel: 'Bàn tay phải',
+        topicId: 'cut_laceration',
+      );
+
+      // Verify immediate record details
+      final userItems = userVm.filteredAnalysisHistoryItems;
+      expect(userItems.isNotEmpty, isTrue);
+      expect(userItems.first.username, equals('patient_vinh'));
+      expect(userItems.first.injuryType, equals('Vết cắt sâu'));
+      expect(userItems.first.locationLabel, equals('Bàn tay phải'));
+
+      // Verify it was written to LocalStorage
+      final cachedList = await LocalStorageService.instance.loadAnalysisHistory();
+      final persistedCut = cachedList.firstWhere(
+        (m) => m['injury_type_name'] == 'Vết cắt sâu' && m['username'] == 'patient_vinh',
+      );
+      expect(persistedCut, isNotNull);
+      expect(persistedCut['location_label'], equals('Bàn tay phải'));
+
+      // SIMULATE APP EXIT & REOPEN
+      // Dispose old ViewModel and simulate new app launch
+      userVm.dispose();
+
+      // Reload service from LocalStorage just like main() does
+      await AnalysisHistoryService.instance.loadFromLocalStorage();
+
+      // New UserViewModel created on restart
+      final reopenedVm = UserViewModel();
+      expect(reopenedVm.filteredAnalysisHistoryItems.isNotEmpty, isTrue);
+
+      // Restore session
+      reopenedVm.registerUser(username: 'patient_vinh', password: 'password123');
+
+      final reloadedItems = reopenedVm.filteredAnalysisHistoryItems;
+      expect(reloadedItems.any((i) => i.injuryType == 'Vết cắt sâu' && i.username == 'patient_vinh'), isTrue);
+      final restoredItem = reloadedItems.firstWhere((i) => i.injuryType == 'Vết cắt sâu');
+      expect(restoredItem.locationLabel, equals('Bàn tay phải'));
+
+      reopenedVm.dispose();
+    });
+
+    test('Location label is preserved across toMap and fromMap serialization', () {
+      final now = DateTime.now();
+      final item = AnalysisHistoryItemModel(
+        id: 'hist_loc_test',
+        username: 'test_user',
+        injuryType: 'Bỏng bô xe máy',
+        confidencePercent: 88,
+        locationLabel: 'Cẳng chân trái',
+        timestamp: '15:30 23/11/2026',
+        dateTime: now,
+      );
+
+      final map = item.toMap();
+      expect(map['location_label'], equals('Cẳng chân trái'));
+
+      final restored = AnalysisHistoryItemModel.fromMap(map);
+      expect(restored.locationLabel, equals('Cẳng chân trái'));
+      expect(restored.username, equals('test_user'));
+      expect(restored.injuryType, equals('Bỏng bô xe máy'));
     });
   });
 }

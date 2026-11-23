@@ -52,13 +52,16 @@ void main() {
         service.recordFailedAttempt(AuthBruteForceService.scopeAdmin);
       }
       final challenge = service.getOrGenerateChallenge(AuthBruteForceService.scopeAdmin);
-      expect(challenge.question.isNotEmpty, true);
-      expect(challenge.answer.isNotEmpty, true);
+      expect(challenge.code.length, 5);
+      expect(RegExp(r'^[a-zA-Z0-9]+$').hasMatch(challenge.code), true);
+      expect(challenge.answer, challenge.code);
 
       expect(service.validateChallenge(AuthBruteForceService.scopeAdmin, 'wrong'), false);
       expect(service.validateChallenge(AuthBruteForceService.scopeAdmin, ''), false);
       expect(service.validateChallenge(AuthBruteForceService.scopeAdmin, null), false);
       expect(service.validateChallenge(AuthBruteForceService.scopeAdmin, challenge.answer), true);
+      expect(service.validateChallenge(AuthBruteForceService.scopeAdmin, challenge.answer.toLowerCase()), true);
+      expect(service.validateChallenge(AuthBruteForceService.scopeAdmin, challenge.answer.toUpperCase()), true);
     });
 
     test('Successful login resets all counters, delays, and challenges', () {

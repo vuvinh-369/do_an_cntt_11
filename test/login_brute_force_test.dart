@@ -55,15 +55,16 @@ void main() {
       expect(service.isChallengeRequired(AuthBruteForceService.scopeAdmin), isTrue);
     });
 
-    test('2.2 Generates self-contained arithmetic challenge upon reaching 5 failures', () {
+    test('2.2 Generates self-contained alphanumeric challenge upon reaching 5 failures', () {
       final service = AuthBruteForceService.instance;
       for (int i = 0; i < 5; i++) {
         service.recordFailedAttempt(AuthBruteForceService.scopeAdmin);
       }
       final challenge = service.getOrGenerateChallenge(AuthBruteForceService.scopeAdmin);
       expect(challenge.id, isNotEmpty);
-      expect(challenge.question, contains('= ?'));
-      expect(challenge.answer, isNotEmpty);
+      expect(challenge.code.length, equals(5));
+      expect(RegExp(r'^[a-zA-Z0-9]+$').hasMatch(challenge.code), isTrue);
+      expect(challenge.answer, equals(challenge.code));
       expect(challenge.isExpired, isFalse);
     });
 
@@ -85,7 +86,7 @@ void main() {
       expect(service.validateChallenge(AuthBruteForceService.scopeAdmin, 'wrong-999'), isFalse);
     });
 
-    test('2.5 Accepts correct CAPTCHA answer', () {
+    test('2.5 Accepts correct CAPTCHA answer and supports case-insensitive entry', () {
       final service = AuthBruteForceService.instance;
       for (int i = 0; i < 5; i++) {
         service.recordFailedAttempt(AuthBruteForceService.scopeAdmin);
@@ -93,6 +94,8 @@ void main() {
       final challenge = service.getOrGenerateChallenge(AuthBruteForceService.scopeAdmin);
       expect(service.validateChallenge(AuthBruteForceService.scopeAdmin, challenge.answer), isTrue);
       expect(service.validateChallenge(AuthBruteForceService.scopeAdmin, '  ${challenge.answer}  '), isTrue);
+      expect(service.validateChallenge(AuthBruteForceService.scopeAdmin, challenge.answer.toLowerCase()), isTrue);
+      expect(service.validateChallenge(AuthBruteForceService.scopeAdmin, challenge.answer.toUpperCase()), isTrue);
     });
   });
 

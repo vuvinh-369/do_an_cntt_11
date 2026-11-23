@@ -130,6 +130,7 @@ class AnalysisHistoryItemModel {
       'injury_type_name': injuryType,
       'confidence_score': (confidencePercent ?? 80).toDouble(),
       'severity_level': severityLevel,
+      'location_label': locationLabel,
       'image_url': imageSourceName,
       'symptoms': symptoms,
       'pain_level': painLevel,
