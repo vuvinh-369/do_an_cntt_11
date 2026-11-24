@@ -107,5 +107,35 @@ void main() {
       expect(secondChallenge.code.length, 5);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('4. AuthCaptchaBox does not overflow when rendered in narrow dialog width (350px)', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+
+      for (int i = 1; i <= 5; i++) {
+        AuthBruteForceService.instance.recordFailedAttempt(AuthBruteForceService.scopeUser);
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 350,
+                child: AuthCaptchaBox(
+                  scope: AuthBruteForceService.scopeUser,
+                  controller: controller,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Xác thực chống spam bot (Bắt buộc)'), findsOneWidget);
+      expect(find.text('Không phân biệt hoa/thường'), findsOneWidget);
+    });
   });
 }

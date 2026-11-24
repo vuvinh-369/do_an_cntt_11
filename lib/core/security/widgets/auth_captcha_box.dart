@@ -142,32 +142,39 @@ class _AuthCaptchaBoxState extends State<AuthCaptchaBox> {
           // 2. Thử thách CAPTCHA bắt buộc (chữ và số với font chữ xấu, lệch)
           if (isChallenge && challenge != null) ...[
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: const [
-                    Icon(
-                      Icons.shield_outlined,
-                      size: 16,
-                      color: Color(0xFF2563EB),
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      'Xác thực chống spam bot (Bắt buộc)',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1E293B),
-                      ),
-                    ),
-                  ],
+                const Padding(
+                  padding: EdgeInsets.only(top: 1),
+                  child: Icon(
+                    Icons.shield_outlined,
+                    size: 16,
+                    color: Color(0xFF2563EB),
+                  ),
                 ),
-                const Text(
-                  'Không phân biệt hoa/thường',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF64748B),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Xác thực chống spam bot (Bắt buộc)',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Không phân biệt hoa/thường',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
